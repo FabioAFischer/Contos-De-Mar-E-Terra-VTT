@@ -1,0 +1,35 @@
+# Sistema e dados locais do Foundry
+Data/
+worlds/
+logs/
+foundrydata/
+
+# Arquivos gerados e bancos locais
+*.log
+*.sqlite
+*.sqlite3
+packs/*.db
+
+# Segredos e configurações locais
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Dependências, cobertura e artefatos de desenvolvimento
+node_modules/
+coverage/
+dist/
+build/
+test-results/
+
+# Editor e sistema operacional
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

@@ -1,0 +1,45 @@
+{
+  "id": "contos-de-mar-e-terra",
+  "title": "Contos de Mar e Terra",
+  "description": "Sistema em desenvolvimento para Contos de Mar e Terra.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "authors": [
+    {
+      "name": "Contos de Mar e Terra"
+    }
+  ],
+  "esmodules": [
+    "contos-de-mar-e-terra.mjs"
+  ],
+  "styles": [
+    "styles/contos-de-mar-e-terra.css"
+  ],
+  "languages": [
+    {
+      "lang": "pt-BR",
+      "name": "Português (Brasil)",
+      "path": "lang/pt-BR.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "personagem": {}
+    },
+    "Item": {
+      "equipamento": {},
+      "habilidade": {},
+      "magia": {},
+      "arma": {},
+      "armadura": {}
+    }
+  }
+}
