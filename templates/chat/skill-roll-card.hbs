@@ -1,0 +1,22 @@
+<article class="cmet-roll-card {{#if success}}cmet-roll-card--success{{else}}cmet-roll-card--failure{{/if}}">
+  {{#if contextTitle}}<h3 class="cmet-roll-context">{{contextTitle}}</h3>{{/if}}
+  {{#if contextWeapon}}<p class="cmet-roll-context-weapon">{{contextWeapon}}</p>{{/if}}
+  <details class="cmet-roll-details">
+    <summary class="cmet-roll-skill">{{skillLabel}}</summary>
+    <div class="cmet-roll-breakdown">
+      <div><span>{{localize "CMET.Rolling.BaseValue"}}</span><strong>{{baseValue}}</strong></div>
+      <div><span>{{localize "CMET.Rolling.Modifier"}}</span><strong>{{modifier}}</strong></div>
+      <div><span>{{localize "CMET.Rolling.EffectiveValue"}}</span><strong>{{effectiveTarget}}</strong></div>
+    </div>
+  </details>
+
+  <div class="cmet-roll-result">
+    <div class="cmet-roll-dice" aria-label="{{localize 'CMET.Rolling.Dice'}}">
+      {{#each rolls}}
+        <span class="cmet-roll-die {{#if selected}}is-selected{{else}}is-unselected{{/if}}" title="{{#if selected}}{{localize 'CMET.Rolling.SelectedResult'}}{{/if}}">{{value}}</span>
+      {{/each}}
+    </div>
+    <div class="cmet-roll-degree">{{degreeLabel}}</div>
+    {{#if showRollMode}}<div class="cmet-roll-mode">{{rollModeLabel}}</div>{{/if}}
+  </div>
+</article>

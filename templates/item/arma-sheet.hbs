@@ -1,0 +1,56 @@
+<form class="cmet-configured-item-sheet" autocomplete="off">
+  <div class="cmet-config-chrome">
+    <header class="cmet-config-header">
+      <img class="cmet-config-header__image" src="{{item.img}}" alt="{{item.name}}" data-action="editImage" data-edit="img" title="{{localize 'CMET.Actions.ChangeImage'}}" aria-label="{{localize 'CMET.Actions.ChangeImage'}}: {{item.name}}" />
+      <div class="cmet-config-header__identity">
+        <input class="cmet-config-header__name" name="name" type="text" value="{{item.name}}" placeholder="{{localize 'CMET.Fields.Name'}}" />
+        <label>{{localize "CMET.Weapon.Fields.Quality"}}<select name="system.quality">{{#each qualities}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+        <label>{{localize "CMET.Weapon.Fields.CombatSkill"}}<select name="system.combatSkill"><option value="">{{localize "CMET.Weapon.Fields.None"}}</option>{{#each combatSkills}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+        <label class="cmet-config-check"><input type="checkbox" name="system.equipped" {{#if system.equipped}}checked{{/if}} />{{localize "CMET.Weapon.Fields.Equipped"}}</label>
+      </div>
+    </header>
+    <nav class="cmet-config-tabs tabs" data-group="primary" aria-label="{{localize 'CMET.Navigation.Label'}}">
+      <button type="button" class="item {{tabs.configuracao.cssClass}}" data-group="primary" data-tab="configuracao">{{localize "CMET.Weapon.Tabs.Configuration"}}</button>
+      <button type="button" class="item {{tabs.descricao.cssClass}}" data-group="primary" data-tab="descricao">{{localize "CMET.Weapon.Tabs.Description"}}</button>
+    </nav>
+  </div>
+
+  <section class="tab cmet-config-tab {{tabs.configuracao.cssClass}}" data-group="primary" data-tab="configuracao">
+    <section class="cmet-config-section">
+      <h2>{{localize "CMET.Weapon.Sections.Damage"}}</h2>
+      <div class="cmet-damage-list">
+        {{#each damageParts}}
+          <div class="cmet-damage-row" data-damage-row data-damage-index="{{index}}">
+            <input class="cmet-damage-formula" name="system.damage.{{index}}.formula" type="text" value="{{formula}}" placeholder="2d8" aria-label="{{localize 'CMET.Weapon.Fields.DamageFormula'}}" />
+            <select class="cmet-damage-nature" name="system.damage.{{index}}.nature" aria-label="{{localize 'CMET.Weapon.Fields.DamageNature'}}">{{#each natureOptions}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+            <select class="cmet-damage-type" name="system.damage.{{index}}.type" aria-label="{{localize 'CMET.Weapon.Fields.DamageType'}}">{{#each typeOptions}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+            <button type="button" class="cmet-damage-remove" data-damage-action="remove" data-damage-index="{{index}}" title="{{localize 'CMET.Actions.Remove'}}" aria-label="{{localize 'CMET.Actions.Remove'}}">🗑</button>
+          </div>
+        {{else}}
+          <p class="cmet-damage-empty">{{localize "CMET.Weapon.Fields.NoDamageParts"}}</p>
+        {{/each}}
+      </div>
+      <button type="button" class="cmet-damage-add" data-damage-action="add">{{localize "CMET.Weapon.Fields.AddDamage"}}</button>
+    </section>
+    <section class="cmet-config-section">
+      <h2>{{localize "CMET.Weapon.Sections.Characteristics"}}</h2>
+      <div class="cmet-config-characteristics">
+        {{#each characteristics}}
+          <div class="cmet-config-characteristic">
+            <label class="cmet-config-check"><input type="checkbox" name="system.characteristics.{{key}}.enabled" {{#if parameters.length}}data-parameter-toggle{{/if}} {{#if enabled}}checked{{/if}} />{{label}}</label>
+            {{#if enabled}}
+              {{#each parameters}}
+                <label class="cmet-config-parameter">{{label}}<span class="cmet-config-inline"><input name="system.characteristics.{{../key}}.{{key}}" type="{{field}}" {{#if (eq field "number")}}min="0" step="1"{{/if}} value="{{value}}" />{{#if suffix}}<span>{{suffix}}</span>{{/if}}</span></label>
+              {{/each}}
+            {{/if}}
+          </div>
+        {{/each}}
+      </div>
+    </section>
+  </section>
+
+  <section class="tab cmet-config-tab cmet-config-tab--description {{tabs.descricao.cssClass}}" data-group="primary" data-tab="descricao">
+    <label for="cmet-config-description">{{localize "CMET.Weapon.Fields.Description"}}</label>
+    <textarea id="cmet-config-description" name="system.description">{{system.description}}</textarea>
+  </section>
+</form>

@@ -1,0 +1,51 @@
+<article class="cmet-damage-card">
+  <h3 class="cmet-damage-context">{{attackerName}} {{localize "CMET.Damage.CausedDamageTo"}} {{defenderName}}{{#if critical}} <span class="cmet-damage-critical">{{localize "CMET.Damage.Critical"}}</span>{{/if}}</h3>
+  <section class="cmet-damage-summary">
+    <div class="cmet-damage-summary-primary">
+      <span>{{localize "CMET.Damage.FinalTotal"}}</span>
+      <strong>{{totalFinalDamage}}</strong>
+    </div>
+    <div class="cmet-damage-summary-meta">
+      <span>{{totalRawDamage}} {{localize "CMET.Damage.RawShort"}}</span>
+      <span aria-hidden="true">•</span>
+      <span>{{totalAppliedReduction}} {{localize "CMET.Damage.ReducedShort"}}</span>
+    </div>
+  </section>
+  {{#if damageApplication}}
+    <section class="cmet-damage-health{{#if damageApplication.reachedZero}} cmet-damage-health--zero{{/if}}">
+      <span>{{localize "CMET.Damage.Health"}}</span>
+      <strong>{{damageApplication.hpBefore}} <span aria-hidden="true">→</span> {{damageApplication.hpAfter}}</strong>
+    </section>
+  {{/if}}
+  {{#each groups}}
+    <section class="cmet-damage-group">
+      <div class="cmet-damage-group-type">{{natureLabel}} <span aria-hidden="true">•</span> {{typeLabel}}</div>
+      <div class="cmet-damage-result">
+        <span class="cmet-damage-raw" title="{{localize 'CMET.Damage.RawTooltip'}}">{{rawDamage}}</span>
+        <span class="cmet-damage-arrow" aria-hidden="true">→</span>
+        <strong class="cmet-damage-final" title="{{localize 'CMET.Damage.FinalTooltip'}}">{{finalDamage}}</strong>
+      </div>
+      {{#if appliedReduction}}<div class="cmet-damage-reduction">{{localize "CMET.Damage.ReductionShort"}} {{appliedReduction}}</div>{{/if}}
+      <details class="cmet-damage-details">
+        <summary>{{localize "CMET.Damage.Details"}}</summary>
+        <div class="cmet-damage-detail-section">
+          <h4>{{localize "CMET.Damage.Rolling"}}</h4>
+          {{#each components}}<div class="cmet-damage-detail-row"><span>{{formula}}</span><strong>{{rolledDamage}}</strong></div>{{/each}}
+        </div>
+        {{#if ../critical}}
+          <div class="cmet-damage-detail-section">
+            <h4>{{localize "CMET.Damage.CriticalBonus"}}</h4>
+            {{#each components}}<div class="cmet-damage-detail-row"><span>{{localize "CMET.Damage.MaximumOf"}} {{formula}}</span><strong>+{{maximumDamage}}</strong></div>{{/each}}
+            <div class="cmet-damage-detail-row"><span>{{localize "CMET.Damage.RawComponent"}}</span><strong>{{rawDamage}}</strong></div>
+          </div>
+        {{/if}}
+        <div class="cmet-damage-detail-section">
+          <h4>{{localize "CMET.Damage.Reductions"}}</h4>
+          {{#each reductions}}<div class="cmet-damage-detail-row"><span><b>{{displayLabel}}</b><small>{{sourceItemName}}</small></span><strong>-{{amount}}</strong></div>{{/each}}
+          <div class="cmet-damage-detail-row"><span>{{localize "CMET.Damage.AvailableReduction"}}</span><strong>{{availableReduction}}</strong></div>
+          <div class="cmet-damage-detail-row"><span>{{localize "CMET.Damage.AppliedReduction"}}</span><strong>{{appliedReduction}}</strong></div>
+        </div>
+      </details>
+    </section>
+  {{/each}}
+</article>

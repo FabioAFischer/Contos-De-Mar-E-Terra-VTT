@@ -1,0 +1,13 @@
+<form class="cmet-form" autocomplete="off">
+  <header class="cmet-sheet__header">
+    <img class="cmet-sheet__portrait" src="{{item.img}}" alt="{{item.name}}" data-action="editImage" data-edit="img" title="{{localize 'CMET.Actions.ChangeImage'}}" aria-label="{{localize 'CMET.Actions.ChangeImage'}}: {{item.name}}" />
+    <div class="cmet-sheet__title">
+      <input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'CMET.Fields.Name'}}" />
+      <span>{{typeLabel}}</span>
+    </div>
+  </header>
+  <section class="cmet-sheet__section">
+    <label for="cmet-item-description">{{localize "CMET.Fields.Description"}}</label>
+    <textarea id="cmet-item-description" name="system.description">{{item.system.description}}</textarea>
+  </section>
+</form>

@@ -1,0 +1,327 @@
+{
+  "TYPES": {
+    "Actor": {
+      "personagem": "Character"
+    },
+    "Item": {
+      "arma": "Weapon",
+      "armadura": "Armor",
+      "equipamento": "Equipment",
+      "habilidade": "Ability",
+      "magia": "Spell"
+    }
+  },
+  "CMET": {
+    "ActorTypes": { "personagem": "Character" },
+    "Attributes": {
+      "Fisico": "Physical",
+      "Combate": "Combat",
+      "Magia": "Magic",
+      "Mental": "Mental",
+      "Social": "Social"
+    },
+    "Actions": {
+      "ChangeImage": "Change image",
+      "Roll": "Roll",
+      "Create": "+ Create",
+      "Edit": "Edit",
+      "Open": "Open",
+      "Remove": "Remove"
+    },
+    "Biography": {
+      "History": "History",
+      "Personality": "Personality",
+      "Ideals": "Ideals",
+      "Faults": "Flaws"
+    },
+    "EmbeddedItems": "Character items",
+    "Combat": {
+      "ActionsAvailable": "Available actions",
+      "ActionsReserved": "Reserved actions",
+      "NoActionsAvailable": "No actions available",
+      "NoActionsReserved": "No reserved actions",
+      "Initiative": "Initiative",
+      "Notifications": {
+        "InsufficientActions": "Not enough actions.",
+        "InvalidActionState": "The combat action state is invalid."
+      }
+    },
+    "CombatAttack": {
+      "Attacked": "attacked",
+      "Defended": "defended themselves",
+      "Attack": "Attack",
+      "Defense": "Defense",
+      "AttackWithWeapon": "Attack with",
+      "AttackRoll": "Attack",
+      "DefenseRoll": "Defense",
+      "ChooseDefense": "Choose your Defense",
+      "Dodge": "Dodge",
+      "Block": "Block",
+      "NoDefense": "Do not Defend",
+      "NoReservedAction": "No reserved action",
+      "SelectTargetToContinue": "Select a target to continue the attack.",
+      "AttackNoLongerValid": "The pending attack is no longer valid.",
+      "AttackHit": "ATTACK HIT",
+      "AttackMiss": "ATTACK MISSED",
+      "AttackDefended": "ATTACK DEFENDED",
+      "AbsoluteTie": "A tie favors the defense",
+      "Notifications": {
+        "CombatRequired": "An active combat is required.",
+        "AttackerNotInCombat": "The attacker is not in the combat.",
+        "TargetNotInCombat": "The target is not in the combat.",
+        "CannotTargetSelf": "You cannot attack yourself.",
+        "SelectTarget": "Select a target.",
+        "SelectOnlyOneTarget": "Select only one target.",
+        "NotActiveTurn": "It is not the attacker's turn.",
+        "ActionInsufficient": "Not enough actions.",
+        "ReservedActionInsufficient": "Not enough reserved actions.",
+        "InvalidActionState": "The combat action state is invalid.",
+        "InvalidWeaponSkill": "The weapon does not have a valid attack skill."
+      }
+    },
+    "Fields": {
+      "Name": "Name",
+      "Description": "Description",
+      "Race": "Ancestry",
+      "Age": "Age",
+      "Level": "Level",
+      "Experience": "Experience",
+      "Gyllen": "Gyllen",
+      "Movement": "Movement",
+      "Actions": "Actions",
+      "Pool": "Total pool",
+      "Distributed": "Distributed",
+      "DistributedShort": "distributed",
+      "Remaining": "Remaining",
+      "Available": "Available points",
+      "AllDistributed": "All points distributed",
+      "Exceeded": "Distribution exceeded by",
+      "Bonus": "Bonus",
+      "AdditionalDamage": "Additional damage",
+      "CriticalAdditionalDamage": "Additional critical damage"
+    },
+    "ItemTypes": {
+      "equipamento": "Equipment",
+      "habilidade": "Ability",
+      "magia": "Spell",
+      "arma": "Weapon",
+      "armadura": "Armor"
+    },
+    "Inventory": {
+      "Weapons": "Weapons",
+      "CreateWeapon": "+ New Weapon",
+      "NoWeapons": "No weapons added.",
+      "ArmorsAndClothing": "Armor and Clothing",
+      "CreateArmor": "+ New Armor",
+      "NoArmors": "No armor or clothing added."
+    },
+    "NoItems": "No items",
+    "Skills": {
+      "arcos": "Bows",
+      "armasDeHaste": "Polearms",
+      "armasDeImpacto": "Blunt Weapons",
+      "arremessar": "Throwing",
+      "chicotes": "Whips",
+      "corpoACorpo": "Unarmed Combat",
+      "espadas": "Swords",
+      "laminas": "Blades",
+      "bloquear": "Block",
+      "esquivar": "Dodge"
+    },
+    "DamageTypes": {
+      "Cortante": "Slashing",
+      "Impacto": "Bludgeoning",
+      "Perfurante": "Piercing",
+      "CortanteMagico": "Magical Slashing",
+      "ImpactoMagico": "Magical Bludgeoning",
+      "PerfuranteMagico": "Magical Piercing",
+      "Fogo": "Fire",
+      "Raio": "Lightning",
+      "Frio": "Cold",
+      "Radiante": "Radiant",
+      "Necrotico": "Necrotic",
+      "Veneno": "Poison"
+    },
+    "DamageNatures": { "Physical": "Physical", "Magical": "Magical" },
+    "Damage": {
+      "CausedDamageTo": "caused damage to",
+      "Details": "Details",
+      "RawTotal": "Raw damage",
+      "RawShort": "raw",
+      "ReducedShort": "reduced",
+      "AvailableReduction": "Available reduction",
+      "AppliedReduction": "Applied reduction",
+      "FinalTotal": "Final damage",
+      "Health": "Health",
+      "ReductionShort": "Reduction",
+      "Rolling": "Rolls",
+      "Reductions": "Reductions",
+      "RawTooltip": "Damage before reductions",
+      "FinalTooltip": "Damage after reductions",
+      "Critical": "Critical",
+      "CriticalBonus": "Critical bonus",
+      "MaximumOf": "Maximum of",
+      "RawComponent": "Component raw damage",
+      "Notifications": {
+        "InvalidFormula": "Weapon \"{weapon}\" has an invalid damage formula: {formula}.",
+        "EmptyFormula": "Weapon \"{weapon}\" has a damage part without a formula.",
+        "MissingDamage": "Weapon \"{weapon}\" has no configured damage."
+      }
+    },
+    "WeaponQualities": {
+      "Inicial": "Basic",
+      "Sucata": "Scrap",
+      "Danificado": "Damaged",
+      "Desgastado": "Worn",
+      "Normal": "Normal",
+      "Polido": "Polished",
+      "Excepcional": "Exceptional",
+      "ObraPrima": "Masterwork"
+    },
+    "WeaponCharacteristics": {
+      "UmaMao": "One-handed",
+      "DuasMaos": "Two-handed",
+      "PontoFraco": "Weak Point",
+      "Impacto": "Impact",
+      "ArmaDeHaste": "Polearm",
+      "Alcance": "Range",
+      "Versatil": "Versatile",
+      "Arremessavel": "Throwable",
+      "Puxar": "Pull",
+      "Retaliar": "Retaliate",
+      "Punhal": "Dagger",
+      "Sequencial": "Sequential",
+      "GolpeDeRetaguarda": "Rear Strike",
+      "Recarregar": "Reload",
+      "Executar": "Execute",
+      "ArmaDeManobra": "Maneuver Weapon",
+      "CortarProjeteis": "Cut Projectiles"
+    },
+    "Weapon": {
+      "Tabs": { "Configuration": "Configuration", "Description": "Description" },
+      "Fields": {
+        "Quality": "Quality",
+        "CombatSkill": "Combat Skill",
+        "None": "None",
+        "Equipped": "Equipped",
+        "DamageFormula": "Damage formula",
+        "DamageTypes": "Damage types",
+        "DamageNature": "Damage nature",
+        "DamageType": "Damage type",
+        "AddDamage": "+ Add damage",
+        "NoDamageParts": "No damage parts.",
+        "RangeMax": "Range spaces",
+        "Spaces": "spaces",
+        "Description": "Description"
+      },
+      "Sections": { "Damage": "Damage", "Characteristics": "Characteristics" }
+    },
+    "Armor": {
+      "Categories": { "Armadura": "Armor", "Traje": "Clothing" },
+      "Characteristics": {
+        "Encouracado": "Reinforced",
+        "Absorcao": "Absorption",
+        "Carapaca": "Carapace",
+        "Selo": "Seal",
+        "Revestimento": "Coating",
+        "Discreto": "Discreet"
+      },
+      "Fields": {
+        "Category": "Category",
+        "Reduction": "Damage reduction",
+        "MagicReduction": "Magical damage reduction",
+        "Element": "Element",
+        "NoElement": "Select an element",
+        "Description": "Description"
+      },
+      "Sections": { "Characteristics": "Characteristics" }
+    },
+    "Spell": {
+      "Create": "+ New Spell",
+      "Empty": "No spells added.",
+      "Schools": {
+        "abjuracao": "Abjuration",
+        "adivinhacao": "Divination",
+        "encantamento": "Enchantment",
+        "evocacao": "Evocation",
+        "ilusao": "Illusion",
+        "invocacao": "Conjuration",
+        "necromancia": "Necromancy",
+        "restauracao": "Restoration",
+        "rituais": "Rituals",
+        "transmutacao": "Transmutation"
+      },
+      "Fields": {
+        "School": "School",
+        "NoSchool": "No school",
+        "ManaCost": "Mana Cost",
+        "ManaUnit": "Mana",
+        "Casting": "Casting",
+        "Verbal": "Verbal",
+        "Somatic": "Somatic",
+        "Material": "Material",
+        "CastingDetails": "Casting details",
+        "MaterialDescription": "Required material",
+        "Target": "Target",
+        "Range": "Range",
+        "Concentration": "Concentration",
+        "Duration": "Duration",
+        "Description": "Description",
+        "Effect": "Effect",
+        "Upgrade": "Upgrade"
+      }
+    },
+    "Ability": {
+      "Create": "+ New Ability",
+      "Empty": "No abilities added.",
+      "Categories": { "Origem": "Origin", "Corpo": "Body", "Armamento": "Armament", "Mistico": "Mystic", "Social": "Social", "Religiao": "Religion", "Tatica": "Tactics", "Cosmico": "Cosmic" },
+      "Fields": { "Category": "Category", "NoCategory": "No category", "RollSkill": "Skill for roll", "NoRollSkill": "None", "Path": "Path", "Cost": "Cost", "Points": "points", "Requirements": "Requirements", "None": "None", "Description": "Description", "Effect": "Effect", "Upgrade": "Upgrade" }
+    },
+    "Navigation": {
+      "Label": "Sheet sections",
+      "Attributes": "Attributes",
+      "Equipment": "Equipment",
+      "Abilities": "Abilities",
+      "Spells": "Spells",
+      "Biography": "Biography"
+    },
+    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution." },
+    "Rolling": {
+      "SkillTest": "Skill Test",
+      "BaseValue": "Base value",
+      "Modifier": "Modifier",
+      "EffectiveValue": "Effective value",
+      "RollType": "Roll type",
+      "Normal": "Normal",
+      "Advantage": "Advantage",
+      "Disadvantage": "Disadvantage",
+      "Roll": "Roll",
+      "Cancel": "Cancel",
+      "Dice": "Dice",
+      "SelectedResult": "Selected result",
+      "criticalSuccess": "Critical Success",
+      "optimalSuccess": "Optimal Success",
+      "goodSuccess": "Good Success",
+      "normalSuccess": "Normal Success",
+      "normalFailure": "Normal Failure",
+      "graveFailure": "Grave Failure",
+      "severeFailure": "Severe Failure",
+      "criticalFailure": "Critical Failure",
+      "InvalidSkill": "This skill could not be rolled.",
+      "InvalidItemSkill": "This item does not have a valid roll skill."
+    },
+    "Validation": { "OverPool": "Distribution exceeds the available pool. Reduce a skill before continuing." },
+    "Sheets": {
+      "Abilities": "Abilities",
+      "Habilidade": "Ability sheet",
+      "Character": "Character sheet",
+      "Equipment": "Equipment",
+      "Item": "Item sheet",
+      "Arma": "Weapon sheet",
+      "Armadura": "Armor sheet",
+      "Magia": "Spell sheet",
+      "Personagem": "Character sheet",
+      "Spells": "Spells"
+    }
+  }
+}

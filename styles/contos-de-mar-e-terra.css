@@ -1,0 +1,397 @@
+.application.cmet-actor-sheet {
+  --cmet-bg: #11171a;
+  --cmet-surface: #192226;
+  --cmet-surface-alt: #202c31;
+  --cmet-surface-raised: #28373d;
+  --cmet-border: #3b5057;
+  --cmet-border-soft: #2b3a40;
+  --cmet-text: #e7e2d8;
+  --cmet-text-muted: #9faeb2;
+  --cmet-accent: #4f8f92;
+  --cmet-accent-bright: #69b4b3;
+  --cmet-accent-dark: #326568;
+  --cmet-gold: #b99a5e;
+  --cmet-danger: #b85f5f;
+  --cmet-warning: #c49a52;
+  --cmet-success: #669b76;
+  background: var(--cmet-bg);
+  color: var(--cmet-text);
+}
+
+.application.cmet-actor-sheet .window-content {
+  background: var(--cmet-bg);
+  color: var(--cmet-text);
+}
+
+.application.cmet-actor-sheet .window-header {
+  background: var(--cmet-surface);
+  border-color: var(--cmet-border-soft);
+  color: var(--cmet-text);
+}
+
+.application.cmet-actor-sheet > form {
+  background: var(--cmet-bg);
+  color: var(--cmet-text);
+}
+
+.application.cmet-actor-sheet input,
+.application.cmet-actor-sheet textarea {
+  color: var(--cmet-text);
+  background: var(--cmet-surface-raised);
+  border: 1px solid var(--cmet-border);
+  border-radius: 3px;
+}
+
+.application.cmet-actor-sheet input:hover,
+.application.cmet-actor-sheet textarea:hover {
+  border-color: var(--cmet-accent);
+}
+
+.application.cmet-actor-sheet input:focus,
+.application.cmet-actor-sheet textarea:focus {
+  border-color: var(--cmet-accent-bright);
+  box-shadow: 0 0 0 1px var(--cmet-accent-dark);
+  outline: 2px solid transparent;
+}
+
+.application.cmet-actor-sheet .cmet-sheet__header {
+  background: var(--cmet-surface);
+  border-bottom-color: var(--cmet-border-soft);
+}
+
+.application.cmet-actor-sheet .cmet-sheet__name {
+  color: var(--cmet-text);
+}
+
+.application.cmet-actor-sheet .cmet-resource-bar {
+  background: var(--cmet-surface-alt);
+  border-color: var(--cmet-border-soft);
+}
+
+.application.cmet-actor-sheet .cmet-resource {
+  border-right-color: var(--cmet-border-soft);
+}
+
+.application.cmet-actor-sheet .cmet-attribute {
+  background: var(--cmet-surface);
+  border: 1px solid var(--cmet-border-soft);
+  border-radius: 6px;
+}
+
+.application.cmet-actor-sheet .cmet-attribute:hover {
+  border-color: var(--cmet-border);
+}
+
+.application.cmet-actor-sheet .cmet-attribute__header {
+  border-bottom-color: var(--cmet-border-soft);
+}
+
+.application.cmet-actor-sheet .cmet-attribute__header h2 {
+  color: var(--cmet-text);
+}
+
+.application.cmet-actor-sheet .cmet-attribute__header input,
+.application.cmet-actor-sheet .cmet-skill-row input,
+.application.cmet-actor-sheet .cmet-resource__value input {
+  background: var(--cmet-surface-raised);
+  color: var(--cmet-text);
+  border-color: var(--cmet-border);
+}
+
+.application.cmet-actor-sheet .cmet-pool {
+  border-bottom-color: var(--cmet-border-soft);
+}
+
+.application.cmet-actor-sheet .cmet-tabs {
+  background: var(--cmet-surface);
+  border-color: var(--cmet-border-soft);
+}
+
+.application.cmet-actor-sheet .cmet-tabs button {
+  color: var(--cmet-text-muted);
+  background: transparent;
+  box-shadow: none;
+}
+
+.application.cmet-actor-sheet .cmet-tabs button:hover {
+  color: var(--cmet-text);
+}
+
+.application.cmet-actor-sheet .cmet-tabs button.active,
+.application.cmet-actor-sheet [data-tab].active {
+  color: var(--cmet-text);
+  border-bottom: 2px solid var(--cmet-accent-bright);
+  background: color-mix(in srgb, var(--cmet-accent) 12%, transparent);
+  box-shadow: none;
+}
+
+.application.cmet-actor-sheet .cmet-error,
+.application.cmet-actor-sheet .cmet-validation {
+  color: var(--cmet-danger);
+}
+
+.application.cmet-actor-sheet .cmet-tab-content {
+  scrollbar-color: var(--cmet-accent-dark) var(--cmet-bg);
+}
+
+.application.cmet-actor-sheet .cmet-tab-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.application.cmet-actor-sheet .cmet-tab-content::-webkit-scrollbar-track {
+  background: var(--cmet-bg);
+}
+
+.application.cmet-actor-sheet .cmet-tab-content::-webkit-scrollbar-thumb {
+  background: var(--cmet-accent-dark);
+  border: 2px solid var(--cmet-bg);
+  border-radius: 6px;
+}
+
+.application.cmet-actor-sheet .cmet-tab-content::-webkit-scrollbar-thumb:hover {
+  background: var(--cmet-accent);
+}
+
+/* Estrutura existente, agora escopada à Application real. */
+.application.cmet-actor-sheet > form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.application.cmet-actor-sheet .cmet-sheet__header {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) minmax(180px, 220px);
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--cmet-border);
+  border-radius: 6px;
+}
+
+.application.cmet-actor-sheet .cmet-sheet__portrait { width: 84px; height: 84px; object-fit: cover; border: 1px solid var(--cmet-accent); border-radius: 5px; }
+.application.cmet-actor-sheet .cmet-sheet__portrait[data-action="editImage"] { cursor: pointer; }
+.application.cmet-actor-sheet .cmet-sheet__portrait[data-action="editImage"]:hover { border-color: var(--cmet-accent-bright); }
+.application.cmet-actor-sheet .cmet-sheet__identity { min-width: 0; }
+.application.cmet-actor-sheet .cmet-sheet__name { width: 100%; padding: 2px 0; border: 0; background: transparent; font-size: 1.55rem; font-weight: 700; }
+.application.cmet-actor-sheet .cmet-sheet__name:focus { padding: 2px 6px; border: 1px solid var(--cmet-accent-bright); background: var(--cmet-bg); }
+.application.cmet-actor-sheet .cmet-sheet__identity-line { display: flex; align-items: center; gap: 6px; margin-top: 5px; color: var(--cmet-text-muted); font-size: .78rem; }
+.application.cmet-actor-sheet .cmet-sheet__identity-line label { display: inline-flex; align-items: center; gap: 4px; }
+.application.cmet-actor-sheet .cmet-sheet__identity-line input { width: 5.5rem; padding: 3px 5px; }
+.application.cmet-actor-sheet .cmet-identity-separator { color: var(--cmet-gold); font-size: 1rem; }
+.application.cmet-actor-sheet .cmet-progression { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-left: 14px; border-left: 1px solid var(--cmet-border-soft); }
+.application.cmet-actor-sheet .cmet-progression label { display: flex; flex-direction: column; gap: 3px; color: var(--cmet-text-muted); font-size: .65rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.application.cmet-actor-sheet .cmet-progression input { width: 100%; padding: 3px 4px; font-size: .9rem; font-weight: 700; text-align: center; }
+
+.application.cmet-actor-sheet .cmet-resource-bar { flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding: 0; border: 1px solid var(--cmet-border-soft); border-radius: 5px; }
+.application.cmet-actor-sheet .cmet-resource { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 64px; padding: 8px 5px; border-right: 1px solid var(--cmet-border-soft); }
+.application.cmet-actor-sheet .cmet-resource:last-child { border-right: 0; }
+.application.cmet-actor-sheet .cmet-resource__label { color: var(--cmet-text-muted); font-size: .65rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.application.cmet-actor-sheet .cmet-resource__value { display: flex; align-items: baseline; justify-content: center; gap: 3px; min-width: 0; font-size: 1.05rem; font-weight: 700; }
+.application.cmet-actor-sheet .cmet-resource__value input { width: 50px; padding: 2px 3px; font-size: 1rem; text-align: center; }
+.application.cmet-actor-sheet .cmet-resource > input.cmet-resource__value { width: 50px; padding: 2px 3px; text-align: center; }
+
+.application.cmet-actor-sheet .cmet-tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; padding: 0 4px; border: 1px solid var(--cmet-border-soft); border-radius: 5px; }
+.application.cmet-actor-sheet .cmet-tabs button { padding: 9px 6px 8px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; cursor: pointer; font-size: .78rem; }
+.application.cmet-actor-sheet .cmet-sheet__body { flex: 1 1 auto; min-height: 0; overflow: hidden; padding-top: 4px; }
+.application.cmet-actor-sheet .cmet-tab-content { height: 100%; min-height: 0; padding: 4px 4px 12px 0; overflow-x: hidden; overflow-y: auto; }
+.application.cmet-actor-sheet .cmet-attributes-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; }
+.application.cmet-actor-sheet .cmet-attribute { padding: 13px; box-shadow: 0 2px 8px rgb(0 0 0 / 12%); }
+.application.cmet-actor-sheet .cmet-attribute__header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 9px; }
+.application.cmet-actor-sheet .cmet-attribute__header h2 { margin: 0; font-size: .95rem; letter-spacing: .08em; text-transform: uppercase; }
+.application.cmet-actor-sheet .cmet-attribute__header input { width: 52px; padding: 3px 4px; text-align: center; }
+.application.cmet-actor-sheet .cmet-pool { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 6px; padding: 0 0 7px; font-size: .72rem; }
+.application.cmet-actor-sheet .cmet-skills { display: flex; flex-direction: column; }
+.application.cmet-actor-sheet .cmet-skill-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-height: 29px; padding: 3px 4px; border-bottom: 1px solid color-mix(in srgb, var(--cmet-border) 55%, transparent); font-size: .8rem; }
+.application.cmet-actor-sheet .cmet-skill-row:nth-child(even) { background: color-mix(in srgb, var(--cmet-surface-alt) 35%, transparent); }
+.application.cmet-actor-sheet .cmet-skill-row:hover { background: color-mix(in srgb, var(--cmet-accent) 12%, transparent); }
+.application.cmet-actor-sheet .cmet-skill-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.application.cmet-actor-sheet .cmet-skill-roll { min-width: 0; padding: 2px 0; overflow: hidden; color: var(--cmet-text); background: transparent; border: 0; cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.application.cmet-actor-sheet .cmet-skill-roll:hover { color: var(--cmet-accent-bright); text-decoration: underline; }
+.application.cmet-actor-sheet .cmet-skill-row input { width: 52px; padding: 3px 4px; text-align: center; }
+.application.cmet-actor-sheet .cmet-biography { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.application.cmet-actor-sheet .cmet-biography label { display: flex; flex-direction: column; gap: 4px; color: var(--cmet-text-muted); font-size: .8rem; }
+.application.cmet-actor-sheet .cmet-biography textarea { min-height: 120px; padding: 6px; resize: vertical; }
+.application.cmet-actor-sheet .cmet-items__empty { color: var(--cmet-text-muted); font-style: italic; }
+.application.cmet-actor-sheet .cmet-item-section { margin-bottom: 14px; }
+.application.cmet-actor-sheet .cmet-item-list-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 2px 7px; }
+.application.cmet-actor-sheet .cmet-item-list-header h2 { margin: 0; color: var(--cmet-text); font-size: .9rem; text-transform: uppercase; }
+.application.cmet-actor-sheet .cmet-item-list-header button { flex: 0 0 auto; padding: 4px 8px; color: var(--cmet-text); background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border); border-radius: 4px; cursor: pointer; }
+.application.cmet-actor-sheet .cmet-item-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--cmet-border-soft); border-radius: 5px; overflow: hidden; }
+.application.cmet-actor-sheet .cmet-item-list > li + li { border-top: 1px solid var(--cmet-border-soft); }
+.application.cmet-actor-sheet .cmet-items__empty { padding: 12px; }
+.application.cmet-actor-sheet .cmet-item-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 52px; padding: 5px 8px; background: var(--cmet-surface); }
+.application.cmet-actor-sheet .cmet-equipped-item-row { grid-template-columns: 40px minmax(0, 1fr) 64px 20px auto; }
+.application.cmet-actor-sheet .cmet-item-row-image,
+.application.cmet-actor-sheet .cmet-item-row-image-button { display: block; width: 40px; height: 40px; min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px; }
+.application.cmet-actor-sheet .cmet-item-row-image { object-fit: cover; border: 1px solid var(--cmet-border); border-radius: 4px; }
+.application.cmet-actor-sheet .cmet-item-row-image-button { padding: 0; background: transparent; border: 0; cursor: pointer; }
+.application.cmet-actor-sheet .cmet-item-row-main { min-width: 0; }
+.application.cmet-actor-sheet .cmet-item-row-name { display: block; max-width: 100%; padding: 0; overflow: hidden; color: var(--cmet-text); background: transparent; border: 0; font-size: .84rem; font-weight: 700; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.application.cmet-actor-sheet button.cmet-item-row-name { cursor: pointer; }
+.application.cmet-actor-sheet .cmet-item-row-meta { display: block; color: var(--cmet-text-muted); font-size: .7rem; line-height: 1.25; overflow-wrap: anywhere; }
+.application.cmet-actor-sheet .cmet-item-row-summary { overflow: hidden; color: var(--cmet-accent-bright); font-size: .82rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.application.cmet-actor-sheet .cmet-item-equipped { width: 18px; height: 18px; min-width: 18px; min-height: 18px; margin: 0; accent-color: var(--cmet-accent); cursor: pointer; }
+.application.cmet-actor-sheet .cmet-item-row-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; white-space: nowrap; }
+.application.cmet-actor-sheet .cmet-item-row-actions button { flex: 0 0 24px; min-width: 24px; min-height: 28px; padding: 3px; color: var(--cmet-text-muted); background: transparent; border: 0; cursor: pointer; }
+.application.cmet-actor-sheet .cmet-item-row-actions button:hover,
+.application.cmet-actor-sheet button.cmet-item-row-name:hover { color: var(--cmet-accent-bright); }
+.application.cmet-actor-sheet .cmet-item-row-actions button.cmet-item-roll { color: var(--cmet-accent); }
+.application.cmet-actor-sheet .cmet-item-row-actions button.cmet-item-roll:hover { color: var(--cmet-accent-bright); }
+
+.combat-sidebar .combat-tracker .cmet-combat-actions { display: flex; align-items: center; gap: 3px; color: var(--color-text-secondary); font-size: var(--font-size-11); white-space: nowrap; }
+.combat-sidebar .combat-tracker .cmet-combat-actions__available { color: var(--color-text-emphatic); }
+.combat-sidebar .combat-tracker .cmet-combat-actions__reserved { color: var(--color-warm-2); }
+
+.chat-message .cmet-roll-card {
+  --cmet-roll-accent: #69b4b3;
+  --cmet-roll-success: #669b76;
+  --cmet-roll-failure: #b85f5f;
+  margin: 0;
+  padding: 9px 10px;
+  color: #e7e2d8;
+  background: #192226;
+  border: 1px solid #3b5057;
+  border-left: 3px solid var(--cmet-roll-accent);
+  border-radius: 5px;
+}
+
+.chat-message .cmet-roll-card--success { border-left-color: var(--cmet-roll-success); }
+.chat-message .cmet-roll-card--failure { border-left-color: var(--cmet-roll-failure); }
+.chat-message .cmet-roll-context { margin: 0 0 6px; color: #e7e2d8; font-size: .9rem; font-weight: 700; line-height: 1.2; }
+.chat-message .cmet-roll-context-weapon { margin: -2px 0 6px; color: #9faeb2; font-size: .75rem; }
+.chat-message .cmet-roll-details { margin: 0; }
+.chat-message .cmet-roll-skill { display: flex; align-items: center; justify-content: space-between; padding: 0 0 5px; color: #e7e2d8; cursor: pointer; font-size: .82rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.chat-message .cmet-roll-skill { list-style: none; }
+.chat-message .cmet-roll-skill::-webkit-details-marker { display: none; }
+.chat-message .cmet-roll-skill::after { margin-left: 8px; color: #9faeb2; content: "▸"; font-size: .9rem; }
+.chat-message .cmet-roll-details[open] .cmet-roll-skill::after { content: "▾"; }
+.chat-message .cmet-roll-breakdown { display: grid; gap: 3px; margin: 0 0 8px; padding: 7px 0 0; color: #9faeb2; border-top: 1px solid #2b3a40; font-size: .75rem; }
+.chat-message .cmet-roll-breakdown div { display: flex; justify-content: space-between; gap: 12px; }
+.chat-message .cmet-roll-breakdown strong { color: #e7e2d8; font-weight: 700; }
+.chat-message .cmet-roll-result { display: flex; flex-direction: column; align-items: center; gap: 5px; padding-top: 4px; text-align: center; }
+.chat-message .cmet-roll-dice { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 2.4rem; }
+.chat-message .cmet-roll-die { min-width: 2.2rem; padding: 4px 7px; color: #e7e2d8; background: #28373d; border: 1px solid #3b5057; border-radius: 4px; font-size: 1.25rem; font-weight: 700; line-height: 1; }
+.chat-message .cmet-roll-die.is-selected { color: #11171a; background: var(--cmet-roll-accent); border-color: var(--cmet-roll-accent); box-shadow: 0 0 0 1px rgb(105 180 179 / 35%); }
+.chat-message .cmet-roll-die.is-unselected { opacity: .58; }
+.chat-message .cmet-roll-degree { color: #e7e2d8; font-size: .92rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.chat-message .cmet-roll-mode { color: #9faeb2; font-size: .72rem; font-weight: 700; text-transform: uppercase; }
+.chat-message .cmet-roll-outcome { margin-top: 8px; padding-top: 6px; color: #69b4b3; border-top: 1px solid #2b3a40; font-size: .84rem; font-weight: 700; text-align: center; text-transform: uppercase; }
+
+@media (max-width: 700px) {
+  .application.cmet-actor-sheet .cmet-sheet__header { grid-template-columns: 64px minmax(0, 1fr); }
+  .application.cmet-actor-sheet .cmet-sheet__portrait { width: 64px; height: 64px; }
+  .application.cmet-actor-sheet .cmet-progression { grid-column: 1 / -1; grid-template-columns: repeat(3, 1fr); padding: 8px 0 0; border-top: 1px solid var(--cmet-border-soft); border-left: 0; }
+  .application.cmet-actor-sheet .cmet-resource-bar { grid-template-columns: repeat(3, 1fr); }
+  .application.cmet-actor-sheet .cmet-resource:nth-child(3) { border-right: 0; }
+  .application.cmet-actor-sheet .cmet-resource:nth-child(n+4) { border-top: 1px solid var(--cmet-border-soft); }
+  .application.cmet-actor-sheet .cmet-resource:nth-child(5) { border-right: 0; }
+  .application.cmet-actor-sheet .cmet-attributes-grid, .application.cmet-actor-sheet .cmet-biography { grid-template-columns: 1fr; }
+  .application.cmet-actor-sheet .cmet-tabs button { padding-inline: 3px; font-size: .7rem; }
+}
+
+.application.cmet-configured-item-sheet {
+  --cmet-bg: #11171a;
+  --cmet-surface: #192226;
+  --cmet-surface-alt: #202c31;
+  --cmet-surface-raised: #28373d;
+  --cmet-border: #3b5057;
+  --cmet-border-soft: #2b3a40;
+  --cmet-text: #e7e2d8;
+  --cmet-text-muted: #9faeb2;
+  --cmet-accent: #4f8f92;
+  --cmet-accent-bright: #69b4b3;
+  --cmet-accent-dark: #326568;
+  background: var(--cmet-bg);
+  color: var(--cmet-text);
+}
+.application.cmet-configured-item-sheet .window-content { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px; background: var(--cmet-bg); color: var(--cmet-text); scrollbar-color: var(--cmet-accent-dark) var(--cmet-bg); }
+.application.cmet-configured-item-sheet .window-content::-webkit-scrollbar { width: 10px; }
+.application.cmet-configured-item-sheet .window-content::-webkit-scrollbar-track { background: var(--cmet-bg); }
+.application.cmet-configured-item-sheet .window-content::-webkit-scrollbar-thumb { background: var(--cmet-accent-dark); border: 2px solid var(--cmet-bg); border-radius: 6px; }
+.application.cmet-configured-item-sheet .window-content > form.cmet-configured-item-sheet { display: flex; flex: 1 0 100%; flex-direction: column; gap: 10px; min-height: 100%; }
+.application.cmet-configured-item-sheet input, .application.cmet-configured-item-sheet select, .application.cmet-configured-item-sheet textarea { color: var(--cmet-text); background: var(--cmet-surface-raised); border: 1px solid var(--cmet-border); border-radius: 3px; }
+.application.cmet-configured-item-sheet input:focus, .application.cmet-configured-item-sheet select:focus, .application.cmet-configured-item-sheet textarea:focus { border-color: var(--cmet-accent-bright); box-shadow: 0 0 0 1px var(--cmet-accent-dark); }
+.cmet-config-header { display: flex; gap: 12px; padding: 12px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 6px; }
+.cmet-config-header__image { width: 84px; height: 84px; object-fit: cover; border: 1px solid var(--cmet-accent); border-radius: 5px; }
+.application.cmet-configured-item-sheet .cmet-config-header__image[data-action="editImage"] { cursor: pointer; }
+.application.cmet-configured-item-sheet .cmet-config-header__image[data-action="editImage"]:hover { border-color: var(--cmet-accent-bright); }
+.cmet-config-header__identity { display: grid; flex: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 7px; }.cmet-config-header__identity label { display: flex; flex-direction: column; gap: 3px; color: var(--cmet-text-muted); font-size: .75rem; }.cmet-config-header__name { grid-column: 1 / -1; width: 100%; padding: 2px 0; border: 0 !important; background: transparent !important; font-size: 1.35rem; font-weight: 700; }.cmet-config-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 5px; color: var(--cmet-text) !important; }.cmet-config-check input { width: auto; }.cmet-config-section { padding: 12px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 6px; }.cmet-config-section h2 { margin: 0 0 8px; color: var(--cmet-accent-bright); font-size: .95rem; text-transform: uppercase; }.cmet-config-section > label:not(.cmet-config-check), .cmet-config-parameter { display: flex; flex-direction: column; gap: 4px; color: var(--cmet-text-muted); font-size: .78rem; }.cmet-config-section fieldset { margin: 10px 0 0; border: 1px solid var(--cmet-border-soft); }.cmet-config-section legend { color: var(--cmet-text-muted); }.cmet-config-check-grid, .cmet-config-characteristics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }.cmet-config-characteristic { display: flex; flex-direction: column; gap: 4px; }.cmet-config-parameter { margin-left: 18px; }.cmet-config-inline { display: flex; align-items: center; gap: 6px; }.cmet-config-inline input { width: 70px !important; }.application.cmet-configured-item-sheet .cmet-config-header__identity input, .application.cmet-configured-item-sheet .cmet-config-header__identity select { padding: 4px 6px; }
+
+.application.cmet-configured-item-sheet .cmet-config-check { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; width: fit-content; max-width: 100%; cursor: pointer; }
+.application.cmet-configured-item-sheet .cmet-config-check input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex: 0 0 18px; margin: 0; padding: 0; accent-color: var(--cmet-accent); }
+.application.cmet-configured-item-sheet .cmet-config-section > label:not(.cmet-config-check) input[type="text"],
+.application.cmet-configured-item-sheet .cmet-config-section > label:not(.cmet-config-check) select { width: 100%; }
+.application.cmet-configured-item-sheet .cmet-config-chrome { position: sticky; top: 0; z-index: 2; padding-bottom: 2px; background: var(--cmet-bg); }
+.application.cmet-configured-item-sheet .cmet-config-tabs { display: flex; gap: 18px; margin-top: 10px; border-bottom: 1px solid var(--cmet-border); }
+.application.cmet-configured-item-sheet .cmet-config-tabs .item { flex: 0 0 auto; padding: 8px 5px; border: 0; border-bottom: 2px solid transparent; color: var(--cmet-text-muted); background: transparent; text-decoration: none; cursor: pointer; }
+.application.cmet-configured-item-sheet .cmet-config-tabs .item:hover { color: var(--cmet-text); }
+.application.cmet-configured-item-sheet .cmet-config-tabs .item.active { border-bottom-color: var(--cmet-accent-bright); box-shadow: none; color: var(--cmet-text); }
+.application.cmet-configured-item-sheet .cmet-config-tab.active { display: flex; flex: 1 0 auto; flex-direction: column; gap: 10px; min-height: 0; }
+.application.cmet-configured-item-sheet .cmet-config-tab:not(.active) { display: none; }
+.application.cmet-configured-item-sheet .cmet-config-tab--description { width: 100%; }
+.application.cmet-configured-item-sheet .cmet-config-tab--description > label { color: var(--cmet-text-muted); font-size: .8rem; text-transform: uppercase; }
+.application.cmet-configured-item-sheet .cmet-config-tab--description textarea { flex: 1 0 320px; width: 100%; min-height: 320px; padding: 12px; resize: vertical; }
+.application.cmet-configured-item-sheet .cmet-config-parameter input[type="number"] { width: 64px; }
+.application.cmet-weapon-sheet .cmet-damage-list { display: grid; gap: 6px; }
+.application.cmet-weapon-sheet .cmet-damage-row { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(100px, 1fr) minmax(100px, 1fr) 28px; align-items: center; gap: 6px; }
+.application.cmet-weapon-sheet .cmet-damage-row input[type="text"], .application.cmet-weapon-sheet .cmet-damage-row select { width: 100%; min-width: 0; padding: 4px 5px; }
+.application.cmet-weapon-sheet .cmet-damage-remove { width: 28px; min-height: 28px; padding: 2px; color: var(--cmet-text-muted); background: transparent; border: 1px solid transparent; cursor: pointer; }
+.application.cmet-weapon-sheet .cmet-damage-remove:hover { color: var(--cmet-danger); border-color: var(--cmet-danger); }
+.application.cmet-weapon-sheet .cmet-damage-add { align-self: flex-start; margin-top: 8px; padding: 5px 8px; color: var(--cmet-text); background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border); border-radius: 4px; cursor: pointer; }
+.application.cmet-weapon-sheet .cmet-damage-empty { margin: 0; color: var(--cmet-text-muted); font-size: .8rem; }
+.chat-message .cmet-damage-card { margin: 0; padding: 10px 11px; color: var(--cmet-text, #e7e2d8); background: var(--cmet-surface, #192226); border: 1px solid var(--cmet-border, #3b5057); border-left: 3px solid var(--cmet-accent-bright, #69b4b3); border-radius: 5px; }
+.chat-message .cmet-damage-context { margin: 0 0 10px; padding-bottom: 8px; color: var(--cmet-text, #e7e2d8); border-bottom: 1px solid var(--cmet-border-soft, #2b3a40); font-size: .9rem; font-weight: 700; line-height: 1.25; }
+.chat-message .cmet-damage-critical { display: inline-block; margin-left: 5px; padding: 2px 5px; color: var(--cmet-gold, #b99a5e); border: 1px solid var(--cmet-gold, #b99a5e); border-radius: 3px; font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; vertical-align: middle; }
+.chat-message .cmet-damage-summary { margin: 0 0 9px; padding: 8px 9px; background: var(--cmet-surface-alt, #202c31); border: 1px solid var(--cmet-border-soft, #2b3a40); border-radius: 4px; }
+.chat-message .cmet-damage-summary-primary { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--cmet-text-muted, #9faeb2); font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.chat-message .cmet-damage-summary-primary strong { color: var(--cmet-accent-bright, #69b4b3); font-size: 1.55rem; line-height: 1; }
+.chat-message .cmet-damage-summary-meta { display: flex; gap: 6px; margin-top: 5px; color: var(--cmet-text-muted, #9faeb2); font-size: .72rem; }
+.chat-message .cmet-damage-health { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 9px; padding: 7px 9px; color: var(--cmet-text-muted, #9faeb2); border-bottom: 1px solid var(--cmet-border-soft, #2b3a40); font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.chat-message .cmet-damage-health strong { color: var(--cmet-text, #e7e2d8); font-size: 1rem; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.chat-message .cmet-damage-health strong span { color: var(--cmet-text-muted, #9faeb2); font-size: .82rem; }
+.chat-message .cmet-damage-health--zero strong { color: var(--cmet-warning, #c49a52); }
+.chat-message .cmet-damage-group { padding: 8px 1px; border-top: 1px solid var(--cmet-border-soft, #2b3a40); }
+.chat-message .cmet-damage-group-type { color: var(--cmet-text-muted, #9faeb2); font-size: .72rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.chat-message .cmet-damage-group-type span { color: var(--cmet-gold, #b99a5e); }
+.chat-message .cmet-damage-result { display: flex; align-items: baseline; gap: 9px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.chat-message .cmet-damage-raw { color: var(--cmet-text, #e7e2d8); font-size: 1.12rem; font-weight: 700; }
+.chat-message .cmet-damage-arrow { color: var(--cmet-text-muted, #9faeb2); font-size: .95rem; }
+.chat-message .cmet-damage-final { color: var(--cmet-accent-bright, #69b4b3); font-size: 1.22rem; font-weight: 800; }
+.chat-message .cmet-damage-reduction { margin-top: 2px; color: var(--cmet-text-muted, #9faeb2); font-size: .72rem; }
+.chat-message .cmet-damage-details { margin-top: 6px; color: var(--cmet-text-muted, #9faeb2); font-size: .72rem; }
+.chat-message .cmet-damage-details summary { width: fit-content; color: var(--cmet-text, #e7e2d8); cursor: pointer; font-weight: 700; }
+.chat-message .cmet-damage-detail-section { display: grid; gap: 3px; margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--cmet-border-soft, #2b3a40); }
+.chat-message .cmet-damage-detail-section h4 { margin: 0 0 2px; color: var(--cmet-accent-bright, #69b4b3); font-size: .67rem; letter-spacing: .08em; text-transform: uppercase; }
+.chat-message .cmet-damage-detail-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.chat-message .cmet-damage-detail-row > span { min-width: 0; overflow-wrap: anywhere; }
+.chat-message .cmet-damage-detail-row strong { flex: 0 0 auto; color: var(--cmet-text, #e7e2d8); font-variant-numeric: tabular-nums; }
+.chat-message .cmet-damage-detail-row b, .chat-message .cmet-damage-detail-row small { display: block; }
+.chat-message .cmet-damage-detail-row b { color: var(--cmet-text, #e7e2d8); font-weight: 700; }
+.chat-message .cmet-damage-detail-row small { color: var(--cmet-text-muted, #9faeb2); font-size: .9em; }
+.application.cmet-spell-sheet .cmet-spell-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.application.cmet-spell-sheet .cmet-spell-fields label:first-child,
+.application.cmet-spell-sheet .cmet-spell-fields label:nth-child(2) { grid-column: 1 / -1; }
+.application.cmet-spell-sheet .cmet-spell-fields input,
+.application.cmet-spell-sheet .cmet-spell-casting input[type="text"] { width: 100%; padding: 5px 7px; }
+.application.cmet-spell-sheet .cmet-spell-components { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 12px; }
+.application.cmet-spell-sheet .cmet-spell-casting > label { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; color: var(--cmet-text-muted); font-size: .78rem; }
+.application.cmet-spell-sheet .cmet-spell-description > label { display: flex; flex-direction: column; flex: 1 0 auto; gap: 6px; }
+.application.cmet-spell-sheet .cmet-spell-description textarea { flex: 1 0 190px; min-height: 190px; }
+.application.cmet-ability-sheet .cmet-ability-fields { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 10px; }
+.application.cmet-ability-sheet .cmet-ability-fields label { display: flex; flex-direction: column; gap: 4px; color: var(--cmet-text-muted); font-size: .78rem; }
+.application.cmet-ability-sheet .cmet-ability-fields label:first-child { grid-column: 1 / -1; }
+.application.cmet-ability-sheet .cmet-ability-fields input,
+.application.cmet-ability-sheet .cmet-ability-fields textarea { width: 100%; padding: 5px 7px; }
+.application.cmet-ability-sheet .cmet-ability-fields textarea { min-height: 90px; resize: vertical; }
+.application.cmet-ability-sheet .cmet-ability-description > label { display: flex; flex-direction: column; flex: 1 0 auto; gap: 6px; }
+.application.cmet-ability-sheet .cmet-ability-description textarea { flex: 1 0 190px; min-height: 190px; }
+
+@media (max-width: 560px) {
+  .application.cmet-ability-sheet .cmet-ability-fields { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,344 @@
+{
+  "TYPES": {
+    "Actor": {
+      "personagem": "Personagem"
+    },
+    "Item": {
+      "arma": "Arma",
+      "armadura": "Armadura",
+      "equipamento": "Equipamento",
+      "habilidade": "Habilidade",
+      "magia": "Magia"
+    }
+  },
+  "CMET": {
+    "ActorTypes": {
+      "personagem": "Personagem"
+    },
+    "Attributes": {
+      "Fisico": "Físico",
+      "Combate": "Combate",
+      "Magia": "Magia",
+      "Mental": "Mental",
+      "Social": "Social"
+    },
+    "Actions": {
+      "ChangeImage": "Alterar imagem",
+      "Roll": "Rolar",
+      "Create": "+ Criar",
+      "Edit": "Editar",
+      "Open": "Abrir",
+      "Remove": "Remover"
+    },
+    "Biography": {
+      "History": "História",
+      "Personality": "Personalidade",
+      "Ideals": "Ideais",
+      "Faults": "Defeitos"
+    },
+    "EmbeddedItems": "Itens do personagem",
+    "Combat": {
+      "ActionsAvailable": "Ações disponíveis",
+      "ActionsReserved": "Ações reservadas",
+      "NoActionsAvailable": "Sem ações disponíveis",
+      "NoActionsReserved": "Sem ações reservadas",
+      "Initiative": "Iniciativa",
+      "Notifications": {
+        "InsufficientActions": "Ações insuficientes.",
+        "InvalidActionState": "O estado de ações do combate é inválido."
+      }
+    },
+    "CombatAttack": {
+      "Attacked": "atacou",
+      "Defended": "se defendeu",
+      "Attack": "Ataque",
+      "Defense": "Defesa",
+      "AttackWithWeapon": "Atacar com",
+      "AttackRoll": "Ataque",
+      "DefenseRoll": "Defesa",
+      "ChooseDefense": "Escolha sua Defesa",
+      "Dodge": "Esquivar",
+      "Block": "Bloquear",
+      "NoDefense": "Não se Defender",
+      "NoReservedAction": "Sem ação reservada",
+      "SelectTargetToContinue": "Selecione um alvo para continuar o ataque.",
+      "AttackNoLongerValid": "O ataque pendente não é mais válido.",
+      "AttackHit": "ATAQUE ACERTOU",
+      "AttackMiss": "ATAQUE ERROU",
+      "AttackDefended": "ATAQUE DEFENDIDO",
+      "AbsoluteTie": "Empate favorece a defesa",
+      "Notifications": {
+        "CombatRequired": "É necessário um combate ativo.",
+        "AttackerNotInCombat": "O atacante não está no combate.",
+        "TargetNotInCombat": "O alvo não está no combate.",
+        "CannotTargetSelf": "Não é possível atacar a si mesmo.",
+        "SelectTarget": "Selecione um alvo.",
+        "SelectOnlyOneTarget": "Selecione apenas um alvo.",
+        "NotActiveTurn": "Não é o turno do atacante.",
+        "ActionInsufficient": "Ação insuficiente.",
+        "ReservedActionInsufficient": "Ação reservada insuficiente.",
+        "InvalidActionState": "O estado de ações do combate é inválido.",
+        "InvalidWeaponSkill": "A arma não possui uma perícia válida para ataque."
+      }
+    },
+    "Fields": {
+      "Name": "Nome",
+      "Description": "Descrição",
+      "Race": "Raça",
+      "Age": "Idade",
+      "Level": "Nível",
+      "Experience": "Experiência",
+      "Gyllen": "Gyllen",
+      "Movement": "Movimento",
+      "Actions": "Ações",
+      "Pool": "Pool total",
+      "Distributed": "Distribuído",
+      "DistributedShort": "distribuídos",
+      "Remaining": "Disponível",
+      "Available": "Pontos disponíveis",
+      "AllDistributed": "Todos os pontos distribuídos",
+      "Exceeded": "Distribuição excedida em",
+      "Bonus": "Bônus",
+      "AdditionalDamage": "Dano adicional",
+      "CriticalAdditionalDamage": "Dano crítico adicional"
+    },
+    "ItemTypes": {
+      "equipamento": "Equipamento",
+      "habilidade": "Habilidade",
+      "magia": "Magia",
+      "arma": "Arma",
+      "armadura": "Armadura"
+    },
+    "Inventory": {
+      "Weapons": "Armas",
+      "CreateWeapon": "+ Nova Arma",
+      "NoWeapons": "Nenhuma arma adicionada.",
+      "ArmorsAndClothing": "Armaduras e Trajes",
+      "CreateArmor": "+ Nova Armadura",
+      "NoArmors": "Nenhuma armadura ou traje adicionado."
+    },
+    "NoItems": "Nenhum item",
+    "Skills": {
+      "arcos": "Arcos",
+      "armasDeHaste": "Armas de Haste",
+      "armasDeImpacto": "Armas de Impacto",
+      "arremessar": "Arremessar",
+      "chicotes": "Chicotes",
+      "corpoACorpo": "Corpo-a-Corpo",
+      "espadas": "Espadas",
+      "laminas": "Lâminas",
+      "bloquear": "Bloquear",
+      "esquivar": "Esquivar"
+    },
+    "DamageTypes": {
+      "Cortante": "Cortante",
+      "Impacto": "Impacto",
+      "Perfurante": "Perfurante",
+      "CortanteMagico": "Cortante Mágico",
+      "ImpactoMagico": "Impacto Mágico",
+      "PerfuranteMagico": "Perfurante Mágico",
+      "Fogo": "Fogo",
+      "Raio": "Raio",
+      "Frio": "Frio",
+      "Radiante": "Radiante",
+      "Necrotico": "Necrótico",
+      "Veneno": "Veneno"
+    },
+    "DamageNatures": { "Physical": "Físico", "Magical": "Mágico" },
+    "Damage": {
+      "CausedDamageTo": "causou dano em",
+      "Details": "Detalhes",
+      "RawTotal": "Dano bruto",
+      "RawShort": "bruto",
+      "ReducedShort": "reduzido",
+      "AvailableReduction": "Redução disponível",
+      "AppliedReduction": "Redução aplicada",
+      "FinalTotal": "Dano final",
+      "Health": "Vida",
+      "ReductionShort": "Redução",
+      "Rolling": "Rolagem",
+      "Reductions": "Reduções",
+      "RawTooltip": "Dano antes das reduções",
+      "FinalTooltip": "Dano após reduções",
+      "Critical": "Crítico",
+      "CriticalBonus": "Bônus crítico",
+      "MaximumOf": "Máximo de",
+      "RawComponent": "Bruto da parcela",
+      "Notifications": {
+        "InvalidFormula": "A arma \"{weapon}\" possui uma fórmula de dano inválida: {formula}.",
+        "EmptyFormula": "A arma \"{weapon}\" possui uma parcela de dano sem fórmula.",
+        "MissingDamage": "A arma \"{weapon}\" não possui dano configurado."
+      }
+    },
+    "WeaponQualities": {
+      "Inicial": "Inicial",
+      "Sucata": "Sucata",
+      "Danificado": "Danificado",
+      "Desgastado": "Desgastado",
+      "Normal": "Normal",
+      "Polido": "Polido",
+      "Excepcional": "Excepcional",
+      "ObraPrima": "Obra-prima"
+    },
+    "WeaponCharacteristics": {
+      "UmaMao": "Uma mão",
+      "DuasMaos": "Duas mãos",
+      "PontoFraco": "Ponto fraco",
+      "Impacto": "Impacto",
+      "ArmaDeHaste": "Arma de haste",
+      "Alcance": "Alcance",
+      "Versatil": "Versátil",
+      "Arremessavel": "Arremessável",
+      "Puxar": "Puxar",
+      "Retaliar": "Retaliar",
+      "Punhal": "Punhal",
+      "Sequencial": "Sequencial",
+      "GolpeDeRetaguarda": "Golpe de retaguarda",
+      "Recarregar": "Recarregar",
+      "Executar": "Executar",
+      "ArmaDeManobra": "Arma de manobra",
+      "CortarProjeteis": "Cortar projéteis"
+    },
+    "Weapon": {
+      "Tabs": {
+        "Configuration": "Configuração",
+        "Description": "Descrição"
+      },
+      "Fields": {
+        "Quality": "Qualidade",
+        "CombatSkill": "Perícia de Combate",
+        "None": "Nenhuma",
+        "Equipped": "Equipada",
+        "DamageFormula": "Fórmula de dano",
+        "DamageTypes": "Tipos de dano",
+        "DamageNature": "Natureza do dano",
+        "DamageType": "Tipo de dano",
+        "AddDamage": "+ Adicionar dano",
+        "NoDamageParts": "Nenhuma parcela de dano.",
+        "RangeMax": "Espaços de alcance",
+        "Spaces": "espaços",
+        "Description": "Descrição"
+      },
+      "Sections": {
+        "Damage": "Dano",
+        "Characteristics": "Características"
+      }
+    },
+    "Armor": {
+      "Categories": {
+        "Armadura": "Armadura",
+        "Traje": "Traje"
+      },
+      "Characteristics": {
+        "Encouracado": "Encouraçado",
+        "Absorcao": "Absorção",
+        "Carapaca": "Carapaça",
+        "Selo": "Selo",
+        "Revestimento": "Revestimento",
+        "Discreto": "Discreto"
+      },
+      "Fields": {
+        "Category": "Categoria",
+        "Reduction": "Redução de dano",
+        "MagicReduction": "Redução de dano mágico",
+        "Element": "Elemento",
+        "NoElement": "Selecione um elemento",
+        "Description": "Descrição"
+      },
+      "Sections": {
+        "Characteristics": "Características"
+      }
+    },
+    "Spell": {
+      "Create": "+ Nova Magia",
+      "Empty": "Nenhuma magia adicionada.",
+      "Schools": {
+        "abjuracao": "Abjuração",
+        "adivinhacao": "Adivinhação",
+        "encantamento": "Encantamento",
+        "evocacao": "Evocação",
+        "ilusao": "Ilusão",
+        "invocacao": "Invocação",
+        "necromancia": "Necromancia",
+        "restauracao": "Restauração",
+        "rituais": "Rituais",
+        "transmutacao": "Transmutação"
+      },
+      "Fields": {
+        "School": "Escola",
+        "NoSchool": "Nenhuma escola",
+        "ManaCost": "Custo de Mana",
+        "ManaUnit": "Mana",
+        "Casting": "Conjuração",
+        "Verbal": "Verbal",
+        "Somatic": "Somática",
+        "Material": "Material",
+        "CastingDetails": "Detalhes da conjuração",
+        "MaterialDescription": "Material necessário",
+        "Target": "Alvo",
+        "Range": "Alcance",
+        "Concentration": "Concentração",
+        "Duration": "Duração",
+        "Description": "Descrição",
+        "Effect": "Efeito",
+        "Upgrade": "Aprimoramento"
+      }
+    },
+    "Ability": {
+      "Create": "+ Nova Habilidade",
+      "Empty": "Nenhuma habilidade adicionada.",
+      "Categories": { "Origem": "Origem", "Corpo": "Corpo", "Armamento": "Armamento", "Mistico": "Místico", "Social": "Social", "Religiao": "Religião", "Tatica": "Tática", "Cosmico": "Cósmico" },
+      "Fields": { "Category": "Categoria", "NoCategory": "Nenhuma categoria", "RollSkill": "Perícia para rolagem", "NoRollSkill": "Nenhuma", "Path": "Caminho / Trilha", "Cost": "Custo", "Points": "pontos", "Requirements": "Requisitos", "None": "Nenhum", "Description": "Descrição", "Effect": "Efeito", "Upgrade": "Aprimoramento" }
+    },
+    "Navigation": {
+      "Label": "Seções da ficha",
+      "Attributes": "Atributos",
+      "Equipment": "Equipamentos",
+      "Abilities": "Habilidades",
+      "Spells": "Magias",
+      "Biography": "Biografia"
+    },
+    "Notifications": {
+      "SkillPoolExceeded": "Não existem pontos suficientes para essa distribuição."
+    },
+    "Validation": {
+      "OverPool": "Distribuição acima do pool disponível. Reduza alguma perícia antes de continuar."
+    },
+    "Rolling": {
+      "SkillTest": "Teste de Perícia",
+      "BaseValue": "Valor base",
+      "Modifier": "Modificador",
+      "EffectiveValue": "Valor efetivo",
+      "RollType": "Tipo de rolagem",
+      "Normal": "Normal",
+      "Advantage": "Vantagem",
+      "Disadvantage": "Desvantagem",
+      "Roll": "Rolar",
+      "Cancel": "Cancelar",
+      "Dice": "Dados",
+      "SelectedResult": "Resultado utilizado",
+      "criticalSuccess": "Sucesso Crítico",
+      "optimalSuccess": "Sucesso Ótimo",
+      "goodSuccess": "Sucesso Bom",
+      "normalSuccess": "Sucesso Normal",
+      "normalFailure": "Falha Normal",
+      "graveFailure": "Falha Grave",
+      "severeFailure": "Falha Severa",
+      "criticalFailure": "Falha Crítica",
+      "InvalidSkill": "Não foi possível rolar essa perícia.",
+      "InvalidItemSkill": "Este item não possui uma perícia válida para rolagem."
+    },
+    "Sheets": {
+      "Abilities": "Habilidades",
+      "Habilidade": "Ficha de Habilidade",
+      "Character": "Ficha de personagem",
+      "Equipment": "Equipamentos",
+      "Item": "Ficha de item",
+      "Arma": "Ficha de Arma",
+      "Armadura": "Ficha de Armadura",
+      "Magia": "Ficha de Magia",
+      "Personagem": "Ficha de Personagem",
+      "Spells": "Magias"
+    }
+  }
+}
