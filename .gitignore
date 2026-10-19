@@ -8,7 +8,6 @@ foundrydata/
 *.log
 *.sqlite
 *.sqlite3
-packs/*.db
 
 # Segredos e configurações locais
 .env
