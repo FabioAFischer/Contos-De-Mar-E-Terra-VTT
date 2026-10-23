@@ -108,8 +108,10 @@ export function registerCombatHooks() {
   };
   Hooks.on("deleteCombat", reloadWeaponsAtCombatEnd);
   Hooks.on("deleteCombat", (combat) => isAuthoritativeGM() && clearWeaponCombatState(combat));
-  Hooks.on("updateCombat", (combat, changes) => {
-    if (changes.started === false) return reloadWeaponsAtCombatEnd();
+  Hooks.on("updateCombat", async (combat, changes) => {
+    if (changes.started !== false) return undefined;
+    if (isAuthoritativeGM()) await clearWeaponCombatState(combat);
+    await reloadWeaponsAtCombatEnd();
     return undefined;
   });
 }

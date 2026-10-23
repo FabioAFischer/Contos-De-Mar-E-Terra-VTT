@@ -186,6 +186,14 @@
       "CriticalBonus": "Bônus crítico",
       "MaximumOf": "Máximo de",
       "RawComponent": "Bruto da parcela",
+      "Sources": {
+        "Base": "Dano base",
+        "Alcance": "Alcance",
+        "Sequencial": "Sequencial",
+        "ArmaDeHaste": "Arma de Haste",
+        "PontoFraco": "Ponto fraco",
+        "Executar": "Executar"
+      },
       "Notifications": {
         "InvalidFormula": "A arma \"{weapon}\" possui uma fórmula de dano inválida: {formula}.",
         "EmptyFormula": "A arma \"{weapon}\" possui uma parcela de dano sem fórmula.",

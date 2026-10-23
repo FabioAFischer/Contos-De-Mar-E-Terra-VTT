@@ -8,7 +8,7 @@ import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
 import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
-import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusState, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
@@ -24,7 +24,7 @@ let hooksRegistered = false;
 const reactionRequests = new Set();
 const pendingReactionRequests = new Map();
 const activeReactionDialogs = new Map();
-const DEBUG_POLEARM_REACTION = true;
+const DEBUG_POLEARM_REACTION = false;
 
 function debugPolearm(message, data = {}) {
   if (DEBUG_POLEARM_REACTION) console.debug(`[HASTE] ${message}`, data);
@@ -325,15 +325,15 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       }
     },
     onResult: async (rawAttack, attackMessage) => {
-      const sequential = disableCharacteristics ? false : getSequentialBonusState(combat, actor, item);
+      const sequentialCount = disableCharacteristics ? 0 : getSequentialBonusCount(combat, actor, item);
       const pointWeak = disableCharacteristics ? false : pointWeakBonusState(combat, actor, item, attackerToken, targetToken);
       const impactSequence = disableCharacteristics ? false : impactSequenceBonusState(combat, actor, item, targetToken);
       const attack = disableCharacteristics ? rawAttack : applyRetaliar(rawAttack, item);
       if (!disableCharacteristics && shouldUnloadAfterShot(item)) await item.update({ "system.loaded": false });
       if (thrownAttack) await item.update({ "system.thrown": true });
       if (!attack.success) {
+        await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
         if (!disableCharacteristics) {
-          await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
           await recordImpactOutcome(combat, actor, item, targetToken, { effectiveHit: false });
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, targetToken);
         }
@@ -354,7 +354,6 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         const effectiveHit = finalOutcome.winner === "attack";
         if (!effectiveHit) {
           if (!disableCharacteristics) {
-            await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
             await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: false });
             if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
           }
@@ -362,7 +361,6 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         }
         anyHit = true;
         if (!disableCharacteristics) {
-          await recordSequentialOutcome(combat, actor, item, { effectiveHit: true });
           await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: true });
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
         }
@@ -375,7 +373,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         const distanceDamage = !disableCharacteristics && characteristicEnabled(item, "alcance");
         let damage = distanceDamage ? null : sharedDamage;
         if (!damage) {
-          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequential: disableCharacteristics ? false : sequential, pointWeak: disableCharacteristics ? false : pointWeak && currentTargetToken === targetToken, polearm: disableCharacteristics ? false : polearm, reachDistance });
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: disableCharacteristics ? false : pointWeak && currentTargetToken === targetToken, polearm: disableCharacteristics ? false : polearm, reachDistance });
           if (selectedTargets.length > 1 && !distanceDamage) sharedDamage = damage;
         }
         if (!damage) continue;
@@ -383,6 +381,9 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         const damageApplication = await DamageApplicationService.applyDamage({ actor: currentTargetCombatant.actor, combatant: currentTargetCombatant, amount: resolvedDamage.totalFinalDamage });
         await DamageRollService.sendDamageToChat({ ...damage, ...resolvedDamage }, { attackerName, defenderName: combatantDisplayName(currentTargetCombatant, currentTargetCombatant.actor), item, damageApplication });
       }
+      // A single attack may resolve against several targets. Record one
+      // sequence outcome for the attack, never one outcome per target.
+      await recordSequentialOutcome(combat, actor, item, { effectiveHit: !disableCharacteristics && anyHit });
       if (!anyHit && selectedTargets.length > 1) await updateSkillRollMessage(attackMessage, "AttackDefended");
       if (!disableCharacteristics && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || impactSequence)) {
         const authority = getActorUpdateAuthority(targetCombatant.actor);

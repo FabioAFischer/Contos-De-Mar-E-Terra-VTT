@@ -54,21 +54,40 @@ export function multiplyDamageFormula(formula, multiplier) {
   return `(${String(formula).trim()})*${count}`;
 }
 
-export function additionalDamageFormulas(item, { critical = false, sequential = false, pointWeak = false, polearm = false, reachDistance = null, versatileSelections = {} } = {}) {
+export function additionalDamageFormulas(item, { critical = false, sequential = false, sequentialCount = null, pointWeak = false, polearm = false, reachDistance = null, versatileSelections = {} } = {}) {
   const characteristics = item?.system?.characteristics ?? {};
   const additions = [];
-  const add = (key, enabled) => {
-    const formula = characteristics[key]?.damageFormula?.trim();
-    if (enabled && formula) additions.push({ formula, nature: "physical", type: "impacto", criticalMax: true, source: key });
+  const damageParts = getVersatileDamageParts(item, versatileSelections);
+  const sequenceCount = sequentialCount === null || sequentialCount === undefined
+    ? sequential === true ? 1 : Number(sequential) || 0
+    : Number(sequentialCount);
+  const linkedDamagePart = (key) => {
+    const characteristic = characteristics[key];
+    const configuredIndex = Object.prototype.hasOwnProperty.call(characteristic ?? {}, "damagePartIndex")
+      ? Number(characteristic.damagePartIndex)
+      : 0;
+    if (!Number.isInteger(configuredIndex) || configuredIndex < 0) return null;
+    return damageParts[configuredIndex] ? { ...damageParts[configuredIndex], sourcePartIndex: configuredIndex } : null;
   };
-  add("sequencial", sequential);
+  const add = (key, enabled, { inheritLinkedPart = false, multiplier = 1 } = {}) => {
+    const characteristic = characteristics[key];
+    const formula = characteristic?.damageFormula?.trim();
+    if (!enabled || !characteristicEnabled(item, key) || !formula) return;
+    const scaledFormula = multiplier === 1 ? formula : multiplyDamageFormula(formula, multiplier);
+    if (!scaledFormula) return;
+    if (!inheritLinkedPart) {
+      additions.push({ formula: scaledFormula, nature: "physical", type: "impacto", criticalMax: true, source: key });
+      return;
+    }
+    const linkedPart = linkedDamagePart(key);
+    if (!linkedPart || !VALID_DAMAGE_NATURES.has(linkedPart.nature) || !VALID_DAMAGE_TYPES.has(linkedPart.type)) return;
+    additions.push({ formula: scaledFormula, nature: linkedPart.nature, type: linkedPart.type, criticalMax: true, source: key, sourcePartIndex: linkedPart.sourcePartIndex });
+  };
   add("pontoFraco", pointWeak);
   add("armaDeHaste", polearm);
   const alcance = characteristics.alcance;
   const distance = Number(reachDistance);
-  const damageParts = getVersatileDamageParts(item, versatileSelections);
-  const damagePartIndex = Number(alcance?.damagePartIndex);
-  const linkedPart = Number.isInteger(damagePartIndex) && damagePartIndex >= 0 ? damageParts[damagePartIndex] : null;
+  const linkedPart = linkedDamagePart("alcance");
   const reachFormula = alcance?.damageFormula?.trim();
   const maximum = Number(alcance?.spaces);
   if (alcance?.enabled === true
@@ -84,9 +103,10 @@ export function additionalDamageFormulas(item, { critical = false, sequential = 
       type: linkedPart.type,
       criticalMax: true,
       source: "alcance",
-      sourcePartIndex: damagePartIndex
+      sourcePartIndex: linkedPart.sourcePartIndex
     });
   }
+  add("sequencial", sequenceCount > 0, { inheritLinkedPart: true, multiplier: sequenceCount });
   const execute = characteristics.executar?.damageFormula?.trim();
   if (critical && characteristicEnabled(item, "executar") && execute) {
     additions.push({ formula: execute, nature: "physical", type: "impacto", criticalMax: false, source: "executar" });

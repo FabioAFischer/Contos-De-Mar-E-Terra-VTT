@@ -1,6 +1,7 @@
 import { SYSTEM_ID } from "../config/constants.mjs";
 
 const FLAG = "weaponCombat";
+const stateMutationQueues = new WeakMap();
 
 function namespace() {
   return globalThis.game?.system?.id ?? SYSTEM_ID;
@@ -12,31 +13,80 @@ export function emptyWeaponCombatState() {
 
 export function readWeaponCombatState(combat) {
   const state = combat?.getFlag?.(namespace(), FLAG);
-  return state ? foundry.utils.deepClone(state) : emptyWeaponCombatState();
+  if (!state) return emptyWeaponCombatState();
+  const stored = foundry.utils.deepClone(state);
+  const defaults = emptyWeaponCombatState();
+  return {
+    ...defaults,
+    ...stored,
+    sequences: { ...defaults.sequences, ...(stored.sequences ?? {}) },
+    pointWeak: { ...defaults.pointWeak, ...(stored.pointWeak ?? {}) },
+    impact: { ...defaults.impact, ...(stored.impact ?? {}) },
+    conditions: { ...defaults.conditions, ...(stored.conditions ?? {}) }
+  };
 }
 
-export async function writeWeaponCombatState(combat, state) {
+async function persistWeaponCombatState(combat, state) {
   if (!combat?.setFlag) return state;
   await combat.setFlag(namespace(), FLAG, state);
   return state;
 }
 
+function enqueueWeaponCombatStateMutation(combat, mutation, persist = persistWeaponCombatState) {
+  if (!combat || (typeof combat !== "object" && typeof combat !== "function")) {
+    return Promise.resolve(mutation(readWeaponCombatState(combat)));
+  }
+  const previous = stateMutationQueues.get(combat) ?? Promise.resolve();
+  let current;
+  current = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const state = readWeaponCombatState(combat);
+      const result = await mutation(state);
+      await persist(combat, state);
+      return result ?? state;
+    })
+    .finally(() => {
+      if (stateMutationQueues.get(combat) === current) stateMutationQueues.delete(combat);
+    });
+  stateMutationQueues.set(combat, current);
+  return current;
+}
+
+export function writeWeaponCombatState(combat, state) {
+  return enqueueWeaponCombatStateMutation(combat, (current) => {
+    for (const key of Object.keys(current)) delete current[key];
+    Object.assign(current, state);
+    return current;
+  });
+}
+
 function attackerKey(actor) { return actor?.id ?? "unknown"; }
 function targetKey(token) { return token?.document?.id ?? token?.id ?? "unknown"; }
 
-export function getSequentialBonusState(combat, actor, item) {
+export function getSequentialBonusCount(combat, actor, item) {
   const entry = readWeaponCombatState(combat).sequences[attackerKey(actor)];
-  return Boolean(entry?.weaponId === item?.id && entry.streak > 0);
+  const streak = Number(entry?.streak);
+  return entry?.weaponId === item?.id && Number.isInteger(streak) && streak > 0 ? streak : 0;
+}
+
+export function getSequentialBonusState(combat, actor, item) {
+  return getSequentialBonusCount(combat, actor, item) > 0;
 }
 
 export async function recordSequentialOutcome(combat, actor, item, { effectiveHit = false } = {}) {
-  const state = readWeaponCombatState(combat);
-  const key = attackerKey(actor);
-  const previous = state.sequences[key];
-  state.sequences[key] = effectiveHit && previous?.weaponId === item?.id
-    ? { weaponId: item.id, streak: 1 }
-    : effectiveHit ? { weaponId: item.id, streak: 1 } : {};
-  return writeWeaponCombatState(combat, state);
+  return enqueueWeaponCombatStateMutation(combat, (state) => {
+    const key = attackerKey(actor);
+    const previous = state.sequences[key];
+    if (!effectiveHit) {
+      state.sequences[key] = { weaponId: null, streak: 0 };
+    }
+    else if (previous?.weaponId === item?.id) {
+      state.sequences[key] = { weaponId: item.id, streak: (Number(previous.streak) || 0) + 1 };
+    } else {
+      state.sequences[key] = { weaponId: item.id, streak: 1 };
+    }
+  });
 }
 
 function tokenPosition(token) {
@@ -67,12 +117,12 @@ export function pointWeakBonusState(combat, actor, item, attackerToken, defender
 }
 
 export async function recordPointWeakAttack(combat, actor, item, attackerToken, defenderToken) {
-  const state = readWeaponCombatState(combat);
-  const actorState = state.pointWeak[attackerKey(actor)] ?? {};
-  const position = tokenPosition(attackerToken);
-  actorState[targetKey(defenderToken)] = { weaponId: item.id, side: getTokenSide(defenderToken, attackerToken), x: position.x, y: position.y, defenderRotation: tokenPosition(defenderToken).rotation };
-  state.pointWeak[attackerKey(actor)] = actorState;
-  return writeWeaponCombatState(combat, state);
+  return enqueueWeaponCombatStateMutation(combat, (state) => {
+    const actorState = state.pointWeak[attackerKey(actor)] ?? {};
+    const position = tokenPosition(attackerToken);
+    actorState[targetKey(defenderToken)] = { weaponId: item.id, side: getTokenSide(defenderToken, attackerToken), x: position.x, y: position.y, defenderRotation: tokenPosition(defenderToken).rotation };
+    state.pointWeak[attackerKey(actor)] = actorState;
+  });
 }
 
 export function impactSequenceBonusState(combat, actor, item, defenderToken) {
@@ -81,13 +131,13 @@ export function impactSequenceBonusState(combat, actor, item, defenderToken) {
 }
 
 export async function recordImpactOutcome(combat, actor, item, defenderToken, { effectiveHit = false } = {}) {
-  const state = readWeaponCombatState(combat);
-  const key = attackerKey(actor);
-  const previous = state.impact[key];
-  state.impact[key] = effectiveHit && previous?.weaponId === item.id && previous?.targetId === targetKey(defenderToken)
-    ? { weaponId: item.id, targetId: targetKey(defenderToken), streak: 1 }
-    : effectiveHit ? { weaponId: item.id, targetId: targetKey(defenderToken), streak: 1 } : {};
-  return writeWeaponCombatState(combat, state);
+  return enqueueWeaponCombatStateMutation(combat, (state) => {
+    const key = attackerKey(actor);
+    const previous = state.impact[key];
+    state.impact[key] = effectiveHit && previous?.weaponId === item.id && previous?.targetId === targetKey(defenderToken)
+      ? { weaponId: item.id, targetId: targetKey(defenderToken), streak: 1 }
+      : effectiveHit ? { weaponId: item.id, targetId: targetKey(defenderToken), streak: 1 } : {};
+  });
 }
 
 export function isLaterallyAdjacent(originToken, candidateToken, tolerance = 0.01) {
@@ -225,7 +275,21 @@ export function isAtMaximumWeaponRange(item, originToken, targetToken) {
 }
 
 export async function clearWeaponCombatState(combat) {
-  return writeWeaponCombatState(combat, emptyWeaponCombatState());
+  return enqueueWeaponCombatStateMutation(combat, (state) => {
+    const empty = emptyWeaponCombatState();
+    for (const key of Object.keys(state)) delete state[key];
+    Object.assign(state, empty);
+  }, async (document, state) => {
+    if (typeof document?.unsetFlag === "function") {
+      await document.unsetFlag(namespace(), FLAG);
+      return emptyWeaponCombatState();
+    }
+    if (typeof document?.setFlag === "function") {
+      await document.setFlag(namespace(), FLAG, null);
+      return emptyWeaponCombatState();
+    }
+    return persistWeaponCombatState(document, state);
+  });
 }
 
-export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });
+export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusCount, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });

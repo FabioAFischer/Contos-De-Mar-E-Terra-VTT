@@ -68,3 +68,70 @@ test("Alcance participa do crítico com máximo e rolagem normal", async () => {
   assert.equal(result.components[1].maximumDamage, 32);
   assert.equal(result.components[1].total, 44);
 });
+
+test("Alcance e Sequencial preservam os componentes no mesmo ataque", async () => {
+  globalThis.Roll = class MockRoll {
+    constructor(formula) {
+      this.formula = formula;
+      this.total = 1;
+    }
+
+    async evaluate() { return this; }
+    toJSON() { return { formula: this.formula }; }
+  };
+  const item = {
+    name: "Lança sequencial",
+    system: {
+      damage: [{ formula: "1d10", nature: "physical", type: "perfurante" }],
+      characteristics: {
+        alcance: { enabled: true, spaces: 5, damageFormula: "1d6", damagePartIndex: 0 },
+        sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 }
+      }
+    }
+  };
+  const first = await rollWeaponDamage(item, { reachDistance: 4, sequentialCount: 0 });
+  const second = await rollWeaponDamage(item, { reachDistance: 4, sequentialCount: 1 });
+  const third = await rollWeaponDamage(item, { reachDistance: 4, sequentialCount: 2 });
+  assert.deepEqual(first.components.map(({ source, formula }) => ({ source, formula })), [
+    { source: "base", formula: "1d10" },
+    { source: "alcance", formula: "4d6" }
+  ]);
+  assert.deepEqual(second.components.map(({ source, formula, nature, type }) => ({ source, formula, nature, type })), [
+    { source: "base", formula: "1d10", nature: "physical", type: "perfurante" },
+    { source: "alcance", formula: "4d6", nature: "physical", type: "perfurante" },
+    { source: "sequencial", formula: "+1", nature: "physical", type: "perfurante" }
+  ]);
+  assert.equal(third.components[2].formula, "+2");
+});
+
+test("Sequencial progressivo mantém o máximo crítico da fórmula atual", async () => {
+  globalThis.Roll = class MockRoll {
+    constructor(formula) {
+      this.formula = formula;
+      this.total = formula === "1d10" ? 1 : 9;
+    }
+
+    async evaluate() { return this; }
+
+    clone() { return new MockRoll(this.formula); }
+
+    evaluateSync({ maximize }) {
+      this.total = this.formula === "1d10" ? 10 : maximize ? 24 : 9;
+      return this;
+    }
+  };
+  const item = {
+    name: "Lança progressiva",
+    system: {
+      damage: [{ formula: "1d10", nature: "physical", type: "perfurante" }],
+      characteristics: {
+        sequencial: { enabled: true, damageFormula: "1d6+2", damagePartIndex: 0 }
+      }
+    }
+  };
+  const result = await rollWeaponDamage(item, { critical: true, sequentialCount: 3 });
+  assert.deepEqual(result.components.map(({ source, formula, maximumDamage, total }) => ({ source, formula, maximumDamage, total })), [
+    { source: "base", formula: "1d10", maximumDamage: 10, total: 11 },
+    { source: "sequencial", formula: "3d6+6", maximumDamage: 24, total: 33 }
+  ]);
+});
