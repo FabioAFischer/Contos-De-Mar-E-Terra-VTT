@@ -12,7 +12,17 @@ export function emptyWeaponCombatState() {
 
 export function readWeaponCombatState(combat) {
   const state = combat?.getFlag?.(namespace(), FLAG);
-  return state ? foundry.utils.deepClone(state) : emptyWeaponCombatState();
+  if (!state) return emptyWeaponCombatState();
+  const stored = foundry.utils.deepClone(state);
+  const defaults = emptyWeaponCombatState();
+  return {
+    ...defaults,
+    ...stored,
+    sequences: { ...defaults.sequences, ...(stored.sequences ?? {}) },
+    pointWeak: { ...defaults.pointWeak, ...(stored.pointWeak ?? {}) },
+    impact: { ...defaults.impact, ...(stored.impact ?? {}) },
+    conditions: { ...defaults.conditions, ...(stored.conditions ?? {}) }
+  };
 }
 
 export async function writeWeaponCombatState(combat, state) {

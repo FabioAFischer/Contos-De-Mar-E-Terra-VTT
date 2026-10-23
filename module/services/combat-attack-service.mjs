@@ -332,8 +332,8 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       if (!disableCharacteristics && shouldUnloadAfterShot(item)) await item.update({ "system.loaded": false });
       if (thrownAttack) await item.update({ "system.thrown": true });
       if (!attack.success) {
+        await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
         if (!disableCharacteristics) {
-          await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
           await recordImpactOutcome(combat, actor, item, targetToken, { effectiveHit: false });
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, targetToken);
         }
@@ -354,7 +354,6 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         const effectiveHit = finalOutcome.winner === "attack";
         if (!effectiveHit) {
           if (!disableCharacteristics) {
-            await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
             await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: false });
             if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
           }
@@ -362,7 +361,6 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         }
         anyHit = true;
         if (!disableCharacteristics) {
-          await recordSequentialOutcome(combat, actor, item, { effectiveHit: true });
           await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: true });
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
         }
@@ -383,6 +381,9 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         const damageApplication = await DamageApplicationService.applyDamage({ actor: currentTargetCombatant.actor, combatant: currentTargetCombatant, amount: resolvedDamage.totalFinalDamage });
         await DamageRollService.sendDamageToChat({ ...damage, ...resolvedDamage }, { attackerName, defenderName: combatantDisplayName(currentTargetCombatant, currentTargetCombatant.actor), item, damageApplication });
       }
+      // A single attack may resolve against several targets. Record one
+      // sequence outcome for the attack, never one outcome per target.
+      await recordSequentialOutcome(combat, actor, item, { effectiveHit: !disableCharacteristics && anyHit });
       if (!anyHit && selectedTargets.length > 1) await updateSkillRollMessage(attackMessage, "AttackDefended");
       if (!disableCharacteristics && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || impactSequence)) {
         const authority = getActorUpdateAuthority(targetCombatant.actor);
