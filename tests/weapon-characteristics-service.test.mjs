@@ -97,9 +97,29 @@ test("Alcance ignora vínculo inválido sem inventar natureza ou tipo", () => {
 
 test("Sequencial só aplica o bônus após acerto anterior e herda a parcela vinculada", () => {
   const item = weapon({ sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } });
-  assert.deepEqual(additionalDamageFormulas(item, { sequential: false }), []);
-  assert.deepEqual(additionalDamageFormulas(item, { sequential: true }), [{
+  assert.deepEqual(additionalDamageFormulas(item, { sequentialCount: 0 }), []);
+  assert.deepEqual(additionalDamageFormulas(item, { sequentialCount: 1 }), [{
     formula: "+1",
+    nature: "physical",
+    type: "cortante",
+    criticalMax: true,
+    source: "sequencial",
+    sourcePartIndex: 0
+  }]);
+});
+
+test("Sequencial multiplica o bônus pelo número de acertos anteriores", () => {
+  const item = weapon({ sequencial: { enabled: true, damageFormula: "1d6+2", damagePartIndex: 0 } });
+  assert.deepEqual(additionalDamageFormulas(item, { sequentialCount: 2 }), [{
+    formula: "2d6+4",
+    nature: "physical",
+    type: "cortante",
+    criticalMax: true,
+    source: "sequencial",
+    sourcePartIndex: 0
+  }]);
+  assert.deepEqual(additionalDamageFormulas(item, { sequentialCount: 3, critical: true }), [{
+    formula: "3d6+6",
     nature: "physical",
     type: "cortante",
     criticalMax: true,
@@ -110,5 +130,5 @@ test("Sequencial só aplica o bônus após acerto anterior e herda a parcela vin
 
 test("Sequencial desabilitado nunca concede bônus mesmo com histórico", () => {
   const item = weapon({ sequencial: { enabled: false, damageFormula: "+1", damagePartIndex: 0 } });
-  assert.deepEqual(additionalDamageFormulas(item, { sequential: true }), []);
+  assert.deepEqual(additionalDamageFormulas(item, { sequentialCount: 2 }), []);
 });
