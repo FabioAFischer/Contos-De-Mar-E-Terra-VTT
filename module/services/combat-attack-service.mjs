@@ -1,11 +1,15 @@
 import { SKILL_LABELS, SYSTEM_ID } from "../config/constants.mjs";
+import { DAMAGE_TYPES } from "../config/weapon-config.mjs";
 import { CombatActionError, CombatActionService } from "./combat-action-service.mjs";
 import { findSkillDefinition, SKILL_ROLL_DEGREES, updateSkillRollMessage } from "./skill-roll-service.mjs";
 import { openSkillRollDialog } from "../dialogs/skill-roll-dialog.mjs";
 import { DamageRollService } from "./damage-roll-service.mjs";
 import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
-import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
+import { getActorUpdateAuthority, isAuthoritativeGM } from "./combat-authority-service.mjs";
+import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
+import { getLateralEnemies, getSequentialBonusState, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
+import { applyDazedCondition } from "./combat-condition-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
   [SKILL_ROLL_DEGREES.NORMAL_SUCCESS]: 1,
@@ -17,6 +21,14 @@ export const SUCCESS_RANK = Object.freeze({
 const SOCKET_CHANNEL = `system.${SYSTEM_ID}`;
 let pendingAttack = null;
 let hooksRegistered = false;
+const reactionRequests = new Set();
+const pendingReactionRequests = new Map();
+const activeReactionDialogs = new Map();
+const DEBUG_POLEARM_REACTION = false;
+
+function debugPolearm(message, data = {}) {
+  if (DEBUG_POLEARM_REACTION) console.debug(`[HASTE] ${message}`, data);
+}
 
 function notify(key, data = {}) {
   const message = game.i18n.format(`CMET.CombatAttack.Notifications.${key}`, data);
@@ -54,7 +66,6 @@ function queuePendingAttack(actor, item, combat) {
     itemId: item.id,
     combatId: combat.id
   };
-  console.debug("CMET | no target, creating pending attack", pendingAttack);
   notifyInfo("SelectTargetToContinue");
 }
 
@@ -76,6 +87,47 @@ function serializableRollResult(result) {
 
 function combatantDisplayName(combatant, actor) {
   return combatant?.name ?? combatant?.token?.name ?? actor?.name ?? "";
+}
+
+function isPhysicalProjectileAttack(item, { thrownAttack = false } = {}) {
+  if (thrownAttack) return true;
+  if (item?.system?.combatSkill !== "arcos") return false;
+  return (item.system.damage ?? []).some((part) => part.nature === "physical");
+}
+
+function hasEmpunhedCutterWeapon(actor) {
+  const hands = actor?.system?.hands ?? {};
+  return [hands.mainHand, hands.offHand].filter(Boolean).some((id) => {
+    const item = actor.items.get(id);
+    return item?.type === "arma" && item.system?.equipped === true && item.system?.characteristics?.cortarProjeteis?.enabled === true;
+  });
+}
+
+function isEffectivelyWielded(actor, item) {
+  const hands = actor?.system?.hands;
+  if (!hands) return item?.system?.equipped === true;
+  if (item?.system?.characteristics?.duasMaos?.enabled === true || item?.system?.characteristics?.armaDeHaste?.enabled === true) {
+    return hands.mainHand === item.id && !hands.offHand;
+  }
+  return hands.mainHand === item.id || hands.offHand === item.id;
+}
+
+async function chooseVersatileSelections(item) {
+  const parts = Array.isArray(item?.system?.damage) ? item.system.damage : [];
+  const selections = {};
+  for (const [index, part] of parts.entries()) {
+    const options = Array.isArray(part.availableTypes) ? part.availableTypes : [];
+    if (options.length < 2) continue;
+    const { DialogV2 } = foundry.applications.api;
+    const buttons = options.map((key) => ({ action: key, label: game.i18n.localize(DAMAGE_TYPES.find((entry) => entry.key === key)?.label ?? key), type: "button", callback: () => key }));
+    const choice = await DialogV2.wait({
+      window: { title: game.i18n.localize("CMET.CombatAttack.ChooseDamageType") },
+      content: `<p>${game.i18n.localize("CMET.CombatAttack.ChooseDamageType")}</p>`,
+      buttons
+    });
+    if (choice) selections[index] = choice;
+  }
+  return selections;
 }
 
 
@@ -112,7 +164,7 @@ async function updateDefenseOutcome({ messageId, responsibleId, outcome }) {
   });
 }
 
-function openDefenseChoice({ defender, combatant, respond }) {
+function openDefenseChoice({ defender, combatant, respond, allowBlock = true }) {
   const { DialogV2 } = foundry.applications.api;
   const localize = (key) => game.i18n.localize(`CMET.CombatAttack.${key}`);
   let answered = false;
@@ -127,7 +179,7 @@ function openDefenseChoice({ defender, combatant, respond }) {
     content: `<p>${localize("ChooseDefense")}</p>`,
     buttons: [
       { action: "dodge", label: localize("Dodge"), type: "button", callback: () => "dodge" },
-      { action: "block", label: localize("Block"), type: "button", callback: () => "block" },
+      ...(allowBlock ? [{ action: "block", label: localize("Block"), type: "button", callback: () => "block" }] : []),
       { action: "none", label: localize("NoDefense"), type: "button", callback: () => "none" }
     ],
     submit: async (choice) => {
@@ -168,7 +220,7 @@ function openDefenseChoice({ defender, combatant, respond }) {
   return dialog.render({ force: true });
 }
 
-async function requestDefense({ combatantId, defenderId, requestId }) {
+async function requestDefense({ combatantId, defenderId, requestId, projectile = false }) {
   return new Promise((resolve) => {
     const handler = (message) => {
       if (message?.type !== "combat-defense-response" || message.requestId !== requestId) return;
@@ -176,7 +228,7 @@ async function requestDefense({ combatantId, defenderId, requestId }) {
       resolve(message);
     };
     Hooks.on("cmetCombatDefenseResponse", handler);
-    game.socket.emit(SOCKET_CHANNEL, { type: "combat-defense-request", requestId, combatantId, defenderId, requesterId: game.user.id });
+    game.socket.emit(SOCKET_CHANNEL, { type: "combat-defense-request", requestId, combatantId, defenderId, requesterId: game.user.id, projectile });
     setTimeout(() => {
       Hooks.off("cmetCombatDefenseResponse", handler);
       resolve({ choice: "none" });
@@ -184,7 +236,7 @@ async function requestDefense({ combatantId, defenderId, requestId }) {
   });
 }
 
-async function resolveDefense({ targetCombatant, targetActor, attacker, item, attack }) {
+async function resolveDefense({ targetCombatant, targetActor, attacker, item, attack, projectile = false }) {
   const state = CombatActionService.getState(targetCombatant);
   if (state.reserved <= 0) return { defense: null, reason: "noReserved" };
   const requestId = foundry.utils.randomID();
@@ -193,13 +245,13 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   const respond = (payload) => game.socket.emit(SOCKET_CHANNEL, { type: "combat-defense-response", requestId, requesterId: game.user.id, ...payload });
   let response;
   if (responsible.id === game.user.id) {
-    openDefenseChoice({ defender: targetActor, combatant: targetCombatant, respond: (payload) => { response = payload; } });
+    openDefenseChoice({ defender: targetActor, combatant: targetCombatant, allowBlock: !projectile || hasEmpunhedCutterWeapon(targetActor), respond: (payload) => { response = payload; } });
     response = await new Promise((resolve) => {
       const check = () => response ? resolve(response) : setTimeout(check, 50);
       check();
     });
   } else {
-    response = await requestDefense({ combatantId: targetCombatant.id, defenderId: targetActor.id, requestId });
+    response = await requestDefense({ combatantId: targetCombatant.id, defenderId: targetActor.id, requestId, projectile });
   }
   return {
     defense: response.rollResult ?? null,
@@ -209,23 +261,31 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   };
 }
 
-async function prepareWeaponAttack({ actor, item, targetToken, combat }) {
+async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, actionGate = null, disableCharacteristics = false }) {
+  if (!canFire(item)) return notify("WeaponNotLoaded");
+  if (characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
   const attackerToken = getAttackerToken(actor, combat);
   const attackerCombatant = getCombatantForToken(combat, attackerToken);
   if (!attackerCombatant) return notify("AttackerNotInCombat");
-  if (combat.combatant?.id !== attackerCombatant.id) return notify("NotActiveTurn");
-  if (CombatActionService.getState(attackerCombatant).current < 1) return notify("ActionInsufficient");
+  if (!reaction && combat.combatant?.id !== attackerCombatant.id) return notify("NotActiveTurn");
+  if (!reaction && !actionGate && CombatActionService.getState(attackerCombatant).current < 1) return notify("ActionInsufficient");
+  if (reaction && CombatActionService.getState(attackerCombatant).reserved < 1) return notify("ReservedActionInsufficient");
   const targetCombatant = getCombatantForToken(combat, targetToken);
   if (!targetCombatant) return notify("TargetNotInCombat");
+  if (characteristicEnabled(item, "armaDeHaste") && !reaction) {
+    const maximum = Number(item.system.characteristics.armaDeHaste?.spaces);
+    if (Number.isFinite(maximum) && maximum > 0 && measureTokenDistance(attackerToken, targetToken) > maximum) return notify("WeaponRangeExceeded");
+  }
   const attackerTokenId = attackerToken?.document?.id ?? attackerToken?.id;
   const targetTokenId = targetToken?.document?.id ?? targetToken?.id;
   if (targetCombatant.id === attackerCombatant.id || attackerTokenId === targetTokenId) return notify("CannotTargetSelf");
-  const skill = resolveAttackSkill(actor, item);
+  const skill = thrownAttack ? resolveAttackSkill(actor, { ...item, system: { ...item.system, combatSkill: "arremessar" } }) : resolveAttackSkill(actor, item);
   if (!skill) return;
   const attackerName = combatantDisplayName(attackerCombatant, actor);
   const defenderName = combatantDisplayName(targetCombatant, targetCombatant.actor);
   clearPendingAttack();
-  console.debug("CMET | opening skill roll", { actorId: actor.id, itemId: item.id, skillKey: skill.skillKey });
+  const versatileSelections = disableCharacteristics ? {} : await chooseVersatileSelections(item);
+  const selectedTargets = targetTokens ?? [targetToken];
   openSkillRollDialog({
     actor,
     skillKey: skill.skillKey,
@@ -240,49 +300,119 @@ async function prepareWeaponAttack({ actor, item, targetToken, combat }) {
     },
     beforeRoll: async () => {
       try {
-        await CombatActionService.spendAction(attackerCombatant);
+        if (actionGate?.spent) return true;
+        if (reaction) await CombatActionService.spendReservedAction(attackerCombatant);
+        else await CombatActionService.spendAction(attackerCombatant);
+        if (actionGate) actionGate.spent = true;
         return true;
       } catch (error) {
         if (error instanceof CombatActionError) notify(error.code === "insufficientActions" ? "ActionInsufficient" : "InvalidActionState");
         return false;
       }
     },
-    onResult: async (attack, attackMessage) => {
+    onResult: async (rawAttack, attackMessage) => {
+      const sequential = disableCharacteristics ? false : getSequentialBonusState(combat, actor, item);
+      const pointWeak = disableCharacteristics ? false : pointWeakBonusState(combat, actor, item, attackerToken, targetToken);
+      const impactSequence = disableCharacteristics ? false : impactSequenceBonusState(combat, actor, item, targetToken);
+      const attack = disableCharacteristics ? rawAttack : applyRetaliar(rawAttack, item);
+      if (!disableCharacteristics && shouldUnloadAfterShot(item)) await item.update({ "system.loaded": false });
+      if (thrownAttack) await item.update({ "system.thrown": true });
       if (!attack.success) {
+        if (!disableCharacteristics) {
+          await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
+          await recordImpactOutcome(combat, actor, item, targetToken, { effectiveHit: false });
+          if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, targetToken);
+        }
         await updateSkillRollMessage(attackMessage, "AttackMiss");
         return;
       }
-      const defenseResult = await resolveDefense({ targetCombatant, targetActor: targetCombatant.actor, attacker: actor, item, attack });
-      const { defense, reason } = defenseResult;
-      const outcome = compareAttackAndDefense(attack, defense);
-      const finalOutcome = { ...outcome, reason: defense ? outcome.reason : reason };
-      if (defense) {
-        await updateDefenseOutcome({ ...defenseResult, outcome: finalOutcome });
-      } else {
-        await updateSkillRollMessage(attackMessage, outcomeKey(finalOutcome));
+      let anyHit = false;
+      let sharedDamage = null;
+      for (const currentTargetToken of selectedTargets) {
+        const currentTargetCombatant = getCombatantForToken(combat, currentTargetToken);
+        if (!currentTargetCombatant?.actor) continue;
+        const defenseResult = await resolveDefense({ targetCombatant: currentTargetCombatant, targetActor: currentTargetCombatant.actor, attacker: actor, item, attack, projectile: isPhysicalProjectileAttack(item, { thrownAttack }) });
+        const { defense, reason } = defenseResult;
+        const outcome = compareAttackAndDefense(attack, defense);
+        const finalOutcome = { ...outcome, reason: defense ? outcome.reason : reason };
+        if (defense) await updateDefenseOutcome({ ...defenseResult, outcome: finalOutcome });
+        else await updateSkillRollMessage(attackMessage, outcomeKey(finalOutcome));
+        const effectiveHit = finalOutcome.winner === "attack";
+        if (!effectiveHit) {
+          if (!disableCharacteristics) {
+            await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
+            await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: false });
+            if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
+          }
+          continue;
+        }
+        anyHit = true;
+        if (!disableCharacteristics) {
+          await recordSequentialOutcome(combat, actor, item, { effectiveHit: true });
+          await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: true });
+          if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
+        }
+        const critical = attack.degree === SKILL_ROLL_DEGREES.CRITICAL_SUCCESS;
+        const polearm = !reaction && characteristicEnabled(item, "armaDeHaste") && isAtMaximumWeaponRange(item, attackerToken, currentTargetToken);
+        const damageItem = disableCharacteristics ? { ...item, system: { ...item.system, characteristics: Object.fromEntries(Object.entries(item.system.characteristics ?? {}).map(([key, value]) => [key, { ...value, enabled: false }])) } } : item;
+        let damage = sharedDamage;
+        if (!damage) {
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequential: disableCharacteristics ? false : sequential, pointWeak: disableCharacteristics ? false : pointWeak && currentTargetToken === targetToken, polearm: disableCharacteristics ? false : polearm });
+          if (selectedTargets.length > 1) sharedDamage = damage;
+        }
+        if (!damage) continue;
+        const resolvedDamage = DamageReductionService.resolveDamageReduction({ groups: damage.groups, actor: currentTargetCombatant.actor });
+        const damageApplication = await DamageApplicationService.applyDamage({ actor: currentTargetCombatant.actor, combatant: currentTargetCombatant, amount: resolvedDamage.totalFinalDamage });
+        await DamageRollService.sendDamageToChat({ ...damage, ...resolvedDamage }, { attackerName, defenderName: combatantDisplayName(currentTargetCombatant, currentTargetCombatant.actor), item, damageApplication });
       }
-      if (finalOutcome.winner !== "attack") return;
-      const critical = attack.degree === SKILL_ROLL_DEGREES.CRITICAL_SUCCESS;
-      const damage = await DamageRollService.rollWeaponDamage(item, { attacker: attackerCombatant, target: targetCombatant, critical });
-      if (!damage) return;
-      const resolvedDamage = DamageReductionService.resolveDamageReduction({ groups: damage.groups, actor: targetCombatant.actor });
-      const damageApplication = await DamageApplicationService.applyDamage({
-        actor: targetCombatant.actor,
-        combatant: targetCombatant,
-        amount: resolvedDamage.totalFinalDamage
-      });
-      await DamageRollService.sendDamageToChat({ ...damage, ...resolvedDamage }, {
-        attackerName,
-        defenderName,
-        item,
-        damageApplication
-      });
+      if (!anyHit && selectedTargets.length > 1) await updateSkillRollMessage(attackMessage, "AttackDefended");
+      if (!disableCharacteristics && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || impactSequence)) {
+        const authority = getActorUpdateAuthority(targetCombatant.actor);
+        if (authority?.id === game.user.id) await applyDazedCondition(targetCombatant.actor, combat);
+        else if (authority) game.socket.emit(SOCKET_CHANNEL, { type: "combat-condition-apply", targetUserId: authority.id, actorId: targetCombatant.actor.id, combatId: combat.id });
+        await recordImpactOutcome(combat, actor, item, targetToken, { effectiveHit: false });
+      }
     }
   });
 }
 
+export async function startReactiveWeaponAttack({ actor, item, targetToken }) {
+  const combat = game.combat;
+  if (!combat?.started || !characteristicEnabled(item, "armaDeHaste") || !isEffectivelyWielded(actor, item)) return;
+  return prepareWeaponAttack({ actor, item, targetToken, combat, reaction: true });
+}
+
+export async function startThrownWeaponAttack({ actor, item }) {
+  const combat = game.combat;
+  if (!combat?.started || !canThrow(item)) return notify("WeaponNotThrowable");
+  if (!isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
+  const attackerToken = getAttackerToken(actor, combat);
+  const targetToken = getSingleTarget();
+  if (!targetToken) return notify("SelectTarget");
+  const maximum = Number(item.system.characteristics.arremessavel?.throwRange);
+  if (!Number.isFinite(maximum) || maximum <= 0 || measureTokenDistance(attackerToken, targetToken) > maximum) return notify("ThrowRangeExceeded");
+  return prepareWeaponAttack({ actor, item, targetToken, combat, thrownAttack: true });
+}
+
+export async function startCombinedWeaponAttack({ actor }) {
+  const combat = game.combat;
+  const hands = actor.system.hands ?? {};
+  const main = actor.items.get(hands.mainHand);
+  const off = actor.items.get(hands.offHand);
+  const targetToken = getSingleTarget();
+  if (!combat?.started || !targetToken || !main || !off || main.id === off.id || main.type !== "arma" || off.type !== "arma"
+    || main.system.equipped !== true || off.system.equipped !== true
+    || main.system.characteristics?.umaMao?.enabled !== true || off.system.characteristics?.umaMao?.enabled !== true) return notify("InvalidTwoWeaponAttack");
+  const attackerToken = getAttackerToken(actor, combat);
+  const combatant = getCombatantForToken(combat, attackerToken);
+  if (!combatant || combat.combatant?.id !== combatant.id) return notify("NotActiveTurn");
+  if (CombatActionService.getState(combatant).current < 1) return notify("ActionInsufficient");
+  const actionGate = { spent: false };
+  await prepareWeaponAttack({ actor, item: main, targetToken, combat, actionGate });
+  await prepareWeaponAttack({ actor, item: off, targetToken, combat, actionGate, disableCharacteristics: true });
+}
+
 export async function startWeaponAttack({ actor, item }) {
-  console.debug("CMET | startWeaponAttack", { actorId: actor?.id, itemId: item?.id });
   clearPendingAttack();
   const combat = game.combat;
   if (!combat?.started) return notify("CombatRequired");
@@ -292,6 +422,8 @@ export async function startWeaponAttack({ actor, item }) {
   if (combat.combatant?.id !== attackerCombatant.id) return notify("NotActiveTurn");
   if (CombatActionService.getState(attackerCombatant).current < 1) return notify("ActionInsufficient");
   if (!resolveAttackSkill(actor, item)) return;
+  if (!canFire(item)) return notify("WeaponNotLoaded");
+  if (characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
   const targetCount = Array.from(game.user.targets ?? []).length;
   if (targetCount > 1) return notify("SelectOnlyOneTarget");
   const targetToken = getSingleTarget();
@@ -299,7 +431,10 @@ export async function startWeaponAttack({ actor, item }) {
     queuePendingAttack(actor, item, combat);
     return;
   }
-  return prepareWeaponAttack({ actor, item, targetToken, combat });
+  const targetTokens = characteristicEnabled(item, "duasMaos") && !characteristicEnabled(item, "armaDeHaste")
+    ? [targetToken, ...getLateralEnemies(targetToken)].filter((token, index, tokens) => tokens.findIndex((candidate) => (candidate.document?.id ?? candidate.id) === (token.document?.id ?? token.id)) === index)
+    : [targetToken];
+  return prepareWeaponAttack({ actor, item, targetToken, targetTokens, combat });
 }
 
 async function continuePendingAttack(targetToken = null) {
@@ -312,7 +447,6 @@ async function continuePendingAttack(targetToken = null) {
   }
   const candidateTarget = targetToken ?? (targets.length === 1 ? targets[0] : null);
   if (!candidateTarget) return;
-  console.debug("CMET | pending attack found", { pendingAttack: current, targetToken: candidateTarget?.id, targetCount: targets.length });
   const combat = game.combat;
   const actor = game.actors.get(current.actorId);
   const item = actor?.items.get(current.itemId);
@@ -320,19 +454,10 @@ async function continuePendingAttack(targetToken = null) {
     clearPendingAttack();
     return notify("AttackNoLongerValid");
   }
-  console.debug("CMET | continuing weapon attack", { actorId: actor.id, itemId: item.id, targetToken: candidateTarget.id });
   return prepareWeaponAttack({ actor, item, targetToken: candidateTarget, combat });
 }
 
 export async function handleTargetToken(user, token, targeted) {
-  console.debug("CMET | targetToken", {
-    userId: user?.id,
-    currentUserId: game.user?.id,
-    tokenId: token?.id,
-    tokenName: token?.name,
-    targeted,
-    targetCount: game.user?.targets?.size
-  });
   if (user?.id !== game.user.id || !targeted) return;
   if (!pendingAttack) return;
   return continuePendingAttack(token);
@@ -341,16 +466,283 @@ export async function handleTargetToken(user, token, targeted) {
 export function registerCombatAttackHooks() {
   if (hooksRegistered) return;
   hooksRegistered = true;
-  console.debug("CMET | Registering targetToken hook");
   Hooks.on("targetToken", handleTargetToken);
   Hooks.on("combatTurnChange", () => clearPendingAttack());
+  Hooks.on("moveToken", handlePolearmMovement);
   Hooks.on("deleteCombat", (combat) => {
     if (pendingAttack?.combatId === combat.id) clearPendingAttack();
+    for (const dialog of activeReactionDialogs.values()) dialog.close();
+    activeReactionDialogs.clear();
+    pendingReactionRequests.clear();
+    reactionRequests.clear();
   });
+}
+
+function movementPoint(value) {
+  const point = value?.position ?? value;
+  const x = Number(point?.x);
+  const y = Number(point?.y);
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+}
+
+function movementDescriptors(movement) {
+  return [
+    movement,
+    movement?.measureOptions,
+    movement?.constrainOptions,
+    movement?.terrainOptions,
+    ...(Array.isArray(movement?.segments) ? movement.segments : []),
+    ...(Array.isArray(movement?.passed?.waypoints) ? movement.passed.waypoints : [])
+  ]
+    .filter((entry) => entry && typeof entry === "object");
+}
+
+function movementHasFlag(movement, names) {
+  return movementDescriptors(movement).some((entry) => names.some((name) => entry[name] === true)
+    || names.includes("teleport") && entry.actionConfig?.teleport === true);
+}
+
+function movementMethod(movement) {
+  return movementDescriptors(movement)
+    .map((entry) => String(entry.method ?? entry.type ?? entry.mode ?? "").toLowerCase())
+    .filter(Boolean);
+}
+
+function isVoluntaryMovement(movement) {
+  const methods = movementMethod(movement);
+  const forced = movementHasFlag(movement, ["forced", "isForced", "forcedMovement"])
+    || methods.some((method) => method === "forced" || method === "forcedmovement");
+  const teleport = movementHasFlag(movement, ["teleport", "teleporting", "isTeleport"])
+    || methods.some((method) => method === "teleport" || method === "teleporting");
+  return !forced && !teleport;
+}
+
+function getMovementPath(tokenDocument, movement) {
+  const origin = movementPoint(movement?.origin);
+  const destination = movementPoint(movement?.destination) ?? movementPoint(tokenDocument);
+  if (!origin || !destination) return [];
+
+  const points = [origin];
+  const segments = Array.isArray(movement?.segments) ? movement.segments : [];
+  for (const segment of segments) {
+    const point = movementPoint(segment?.destination)
+      ?? movementPoint(segment?.to)
+      ?? movementPoint(segment?.end)
+      ?? movementPoint(segment?.position)
+      ?? movementPoint(segment);
+    if (point) points.push(point);
+  }
+  const waypoints = movement?.passed?.waypoints
+    ?? movement?.history?.waypoints
+    ?? movement?.waypoints
+    ?? movement?.path
+    ?? [];
+  for (const waypoint of waypoints) {
+    const point = movementPoint(waypoint);
+    if (point) points.push(point);
+  }
+  points.push(destination);
+  return points.filter((point, index, all) => index === 0 || point.x !== all[index - 1].x || point.y !== all[index - 1].y);
+}
+
+function waitForPolearmReaction({ enemyName, weaponName, movementDirection, reservedActions, requestId }) {
+  const { DialogV2 } = foundry.applications.api;
+  const movementDirectionKey = movementDirection === "entering" ? "ReactionEntering" : "ReactionLeaving";
+  const movementDirectionLabel = game.i18n.localize(`CMET.CombatAttack.${movementDirectionKey}`);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (choice) => {
+      if (settled) return;
+      settled = true;
+      activeReactionDialogs.delete(requestId);
+      resolve(choice);
+    };
+    const dialog = new DialogV2({
+      window: { title: game.i18n.localize("CMET.CombatAttack.ReactionTitle") },
+      content: `<p>${game.i18n.format("CMET.CombatAttack.ReactionPrompt", { enemyName, weaponName, movementDirection: movementDirectionLabel, reservedActions })}</p>`,
+      buttons: [
+        { action: "react", label: game.i18n.localize("CMET.CombatAttack.React"), type: "button", callback: () => "react" },
+        { action: "ignore", label: game.i18n.localize("CMET.CombatAttack.Ignore"), type: "button", callback: () => "ignore" }
+      ],
+      submit: (choice) => finish(choice),
+    });
+    activeReactionDialogs.set(requestId, dialog);
+    dialog.addEventListener("render", () => debugPolearm("Popup renderizado", { requestId, enemyName, weaponName, reservedActions }), { once: true });
+    dialog.addEventListener("close", () => finish("ignore"), { once: true });
+    dialog.render({ force: true });
+    setTimeout(() => {
+      if (settled) return;
+      dialog.close();
+      finish("ignore");
+    }, 30000);
+  });
+}
+
+function getTokenObject(tokenId) {
+  return globalThis.canvas?.tokens?.get(tokenId)
+    ?? globalThis.canvas?.tokens?.placeables?.find((token) => (token.document?.id ?? token.id) === tokenId)
+    ?? null;
+}
+
+function sendPolearmReactionResponse(message, choice) {
+  game.socket.emit(SOCKET_CHANNEL, {
+    type: "combat-polearm-reaction-response",
+    requesterId: message.requesterId,
+    requestId: message.requestId,
+    choice
+  });
+}
+
+async function processPolearmReactionRequest(message) {
+  if (message?.targetUserId !== game.user.id) return;
+  if (reactionRequests.has(message.requestId)) {
+    debugPolearm("Solicitação duplicada ignorada", { requestId: message.requestId });
+    return;
+  }
+  debugPolearm("Solicitação recebida", { requestId: message?.requestId, actorId: message?.actorId, targetTokenId: message?.targetTokenId });
+  if (game.combat?.id !== message.combatId) {
+    debugPolearm("Reação rejeitada: combate diferente", { requestId: message.requestId });
+    sendPolearmReactionResponse(message, "ignore");
+    return;
+  }
+  const actor = game.actors.get(message.actorId);
+  const item = actor?.items.get(message.weaponId);
+  const targetToken = getTokenObject(message.targetTokenId);
+  const combatant = game.combat.combatants.find((entry) => entry.actor?.id === actor?.id);
+  const responsible = actor && getActorUpdateAuthority(actor);
+  if (!actor || !item || !targetToken || !combatant || responsible?.id !== game.user.id
+    || !characteristicEnabled(item, "armaDeHaste") || !isEffectivelyWielded(actor, item)
+    || CombatActionService.getState(combatant).reserved < 1) {
+    debugPolearm("Reação rejeitada: dados ou autoridade inválidos", { requestId: message.requestId, actorId: message.actorId, responsibleUserId: responsible?.id });
+    sendPolearmReactionResponse(message, "ignore");
+    return;
+  }
+
+  reactionRequests.add(message.requestId);
+  try {
+    const choice = await waitForPolearmReaction({ enemyName: message.enemyName, weaponName: message.weaponName, movementDirection: message.movementDirection, reservedActions: CombatActionService.getState(combatant).reserved, requestId: message.requestId });
+    sendPolearmReactionResponse(message, choice);
+    if (choice === "react") await startReactiveWeaponAttack({ actor, item, targetToken });
+  } finally {
+    reactionRequests.delete(message.requestId);
+  }
+}
+
+function shouldProcessPolearmMovement(user) {
+  const movementUserId = typeof user === "string" ? user : user?.id;
+  const authoritativeGM = isAuthoritativeGM();
+  if (authoritativeGM || Array.from(game.users ?? []).some((entry) => entry.active && entry.isGM)) {
+    return authoritativeGM;
+  }
+  return !movementUserId || movementUserId === game.user.id;
+}
+
+async function handlePolearmMovement(tokenDocument, movement, _operation, user = null) {
+  // Foundry v14 supplies movement.origin/destination/waypoints and the requesting user here.
+  // Movement classification must come from this API object, not legacy operation flags.
+  const combat = game.combat;
+  if (!combat?.started) {
+    debugPolearm("Movimento ignorado: combate inativo", { tokenId: tokenDocument?.id });
+    return;
+  }
+  if (!movement) {
+    debugPolearm("Movimento ignorado: dados ausentes", { tokenId: tokenDocument?.id });
+    return;
+  }
+  if (!isVoluntaryMovement(movement)) {
+    debugPolearm("Movimento ignorado: forçado ou teleporte", { tokenId: tokenDocument?.id, movementId: movement.id });
+    return;
+  }
+  if (!shouldProcessPolearmMovement(user)) {
+    debugPolearm("Movimento ignorado: cliente sem autoridade de processamento", { tokenId: tokenDocument?.id, movementId: movement.id });
+    return;
+  }
+  debugPolearm("Movimento detectado", { tokenId: tokenDocument.id, userId: typeof user === "string" ? user : user?.id, movementId: movement.id });
+  const movingToken = tokenDocument.object ?? tokenDocument;
+  const path = getMovementPath(tokenDocument, movement);
+  if (path.length < 2) {
+    debugPolearm("Movimento ignorado: trajetória sem origem e destino", { tokenId: tokenDocument.id, movementId: movement.id });
+    return;
+  }
+  const origin = path[0];
+  const destination = path[path.length - 1];
+  const processedActors = new Set();
+  for (const reactorCombatant of combat.combatants) {
+    const reactorActor = reactorCombatant.actor;
+    if (processedActors.has(reactorActor?.id)) continue;
+    const reactorToken = reactorCombatant.token?.object;
+    if (!reactorActor || !reactorToken || reactorToken === movingToken || Number(reactorToken.document?.disposition ?? 0) === Number(tokenDocument.disposition ?? 0)) continue;
+    const weapon = reactorActor.items.find((item) => item.type === "arma" && item.system?.equipped === true && item.system?.characteristics?.armaDeHaste?.enabled === true);
+    if (!weapon) {
+      debugPolearm("Combatente ignorado: Arma de Haste não encontrada", { actorId: reactorActor.id });
+      continue;
+    }
+    if (CombatActionService.getState(reactorCombatant).reserved < 1) {
+      debugPolearm("Combatente ignorado: sem ações reservadas", { actorId: reactorActor.id });
+      continue;
+    }
+    debugPolearm("Combatente reativo encontrado", { actorId: reactorActor.id, tokenId: reactorToken.document?.id, weaponId: weapon.id });
+    const maximum = Number(weapon.system.characteristics.armaDeHaste?.spaces);
+    if (!Number.isFinite(maximum) || maximum <= 0) {
+      debugPolearm("Combatente ignorado: alcance inválido", { actorId: reactorActor.id, maximum });
+      continue;
+    }
+    const reservedActions = CombatActionService.getState(reactorCombatant).reserved;
+    let movementDirection = null;
+    const crossed = path.slice(1).some((position, index) => {
+      const beforeDistance = measureTokenDistanceAtPosition(reactorToken, tokenDocument, path[index]);
+      const afterDistance = measureTokenDistanceAtPosition(reactorToken, tokenDocument, position);
+      debugPolearm("Distâncias calculadas", { actorId: reactorActor.id, beforeDistance, afterDistance, maximum });
+      if (!didCrossWeaponReach(beforeDistance, afterDistance, maximum)) return false;
+      movementDirection = afterDistance > maximum ? "leaving" : "entering";
+      return true;
+    });
+    if (!crossed) {
+      debugPolearm("Nenhum cruzamento de alcance", { actorId: reactorActor.id });
+      continue;
+    }
+    processedActors.add(reactorActor.id);
+    const responsible = getActorUpdateAuthority(reactorActor);
+    if (!responsible) {
+      debugPolearm("Reação ignorada: usuário responsável não encontrado", { actorId: reactorActor.id });
+      continue;
+    }
+    const requestKey = `${combat.id}:${tokenDocument.uuid ?? tokenDocument.id}:${origin.x},${origin.y}->${destination.x},${destination.y}:${reactorActor.id}`;
+    if ([...pendingReactionRequests.values()].includes(requestKey)) continue;
+    const requestId = foundry.utils.randomID();
+    pendingReactionRequests.set(requestId, requestKey);
+    setTimeout(() => {
+      if (pendingReactionRequests.get(requestId) === requestKey) pendingReactionRequests.delete(requestId);
+    }, 35000);
+    const request = {
+      type: "combat-polearm-reaction-request",
+      targetUserId: responsible.id,
+      requesterId: game.user.id,
+      requestId,
+      combatId: combat.id,
+      actorId: reactorActor.id,
+      weaponId: weapon.id,
+      targetTokenId: tokenDocument.id,
+      enemyName: tokenDocument.name ?? movingToken.name ?? "",
+      weaponName: weapon.name,
+      movementDirection,
+      reservedActions
+    };
+    debugPolearm("Solicitação enviada", { requestId, targetUserId: responsible.id, actorId: reactorActor.id, movementDirection });
+    if (responsible.id === game.user.id) {
+      await processPolearmReactionRequest(request);
+      pendingReactionRequests.delete(requestId);
+    } else game.socket.emit(SOCKET_CHANNEL, request);
+  }
 }
 
 export function registerCombatAttackSocket() {
   game.socket.on(SOCKET_CHANNEL, async (message) => {
+    if (message?.type === "combat-condition-apply" && message.targetUserId === game.user.id) {
+      const actor = game.actors.get(message.actorId);
+      if (actor && game.combat?.id === message.combatId) await applyDazedCondition(actor, game.combat);
+      return;
+    }
     if (message?.type === "combat-defense-outcome") {
       if (message.targetUserId !== game.user.id) return;
       await updateSkillRollMessage(game.messages?.get(message.messageId), message.outcomeKey);
@@ -360,12 +752,21 @@ export function registerCombatAttackSocket() {
       if (message.requesterId === game.user.id) Hooks.callAll("cmetCombatDefenseResponse", message);
       return;
     }
+    if (message?.type === "combat-polearm-reaction-response") {
+      if (message.requesterId !== game.user.id) return;
+      pendingReactionRequests.delete(message.requestId);
+      return;
+    }
+    if (message?.type === "combat-polearm-reaction-request") {
+      await processPolearmReactionRequest(message);
+      return;
+    }
     if (message?.type !== "combat-defense-request" || message.requesterId === game.user.id) return;
     const combatant = game.combat?.combatants.get(message.combatantId);
     const actor = combatant?.actor;
     const responsible = actor && getActorUpdateAuthority(actor);
     if (!combatant || !actor || responsible?.id !== game.user.id) return;
-    openDefenseChoice({ defender: actor, combatant, respond: (payload) => game.socket.emit(SOCKET_CHANNEL, { type: "combat-defense-response", requesterId: message.requesterId, requestId: message.requestId, ...payload }) });
+    openDefenseChoice({ defender: actor, combatant, allowBlock: !message.projectile || hasEmpunhedCutterWeapon(actor), respond: (payload) => game.socket.emit(SOCKET_CHANNEL, { type: "combat-defense-response", requesterId: message.requesterId, requestId: message.requestId, ...payload }) });
   });
 }
 
@@ -374,5 +775,8 @@ export const CombatAttackService = Object.freeze({
     return pendingAttack;
   },
   startWeaponAttack,
+  startReactiveWeaponAttack,
+  startThrownWeaponAttack,
+  startCombinedWeaponAttack,
   handleTargetToken
 });

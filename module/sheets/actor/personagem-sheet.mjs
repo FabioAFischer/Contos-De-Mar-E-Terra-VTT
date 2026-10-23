@@ -6,10 +6,19 @@ import { calculateCharacterDerivedData, calculateSkillTotals, validateSkillChang
 import { findSkillDefinition } from "../../services/skill-roll-service.mjs";
 import { resolveItemRollSkill, rollItemSkill } from "../../services/item-roll-service.mjs";
 import { openSkillRollDialog } from "../../dialogs/skill-roll-dialog.mjs";
-import { startWeaponAttack } from "../../services/combat-attack-service.mjs";
+import { startWeaponAttack, startThrownWeaponAttack, startCombinedWeaponAttack } from "../../services/combat-attack-service.mjs";
+import { CombatActionService } from "../../services/combat-action-service.mjs";
+import { canRecover } from "../../services/weapon-characteristics-service.mjs";
+import { calculateConditionMovement } from "../../services/combat-condition-service.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
+
+function getActorTokenForSheet(actor, combat) {
+  return globalThis.canvas?.tokens?.controlled?.find((token) => token.actor?.id === actor.id)
+    ?? combat?.combatants.find((combatant) => combatant.actor?.id === actor.id)?.token?.object
+    ?? null;
+}
 
 export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   constructor(...args) {
@@ -56,6 +65,16 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
           detailLabel: [damageTypesLabel, range.enabled ? `${game.i18n.localize("CMET.WeaponCharacteristics.Alcance")} ${range.spaces}` : ""].filter(Boolean).join(" • "),
           canRoll: hasCombatSkill,
           canAttack: hasCombatSkill,
+          loaded: system.loaded !== false,
+          thrown: system.thrown === true,
+          canReload: system.characteristics.recarregar?.enabled === true && system.loaded === false,
+          canRecover: canRecover(item),
+          canThrow: item.system.characteristics.arremessavel?.enabled === true && system.thrown !== true,
+          stateLabel: system.thrown
+            ? game.i18n.localize("CMET.Weapon.States.Thrown")
+            : system.characteristics.recarregar?.enabled === true
+              ? (system.loaded === false ? game.i18n.localize("CMET.Weapon.States.Unloaded") : game.i18n.localize("CMET.Weapon.States.Loaded"))
+              : "",
           rollSkillKey: roll?.skillKey ?? "",
           rollSkillLabel: roll?.skillLabel ?? (combatSkill ? game.i18n.localize(combatSkill.label) : system.combatSkill ?? "")
         };
@@ -130,17 +149,23 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       vida: { label: "Vida", value: this.actor.system.resources.vida.value, max: derived.vidaMax },
       mana: { label: "Mana", value: this.actor.system.resources.mana.value, max: derived.manaMax },
       sanidade: { label: "Sanidade", value: this.actor.system.resources.sanidade.value, max: derived.sanidadeMax },
-      movimento: derived.movimento,
+      movimento: calculateConditionMovement(derived.movimento, this.actor),
       actions: this.actor.system.actions.max
     };
-    return { ...context, actor: this.actor, attributes, derived, resources, ...groupedItems };
+    const weaponOptions = [{ id: "", name: game.i18n.localize("CMET.Weapon.Fields.None") }, ...groupedItems.armas.map((weapon) => ({ id: weapon.id, name: weapon.name }))];
+    const hands = this.actor.system.hands ?? { mainHand: "", offHand: "" };
+    return { ...context, actor: this.actor, attributes, derived, resources, weaponOptions, hands, ...groupedItems };
   }
 
   _onRender(context, options) {
     super._onRender(context, options);
     this._renderListeners?.abort();
     this._renderListeners = new AbortController();
-    this.element.addEventListener("click", (event) => this.#onClick(event), { signal: this._renderListeners.signal });
+    this.element.addEventListener("click", (event) => {
+      Promise.resolve(this.#onClick(event)).catch(() => {
+        ui.notifications.error(game.i18n.localize("CMET.CombatAttack.Notifications.AttackUnavailable"));
+      });
+    }, { signal: this._renderListeners.signal });
     this.element.addEventListener("change", (event) => this.#onChange(event), { signal: this._renderListeners.signal });
     this.#restoreUiState();
   }
@@ -190,6 +215,24 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const value = input.type === "number" ? Number(input.value) : input.value;
     if (path === "name") return this.actor.update({ name: value });
     if (!path.startsWith("system.")) return;
+    if (path === "system.hands.mainHand" || path === "system.hands.offHand") {
+      const hands = this.actor.system.hands ?? { mainHand: "", offHand: "" };
+      const other = path.endsWith("mainHand") ? "offHand" : "mainHand";
+      if (value && value === hands[other]) {
+        ui.notifications.warn(game.i18n.localize("CMET.Notifications.DuplicateHandWeapon"));
+        return this.render();
+      }
+      if (game.combat?.started && hands[path.endsWith("mainHand") ? "mainHand" : "offHand"] !== value) {
+        const token = getActorTokenForSheet(this.actor, game.combat);
+        const combatant = token && game.combat.combatants.find((entry) => entry.tokenId === (token.document?.id ?? token.id));
+        if (!combatant || game.combat.combatant?.id !== combatant.id) {
+          ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.NotActiveTurn"));
+          return this.render();
+        }
+        try { await CombatActionService.spendAction(combatant); } catch { ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ActionInsufficient")); return this.render(); }
+      }
+      return this.actor.update({ [path]: value });
+    }
     const parts = path.split(".");
     if (parts[1] === "attributes" && parts[3] === "skills") {
       const definition = ATTRIBUTE_DEFINITIONS.find(({ key }) => key === parts[2]);
@@ -228,6 +271,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     if (!action) return;
     if (action.dataset.action === "editImage") return;
     event.preventDefault();
+    event.stopPropagation();
     if (action.dataset.action === "roll-skill") {
       const skillKey = action.dataset.skillKey;
       const definition = findSkillDefinition(skillKey);
@@ -239,8 +283,16 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       return openSkillRollDialog({ actor: this.actor, skillKey, skillLabel: action.dataset.skillLabel, baseValue });
     }
     const item = action.dataset.itemId ? this.actor.items.get(action.dataset.itemId) : null;
+    if (["attackItem", "throwItem", "reloadItem", "recoverItem", "open-item", "delete-item"].includes(action.dataset.action) && !item) {
+      ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ItemUnavailable"));
+      return;
+    }
     if (action.dataset.action === "rollItemSkill" && item) return rollItemSkill({ actor: this.actor, item });
     if (action.dataset.action === "attackItem" && item) return startWeaponAttack({ actor: this.actor, item });
+    if (action.dataset.action === "throwItem" && item) return startThrownWeaponAttack({ actor: this.actor, item });
+    if (action.dataset.action === "combinedAttack") return startCombinedWeaponAttack({ actor: this.actor });
+    if (action.dataset.action === "reloadItem" && item) return this.#reloadWeapon(item);
+    if (action.dataset.action === "recoverItem" && item) return this.#recoverWeapon(item);
     if (action.dataset.action === "open-item" && item) return item.sheet.render(true);
     if (action.dataset.action === "delete-item" && item) return item.delete();
     if (action.dataset.action === "create-item") {
@@ -249,5 +301,29 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       const [created] = await this.actor.createEmbeddedDocuments("Item", [{ name: game.i18n.localize(`CMET.ItemTypes.${type}`), type }]);
       return created.sheet.render(true);
     }
+  }
+
+  async #reloadWeapon(item) {
+    if (item.type !== ITEM_TYPES.ARMA || item.system.characteristics.recarregar?.enabled !== true) return;
+    const combat = game.combat;
+    if (combat?.started) {
+      const token = getActorTokenForSheet(this.actor, combat);
+      const combatant = token && combat.combatants.find((entry) => entry.tokenId === (token.document?.id ?? token.id));
+      if (!combatant || combat.combatant?.id !== combatant.id) return ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ReloadOnlyOnTurn"));
+      try { await CombatActionService.spendAction(combatant); } catch { return ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ActionInsufficient")); }
+    }
+    await item.update({ "system.loaded": true });
+  }
+
+  async #recoverWeapon(item) {
+    if (!canRecover(item)) return;
+    const combat = game.combat;
+    if (combat?.started) {
+      const token = getActorTokenForSheet(this.actor, combat);
+      const combatant = token && combat.combatants.find((entry) => entry.tokenId === (token.document?.id ?? token.id));
+      if (!combatant || combat.combatant?.id !== combatant.id) return ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ReloadOnlyOnTurn"));
+      try { await CombatActionService.spendAction(combatant); } catch { return ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ActionInsufficient")); }
+    }
+    await item.update({ "system.thrown": false });
   }
 }
