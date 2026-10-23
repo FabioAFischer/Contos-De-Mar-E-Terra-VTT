@@ -55,9 +55,9 @@ function emptyFormula(item) {
   ui.notifications.warn(game.i18n.format("CMET.Damage.Notifications.EmptyFormula", { weapon: item?.name ?? "" }));
 }
 
-export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, pointWeak = false, polearm = false } = {}) {
+export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, pointWeak = false, polearm = false, reachDistance = null } = {}) {
   const parts = normalizeDamageParts({ damage: getVersatileDamageParts(item, versatileSelections) });
-  parts.push(...additionalDamageFormulas(item, { critical, sequential, pointWeak, polearm }));
+  parts.push(...additionalDamageFormulas(item, { critical, sequential, pointWeak, polearm, reachDistance, versatileSelections }));
   if (!parts.length) {
     missingDamage(item);
     return null;

@@ -8,7 +8,7 @@ import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
 import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
-import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusState, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusState, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
@@ -279,6 +279,14 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   if (reaction && CombatActionService.getState(attackerCombatant).reserved < 1) return notify("ReservedActionInsufficient");
   const targetCombatant = getCombatantForToken(combat, targetToken);
   if (!targetCombatant) return notify("TargetNotInCombat");
+  const selectedTargets = targetTokens ?? [targetToken];
+  if (!disableCharacteristics && characteristicEnabled(item, "alcance")) {
+    const maximum = Number(item.system.characteristics.alcance?.spaces);
+    if (!Number.isInteger(maximum) || maximum <= 0) return notify("WeaponRangeExceeded");
+    for (const candidateToken of selectedTargets) {
+      if (measureTokenReachDistance(attackerToken, candidateToken) > maximum) return notify("WeaponRangeExceeded");
+    }
+  }
   if (characteristicEnabled(item, "armaDeHaste") && !reaction) {
     const maximum = Number(item.system.characteristics.armaDeHaste?.spaces);
     if (Number.isFinite(maximum) && maximum > 0 && measureTokenDistance(attackerToken, targetToken) > maximum) return notify("WeaponRangeExceeded");
@@ -292,7 +300,6 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   const defenderName = combatantDisplayName(targetCombatant, targetCombatant.actor);
   clearPendingAttack();
   const versatileSelections = disableCharacteristics ? {} : await chooseVersatileSelections(item);
-  const selectedTargets = targetTokens ?? [targetToken];
   openSkillRollDialog({
     actor,
     skillKey: skill.skillKey,
@@ -361,11 +368,15 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         }
         const critical = attack.degree === SKILL_ROLL_DEGREES.CRITICAL_SUCCESS;
         const polearm = !reaction && characteristicEnabled(item, "armaDeHaste") && isAtMaximumWeaponRange(item, attackerToken, currentTargetToken);
+        const reachDistance = !disableCharacteristics && characteristicEnabled(item, "alcance")
+          ? measureTokenReachDistance(attackerToken, currentTargetToken)
+          : null;
         const damageItem = disableCharacteristics ? { ...item, system: { ...item.system, characteristics: Object.fromEntries(Object.entries(item.system.characteristics ?? {}).map(([key, value]) => [key, { ...value, enabled: false }])) } } : item;
-        let damage = sharedDamage;
+        const distanceDamage = !disableCharacteristics && characteristicEnabled(item, "alcance");
+        let damage = distanceDamage ? null : sharedDamage;
         if (!damage) {
-          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequential: disableCharacteristics ? false : sequential, pointWeak: disableCharacteristics ? false : pointWeak && currentTargetToken === targetToken, polearm: disableCharacteristics ? false : polearm });
-          if (selectedTargets.length > 1) sharedDamage = damage;
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequential: disableCharacteristics ? false : sequential, pointWeak: disableCharacteristics ? false : pointWeak && currentTargetToken === targetToken, polearm: disableCharacteristics ? false : polearm, reachDistance });
+          if (selectedTargets.length > 1 && !distanceDamage) sharedDamage = damage;
         }
         if (!damage) continue;
         const resolvedDamage = DamageReductionService.resolveDamageReduction({ groups: damage.groups, actor: currentTargetCombatant.actor });
