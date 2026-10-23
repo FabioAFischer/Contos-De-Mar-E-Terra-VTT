@@ -24,7 +24,7 @@ let hooksRegistered = false;
 const reactionRequests = new Set();
 const pendingReactionRequests = new Map();
 const activeReactionDialogs = new Map();
-const DEBUG_POLEARM_REACTION = true;
+const DEBUG_POLEARM_REACTION = false;
 
 function debugPolearm(message, data = {}) {
   if (DEBUG_POLEARM_REACTION) console.debug(`[HASTE] ${message}`, data);
