@@ -32,7 +32,7 @@ async function persistWeaponCombatState(combat, state) {
   return state;
 }
 
-function enqueueWeaponCombatStateMutation(combat, mutation) {
+function enqueueWeaponCombatStateMutation(combat, mutation, persist = persistWeaponCombatState) {
   if (!combat || (typeof combat !== "object" && typeof combat !== "function")) {
     return Promise.resolve(mutation(readWeaponCombatState(combat)));
   }
@@ -43,7 +43,7 @@ function enqueueWeaponCombatStateMutation(combat, mutation) {
     .then(async () => {
       const state = readWeaponCombatState(combat);
       const result = await mutation(state);
-      await persistWeaponCombatState(combat, state);
+      await persist(combat, state);
       return result ?? state;
     })
     .finally(() => {
@@ -78,7 +78,9 @@ export async function recordSequentialOutcome(combat, actor, item, { effectiveHi
   return enqueueWeaponCombatStateMutation(combat, (state) => {
     const key = attackerKey(actor);
     const previous = state.sequences[key];
-    if (!effectiveHit) state.sequences[key] = {};
+    if (!effectiveHit) {
+      state.sequences[key] = { weaponId: null, streak: 0 };
+    }
     else if (previous?.weaponId === item?.id) {
       state.sequences[key] = { weaponId: item.id, streak: (Number(previous.streak) || 0) + 1 };
     } else {
@@ -277,6 +279,16 @@ export async function clearWeaponCombatState(combat) {
     const empty = emptyWeaponCombatState();
     for (const key of Object.keys(state)) delete state[key];
     Object.assign(state, empty);
+  }, async (document, state) => {
+    if (typeof document?.unsetFlag === "function") {
+      await document.unsetFlag(namespace(), FLAG);
+      return emptyWeaponCombatState();
+    }
+    if (typeof document?.setFlag === "function") {
+      await document.setFlag(namespace(), FLAG, null);
+      return emptyWeaponCombatState();
+    }
+    return persistWeaponCombatState(document, state);
   });
 }
 
