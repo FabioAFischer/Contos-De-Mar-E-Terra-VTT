@@ -144,6 +144,52 @@ function tokenBounds(token, position = null) {
   return { left: x, top: y, right: x + width, bottom: y + height };
 }
 
+function tokenOccupiedCells(token, position = null) {
+  const document = token?.document ?? token ?? {};
+  const gridSize = Number(globalThis.canvas?.grid?.size ?? 1) || 1;
+  const x = Number(position?.x ?? document.x ?? 0);
+  const y = Number(position?.y ?? document.y ?? 0);
+  const width = Math.max(1, Math.ceil(Number(document.width ?? 1)));
+  const height = Math.max(1, Math.ceil(Number(document.height ?? 1)));
+  const startX = Math.floor(x / gridSize);
+  const startY = Math.floor(y / gridSize);
+  const cells = [];
+  for (let cellY = 0; cellY < height; cellY += 1) {
+    for (let cellX = 0; cellX < width; cellX += 1) {
+      cells.push({ x: startX + cellX, y: startY + cellY });
+    }
+  }
+  return cells;
+}
+
+/**
+ * Alcance counts occupied grid spaces rather than the gap between token
+ * borders. Each pair of occupied cells is measured by Foundry so the scene's
+ * diagonal rule remains authoritative, including for large tokens.
+ */
+export function measureTokenReachDistanceAtPosition(originToken, targetToken, targetPosition = null) {
+  const gridSize = Number(globalThis.canvas?.grid?.size ?? 1) || 1;
+  const originCells = tokenOccupiedCells(originToken);
+  const targetCells = tokenOccupiedCells(targetToken, targetPosition);
+  let minimum = Infinity;
+  for (const originCell of originCells) {
+    for (const targetCell of targetCells) {
+      const distance = measureGridDistance([
+        { x: (originCell.x + 0.5) * gridSize, y: (originCell.y + 0.5) * gridSize },
+        { x: (targetCell.x + 0.5) * gridSize, y: (targetCell.y + 0.5) * gridSize }
+      ]);
+      if (distance < minimum) minimum = distance;
+      if (minimum === 0) return 0;
+    }
+  }
+  if (!Number.isFinite(minimum)) throw new TypeError("CMET | Não foi possível medir o alcance entre os tokens.");
+  return minimum;
+}
+
+export function measureTokenReachDistance(originToken, targetToken) {
+  return measureTokenReachDistanceAtPosition(originToken, targetToken);
+}
+
 export function measureTokenDistanceAtPosition(originToken, targetToken, targetPosition = null) {
   const origin = tokenBounds(originToken);
   const target = tokenBounds(targetToken, targetPosition);
@@ -182,4 +228,4 @@ export async function clearWeaponCombatState(combat) {
   return writeWeaponCombatState(combat, emptyWeaponCombatState());
 }
 
-export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });
+export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });

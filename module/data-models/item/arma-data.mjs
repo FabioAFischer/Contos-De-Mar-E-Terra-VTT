@@ -2,7 +2,7 @@ import { WEAPON_CHARACTERISTICS } from "../../config/weapon-config.mjs";
 
 const { ArrayField, BooleanField, NumberField, SchemaField, StringField } = foundry.data.fields;
 const { TypeDataModel } = foundry.abstract;
-const createCharacteristicsSchema = () => Object.fromEntries(WEAPON_CHARACTERISTICS.map(({ key, parameters = [] }) => [key, new SchemaField({ enabled: new BooleanField({ initial: false }), ...Object.fromEntries(parameters.map((parameter) => [parameter.key, parameter.field === "number" ? new NumberField({ initial: 0, min: 0, integer: true }) : new StringField({ initial: key === "armaDeHaste" && parameter.key === "damageFormula" ? "1d8" : "", blank: true })])) })]));
+const createCharacteristicsSchema = () => Object.fromEntries(WEAPON_CHARACTERISTICS.map(({ key, parameters = [] }) => [key, new SchemaField({ enabled: new BooleanField({ initial: false }), ...Object.fromEntries(parameters.map((parameter) => [parameter.key, parameter.field === "number" || parameter.field === "select" ? new NumberField({ initial: 0, min: 0, integer: true }) : new StringField({ initial: key === "armaDeHaste" && parameter.key === "damageFormula" ? "1d8" : "", blank: true })])) })]));
 const createDamageSchema = () => new SchemaField({
   formula: new StringField({ initial: "1d6", blank: false }),
   nature: new StringField({ initial: "physical", blank: false }),

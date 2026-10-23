@@ -338,6 +338,7 @@
 .application.cmet-configured-item-sheet .cmet-config-tab--description > label { color: var(--cmet-text-muted); font-size: .8rem; text-transform: uppercase; }
 .application.cmet-configured-item-sheet .cmet-config-tab--description textarea { flex: 1 0 320px; width: 100%; min-height: 320px; padding: 12px; resize: vertical; }
 .application.cmet-configured-item-sheet .cmet-config-parameter input[type="number"] { width: 64px; }
+.application.cmet-configured-item-sheet .cmet-config-parameter select { min-width: 150px; max-width: 100%; }
 .application.cmet-weapon-sheet .cmet-damage-list { display: grid; gap: 8px; min-width: 0; }
 .application.cmet-weapon-sheet .cmet-damage-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; padding: 7px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 4px; }
 .application.cmet-weapon-sheet .cmet-damage-main-row { display: grid; grid-template-columns: minmax(82px, 1.1fr) minmax(105px, 1fr) minmax(115px, 1fr) 30px; align-items: center; gap: 6px; min-width: 0; }
