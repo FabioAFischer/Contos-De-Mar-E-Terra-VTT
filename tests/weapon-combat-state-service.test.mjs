@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { didCrossWeaponReach, getTokenSide, isLaterallyAdjacent, measureTokenDistanceAtPosition } from "../module/services/weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, didCrossWeaponReach, getLateralEnemies, getTokenSide, isLaterallyAdjacent, measureTokenDistanceAtPosition } from "../module/services/weapon-combat-state-service.mjs";
 
 globalThis.canvas = { grid: { size: 100, measurePath: ([origin, target]) => ({ spaces: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) / 100, distance: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) }) } };
 
@@ -12,6 +12,13 @@ test("Duas mãos considera apenas adjacência lateral", () => {
   assert.equal(isLaterallyAdjacent(origin, token(1, 0)), true);
   assert.equal(isLaterallyAdjacent(origin, token(0, 1)), true);
   assert.equal(isLaterallyAdjacent(origin, token(1, 1)), false);
+});
+
+test("disposição igual não impede identificar um adversário lateral potencial", () => {
+  const origin = { document: { id: "origin", x: 0, y: 0, width: 1, height: 1, disposition: -1 } };
+  const candidate = { document: { id: "candidate", x: 100, y: 0, width: 1, height: 1, disposition: -1 } };
+  assert.equal(arePotentialAdversaries(origin, candidate), true);
+  assert.deepEqual(getLateralEnemies(origin, { tokens: [origin, candidate] }), [candidate]);
 });
 
 test("Ponto fraco calcula os lados pela orientação do defensor", () => {
