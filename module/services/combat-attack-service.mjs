@@ -268,39 +268,47 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   };
 }
 
-async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, actionGate = null, disableCharacteristics = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null }) {
-  if (!canFire(item)) return notify("WeaponNotLoaded");
-  if (characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
+async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, actionGate = null, disableCharacteristics = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
+  const fail = (key, data = {}) => {
+    const result = notify(key, data);
+    onComplete?.({ status: "failed" });
+    return result;
+  };
+  if (!disableCharacteristics && !canFire(item)) return fail("WeaponNotLoaded");
+  if (!disableCharacteristics && characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
   const attackerToken = providedAttackerToken ?? getAttackerToken(actor, combat);
   const attackerCombatant = providedAttackerCombatant ?? getCombatantForToken(combat, attackerToken);
-  if (!attackerCombatant) return notify("AttackerNotInCombat");
-  if (!reaction && combat.combatant?.id !== attackerCombatant.id) return notify("NotActiveTurn");
-  if (!reaction && !actionGate && CombatActionService.getState(attackerCombatant).current < 1) return notify("ActionInsufficient");
-  if (reaction && CombatActionService.getState(attackerCombatant).reserved < 1) return notify("ReservedActionInsufficient");
+  if (!attackerCombatant) return fail("AttackerNotInCombat");
+  if (!reaction && combat.combatant?.id !== attackerCombatant.id) return fail("NotActiveTurn");
+  if (!reaction && !actionGate && CombatActionService.getState(attackerCombatant).current < 1) return fail("ActionInsufficient");
+  if (reaction && CombatActionService.getState(attackerCombatant).reserved < 1) return fail("ReservedActionInsufficient");
   const targetCombatant = getCombatantForToken(combat, targetToken);
-  if (!targetCombatant) return notify("TargetNotInCombat");
+  if (!targetCombatant) return fail("TargetNotInCombat");
   const selectedTargets = targetTokens ?? [targetToken];
   if (!disableCharacteristics && characteristicEnabled(item, "alcance")) {
     const maximum = Number(item.system.characteristics.alcance?.spaces);
-    if (!Number.isInteger(maximum) || maximum <= 0) return notify("WeaponRangeExceeded");
+    if (!Number.isInteger(maximum) || maximum <= 0) return fail("WeaponRangeExceeded");
     for (const candidateToken of selectedTargets) {
-      if (measureTokenReachDistance(attackerToken, candidateToken) > maximum) return notify("WeaponRangeExceeded");
+      if (measureTokenReachDistance(attackerToken, candidateToken) > maximum) return fail("WeaponRangeExceeded");
     }
   }
-  if (characteristicEnabled(item, "armaDeHaste") && !reaction) {
+  if (!disableCharacteristics && characteristicEnabled(item, "armaDeHaste") && !reaction) {
     const maximum = Number(item.system.characteristics.armaDeHaste?.spaces);
-    if (Number.isFinite(maximum) && maximum > 0 && measureTokenDistance(attackerToken, targetToken) > maximum) return notify("WeaponRangeExceeded");
+    if (Number.isFinite(maximum) && maximum > 0 && measureTokenDistance(attackerToken, targetToken) > maximum) return fail("WeaponRangeExceeded");
   }
   const attackerTokenId = attackerToken?.document?.id ?? attackerToken?.id;
   const targetTokenId = targetToken?.document?.id ?? targetToken?.id;
-  if (targetCombatant.id === attackerCombatant.id || attackerTokenId === targetTokenId) return notify("CannotTargetSelf");
+  if (targetCombatant.id === attackerCombatant.id || attackerTokenId === targetTokenId) return fail("CannotTargetSelf");
   const skill = thrownAttack ? resolveAttackSkill(actor, { ...item, system: { ...item.system, combatSkill: "arremessar" } }) : resolveAttackSkill(actor, item);
-  if (!skill) return;
+  if (!skill) {
+    onComplete?.({ status: "failed" });
+    return;
+  }
   const attackerName = combatantDisplayName(attackerCombatant, actor);
   const defenderName = combatantDisplayName(targetCombatant, targetCombatant.actor);
   clearPendingAttack();
   const versatileSelections = disableCharacteristics ? {} : await chooseVersatileSelections(item);
-  openSkillRollDialog({
+  return openSkillRollDialog({
     actor,
     skillKey: skill.skillKey,
     skillLabel: SKILL_LABELS[skill.skillKey],
@@ -312,6 +320,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       defenderName,
       weaponName: item.name
     },
+    onComplete,
     beforeRoll: async () => {
       try {
         if (actionGate?.spent) return true;
@@ -422,13 +431,19 @@ export async function startCombinedWeaponAttack({ actor }) {
   if (!combat?.started || !targetToken || !main || !off || main.id === off.id || main.type !== "arma" || off.type !== "arma"
     || main.system.equipped !== true || off.system.equipped !== true
     || main.system.characteristics?.umaMao?.enabled !== true || off.system.characteristics?.umaMao?.enabled !== true) return notify("InvalidTwoWeaponAttack");
+  if (!resolveAttackSkill(actor, main) || !resolveAttackSkill(actor, off)) return;
   const attackerToken = getAttackerToken(actor, combat);
   const combatant = getCombatantForToken(combat, attackerToken);
   if (!combatant || combat.combatant?.id !== combatant.id) return notify("NotActiveTurn");
   if (CombatActionService.getState(combatant).current < 1) return notify("ActionInsufficient");
   const actionGate = { spent: false };
-  await prepareWeaponAttack({ actor, item: main, targetToken, combat, actionGate });
-  await prepareWeaponAttack({ actor, item: off, targetToken, combat, actionGate, disableCharacteristics: true });
+  const waitForAttack = (item, options = {}) => new Promise((resolve) => {
+    prepareWeaponAttack({ actor, item, targetToken, combat, actionGate, ...options, onComplete: resolve })
+      .catch((error) => resolve({ status: "failed", error }));
+  });
+  const firstResult = await waitForAttack(main);
+  if (firstResult?.status !== "completed") return firstResult;
+  return waitForAttack(off, { disableCharacteristics: true });
 }
 
 export async function startWeaponAttack({ actor, item }) {
