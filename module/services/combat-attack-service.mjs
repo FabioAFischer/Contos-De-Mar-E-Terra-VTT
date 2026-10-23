@@ -268,7 +268,7 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   };
 }
 
-async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, actionGate = null, disableCharacteristics = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
+async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, actionGate = null, disableCharacteristics = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
   const fail = (key, data = {}) => {
     const result = notify(key, data);
     onComplete?.({ status: "failed" });
@@ -334,14 +334,14 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       }
     },
     onResult: async (rawAttack, attackMessage) => {
-      const sequentialCount = disableCharacteristics ? 0 : getSequentialBonusCount(combat, actor, item);
+      const sequentialCount = ignoreSequentialState ? 0 : getSequentialBonusCount(combat, actor, item);
       const pointWeak = disableCharacteristics ? false : pointWeakBonusState(combat, actor, item, attackerToken, targetToken);
       const impactSequence = disableCharacteristics ? false : impactSequenceBonusState(combat, actor, item, targetToken);
       const attack = disableCharacteristics ? rawAttack : applyRetaliar(rawAttack, item);
       if (!disableCharacteristics && shouldUnloadAfterShot(item)) await item.update({ "system.loaded": false });
       if (thrownAttack) await item.update({ "system.thrown": true });
       if (!attack.success) {
-        await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
+        if (!ignoreSequentialState) await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
         if (!disableCharacteristics) {
           await recordImpactOutcome(combat, actor, item, targetToken, { effectiveHit: false });
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, targetToken);
@@ -392,7 +392,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       }
       // A single attack may resolve against several targets. Record one
       // sequence outcome for the attack, never one outcome per target.
-      await recordSequentialOutcome(combat, actor, item, { effectiveHit: !disableCharacteristics && anyHit });
+      if (!ignoreSequentialState) await recordSequentialOutcome(combat, actor, item, { effectiveHit: anyHit });
       if (!anyHit && selectedTargets.length > 1) await updateSkillRollMessage(attackMessage, "AttackDefended");
       if (!disableCharacteristics && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || impactSequence)) {
         const authority = getActorUpdateAuthority(targetCombatant.actor);
@@ -443,7 +443,7 @@ export async function startCombinedWeaponAttack({ actor }) {
   });
   const firstResult = await waitForAttack(main);
   if (firstResult?.status !== "completed") return firstResult;
-  return waitForAttack(off, { disableCharacteristics: true });
+  return waitForAttack(off, { disableCharacteristics: true, ignoreSequentialState: true });
 }
 
 export async function startWeaponAttack({ actor, item }) {
