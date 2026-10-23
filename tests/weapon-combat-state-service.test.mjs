@@ -67,6 +67,45 @@ function delayedCombatWithState(initial = {}, delay = 5) {
   };
 }
 
+function mergePartial(target, patch) {
+  for (const [key, value] of Object.entries(patch)) {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      target[key] = mergePartial(
+        target[key] && typeof target[key] === "object" ? target[key] : {},
+        value
+      );
+    } else {
+      target[key] = structuredClone(value);
+    }
+  }
+  return target;
+}
+
+function partiallyMergedCombatWithState(initial = {}) {
+  let state = structuredClone(initial);
+  return {
+    getFlag() { return state; },
+    async setFlag(_scope, _key, value) {
+      state = mergePartial(state, value);
+      return state;
+    }
+  };
+}
+
+function combatWithUnsetFlag(initial = {}) {
+  let state = structuredClone(initial);
+  return {
+    getFlag() { return state; },
+    async setFlag(_scope, _key, value) {
+      state = structuredClone(value);
+      return state;
+    },
+    async unsetFlag() {
+      state = undefined;
+    }
+  };
+}
+
 test("Sequencial acumula acertos com a mesma arma e persiste entre turnos", async () => {
   const combat = combatWithState();
   const actor = { id: "actor-1" };
@@ -95,7 +134,7 @@ test("Erro ou defesa efetiva interrompe Sequencial; mudança de arma também", a
   await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
   await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: false });
   assert.equal(getSequentialBonusCount(combat, actor, weaponA), 0);
-  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], {});
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], { weaponId: null, streak: 0 });
   assert.equal(getSequentialBonusState(combat, actor, weaponA), false);
   await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
   await recordSequentialOutcome(combat, actor, weaponB, { effectiveHit: false });
@@ -128,7 +167,7 @@ test("falha da perícia e defesa bem-sucedida zeram Sequencial antes do próximo
   const attackFailure = compareAttackAndDefense({ success: false, degree: "normalFailure", selectedRoll: 80 }, null);
   assert.equal(attackFailure.reason, "attackFailure");
   await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: attackFailure.winner === "attack" });
-  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], {});
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], { weaponId: null, streak: 0 });
   assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
 
   await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
@@ -139,7 +178,7 @@ test("falha da perícia e defesa bem-sucedida zeram Sequencial antes do próximo
   );
   assert.equal(defended.winner, "defense");
   await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: defended.winner === "attack" });
-  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], {});
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], { weaponId: null, streak: 0 });
   assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
 
   await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
@@ -161,8 +200,47 @@ test("reset de Sequencial não é sobrescrito por uma atualização assíncrona 
     recordImpactOutcome(combat, actor, weapon, defender, { effectiveHit: true })
   ]);
 
-  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], {});
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], { weaponId: null, streak: 0 });
   assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
   await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
   assert.equal(getSequentialBonusCount(combat, actor, weapon), 1);
+});
+
+test("reset explícito sobrevive ao merge parcial e preserva outro personagem", async () => {
+  const combat = partiallyMergedCombatWithState({
+    sequences: {
+      actor1: { weaponId: "arma1", streak: 0 },
+      actor2: { weaponId: "arma2", streak: 4 }
+    }
+  });
+  const actor = { id: "actor1" };
+  const weapon = { id: "arma1" };
+
+  for (let attack = 0; attack < 8; attack += 1) {
+    await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  }
+  assert.equal(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences.actor1.streak, 8);
+
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: false });
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences.actor1, { weaponId: null, streak: 0 });
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences.actor2, { weaponId: "arma2", streak: 4 });
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
+
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: false });
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences.actor1, { weaponId: null, streak: 0 });
+
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 1);
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 2);
+});
+
+test("encerrar o combate remove o flag temporário inteiro", async () => {
+  const combat = combatWithUnsetFlag({
+    sequences: { actor1: { weaponId: "arma1", streak: 8 } },
+    impact: { actor1: { streak: 1 } },
+    conditions: { actor1: { dazed: true } }
+  });
+  await clearWeaponCombatState(combat);
+  assert.equal(combat.getFlag("contos-de-mar-e-terra", "weaponCombat"), undefined);
 });
