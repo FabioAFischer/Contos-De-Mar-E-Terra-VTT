@@ -210,6 +210,29 @@ async function chooseNoDefense(dialog) {
   await dialog.options.submit("none");
 }
 
+async function runCombinedRound(setupData, attackResults, { defendFirst = false } = {}) {
+  dialogs.length = 0;
+  skillCards.length = 0;
+  damageCards.length = 0;
+  attackRolls = [...attackResults];
+  setupData.attackerActions.current = 1;
+  const combined = startCombinedWeaponAttack({ actor: setupData.actor });
+  await Promise.resolve();
+  const firstRoll = rollDialog(dialogs[0]);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(dialogs.length, 2);
+  if (defendFirst) {
+    await dialogs[1].options.submit("dodge");
+    assert.equal(dialogs.length, 3);
+    await rollDialog(dialogs[2]);
+  }
+  await firstRoll;
+  await new Promise((resolve) => setImmediate(resolve));
+  const secondDialog = dialogs.at(-1);
+  await rollDialog(secondDialog);
+  return combined;
+}
+
 test("ataque combinado encadeia duas rolagens e consome uma ação", async () => {
   const setupData = setup({
     attackResults: [50, 1],
@@ -321,4 +344,91 @@ test("cancelar a segunda rolagem preserva a ação gasta na primeira", async () 
   assert.equal(result.status, "cancelled");
   assert.equal(dialogs.length, 2);
   assert.equal(setupData.attackerActions.current, 0);
+});
+
+test("Sequencial da principal acumula entre ataques combinados", async () => {
+  const setupData = setup({
+    mainSpecial: { sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } },
+    offSpecial: { sequencial: { enabled: true, damageFormula: "+9", damagePartIndex: 0 } }
+  });
+
+  for (const expectedStreak of [1, 2, 3]) {
+    const combined = await runCombinedRound(setupData, [50, 50]);
+    const result = await combined;
+    assert.equal(result.status, "completed");
+    assert.equal(setupData.attackerActions.current, 0);
+    assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].weaponId, setupData.main.id);
+    assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, expectedStreak);
+    assert.deepEqual(
+      damageCards[0].groups[0].components.map(({ source }) => source),
+      expectedStreak === 1 ? ["base"] : ["base", "sequencial"]
+    );
+    assert.deepEqual(damageCards[1].groups[0].components.map(({ source }) => source), ["base"]);
+  }
+});
+
+test("resultado da secundária não altera Sequencial da principal", async () => {
+  const setupData = setup({
+    mainSpecial: { sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } },
+    offSpecial: { sequencial: { enabled: true, damageFormula: "+9", damagePartIndex: 0 } }
+  });
+
+  setupData.flags.weaponCombat = { sequences: { [setupData.actor.id]: { weaponId: setupData.main.id, streak: 1 } } };
+  let combined = await runCombinedRound(setupData, [50, 80]);
+  await combined;
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 2);
+
+  combined = await runCombinedRound(setupData, [80, 50]);
+  await combined;
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 0);
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].weaponId, null);
+});
+
+test("defesa da principal zera Sequencial mesmo quando a secundária acerta", async () => {
+  const setupData = setup({
+    targetReserved: 1,
+    mainSpecial: { sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } },
+    offSpecial: { sequencial: { enabled: true, damageFormula: "+9", damagePartIndex: 0 } }
+  });
+  setupData.flags.weaponCombat = { sequences: { [setupData.actor.id]: { weaponId: setupData.main.id, streak: 2 } } };
+
+  const combined = await runCombinedRound(setupData, [50, 1, 50], { defendFirst: true });
+  await combined;
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 0);
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].weaponId, null);
+  assert.equal(damageCards.length, 1);
+  assert.deepEqual(damageCards[0].groups[0].components.map(({ source }) => source), ["base"]);
+});
+
+test("cancelar a secundária preserva a sequência resultante da principal", async () => {
+  const setupData = setup({
+    mainSpecial: { sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } }
+  });
+  setupData.flags.weaponCombat = { sequences: { [setupData.actor.id]: { weaponId: setupData.main.id, streak: 1 } } };
+  dialogs.length = 0;
+  damageCards.length = 0;
+  attackRolls = [50];
+  setupData.attackerActions.current = 1;
+  const combined = startCombinedWeaponAttack({ actor: setupData.actor });
+  await Promise.resolve();
+  await rollDialog(dialogs[0]);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 2);
+  dialogs[1].close();
+  const result = await combined;
+  assert.equal(result.status, "cancelled");
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 2);
+});
+
+test("crítico da principal inclui o bônus de Sequencial", async () => {
+  const setupData = setup({
+    mainSpecial: { sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } }
+  });
+  setupData.flags.weaponCombat = { sequences: { [setupData.actor.id]: { weaponId: setupData.main.id, streak: 1 } } };
+
+  const combined = await runCombinedRound(setupData, [1, 50]);
+  await combined;
+  assert.deepEqual(damageCards[0].groups[0].components.map(({ source }) => source), ["base", "sequencial"]);
+  assert.equal(damageCards[0].groups[0].components.every(({ critical }) => critical === true), true);
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 2);
 });
