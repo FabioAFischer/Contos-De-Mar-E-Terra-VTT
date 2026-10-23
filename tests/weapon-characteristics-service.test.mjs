@@ -6,7 +6,8 @@ import {
   additionalDamageFormulas,
   canFire,
   characteristicEnabled,
-  getVersatileDamageParts
+  getVersatileDamageParts,
+  multiplyDamageFormula
 } from "../module/services/weapon-characteristics-service.mjs";
 import { SKILL_ROLL_DEGREES } from "../module/services/skill-roll-service.mjs";
 
@@ -54,4 +55,42 @@ test("Arma de Haste adiciona dano somente quando o ataque está no alcance máxi
   assert.deepEqual(additionalDamageFormulas(item, { polearm: true }), [
     { formula: "1d8", nature: "physical", type: "impacto", criticalMax: true, source: "armaDeHaste" }
   ]);
+});
+
+test("Alcance multiplica a fórmula pelo número de espaços", () => {
+  const item = weapon({ alcance: { enabled: true, spaces: 5, damageFormula: "1d6", damagePartIndex: 0 } });
+  for (let distance = 1; distance <= 5; distance += 1) {
+    assert.deepEqual(additionalDamageFormulas(item, { reachDistance: distance }), [{
+      formula: `${distance}d6`,
+      nature: "physical",
+      type: "cortante",
+      criticalMax: true,
+      source: "alcance",
+      sourcePartIndex: 0
+    }]);
+  }
+  assert.deepEqual(additionalDamageFormulas(item, { reachDistance: 6 }), []);
+});
+
+test("Alcance multiplica dados e modificadores fixos", () => {
+  assert.equal(multiplyDamageFormula("1d6+2", 4), "4d6+8");
+  assert.equal(multiplyDamageFormula("2d4", 3), "6d4");
+});
+
+test("Alcance herda natureza e tipo da parcela vinculada, incluindo Versátil", () => {
+  const item = weapon({ alcance: { enabled: true, spaces: 5, damageFormula: "1d8", damagePartIndex: 1 } });
+  item.system.damage[1].availableTypes = ["fogo", "raio"];
+  assert.deepEqual(additionalDamageFormulas(item, { reachDistance: 3, versatileSelections: { 1: "raio" } }), [{
+    formula: "3d8",
+    nature: "magical",
+    type: "raio",
+    criticalMax: true,
+    source: "alcance",
+    sourcePartIndex: 1
+  }]);
+});
+
+test("Alcance ignora vínculo inválido sem inventar natureza ou tipo", () => {
+  const item = weapon({ alcance: { enabled: true, spaces: 5, damageFormula: "1d8", damagePartIndex: 9 } });
+  assert.deepEqual(additionalDamageFormulas(item, { reachDistance: 3 }), []);
 });
