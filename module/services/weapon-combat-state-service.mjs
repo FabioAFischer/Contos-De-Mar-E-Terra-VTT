@@ -34,18 +34,26 @@ export async function writeWeaponCombatState(combat, state) {
 function attackerKey(actor) { return actor?.id ?? "unknown"; }
 function targetKey(token) { return token?.document?.id ?? token?.id ?? "unknown"; }
 
-export function getSequentialBonusState(combat, actor, item) {
+export function getSequentialBonusCount(combat, actor, item) {
   const entry = readWeaponCombatState(combat).sequences[attackerKey(actor)];
-  return Boolean(entry?.weaponId === item?.id && entry.streak > 0);
+  const streak = Number(entry?.streak);
+  return entry?.weaponId === item?.id && Number.isInteger(streak) && streak > 0 ? streak : 0;
+}
+
+export function getSequentialBonusState(combat, actor, item) {
+  return getSequentialBonusCount(combat, actor, item) > 0;
 }
 
 export async function recordSequentialOutcome(combat, actor, item, { effectiveHit = false } = {}) {
   const state = readWeaponCombatState(combat);
   const key = attackerKey(actor);
   const previous = state.sequences[key];
-  state.sequences[key] = effectiveHit && previous?.weaponId === item?.id
-    ? { weaponId: item.id, streak: 1 }
-    : effectiveHit ? { weaponId: item.id, streak: 1 } : {};
+  if (!effectiveHit) state.sequences[key] = {};
+  else if (previous?.weaponId === item?.id) {
+    state.sequences[key] = { weaponId: item.id, streak: (Number(previous.streak) || 0) + 1 };
+  } else {
+    state.sequences[key] = { weaponId: item.id, streak: 1 };
+  }
   return writeWeaponCombatState(combat, state);
 }
 
@@ -238,4 +246,4 @@ export async function clearWeaponCombatState(combat) {
   return writeWeaponCombatState(combat, emptyWeaponCombatState());
 }
 
-export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });
+export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusCount, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });

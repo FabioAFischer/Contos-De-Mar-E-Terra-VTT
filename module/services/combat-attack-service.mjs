@@ -8,7 +8,7 @@ import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
 import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
-import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusState, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
@@ -325,7 +325,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       }
     },
     onResult: async (rawAttack, attackMessage) => {
-      const sequential = disableCharacteristics ? false : getSequentialBonusState(combat, actor, item);
+      const sequentialCount = disableCharacteristics ? 0 : getSequentialBonusCount(combat, actor, item);
       const pointWeak = disableCharacteristics ? false : pointWeakBonusState(combat, actor, item, attackerToken, targetToken);
       const impactSequence = disableCharacteristics ? false : impactSequenceBonusState(combat, actor, item, targetToken);
       const attack = disableCharacteristics ? rawAttack : applyRetaliar(rawAttack, item);
@@ -373,7 +373,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         const distanceDamage = !disableCharacteristics && characteristicEnabled(item, "alcance");
         let damage = distanceDamage ? null : sharedDamage;
         if (!damage) {
-          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequential: disableCharacteristics ? false : sequential, pointWeak: disableCharacteristics ? false : pointWeak && currentTargetToken === targetToken, polearm: disableCharacteristics ? false : polearm, reachDistance });
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: disableCharacteristics ? false : pointWeak && currentTargetToken === targetToken, polearm: disableCharacteristics ? false : polearm, reachDistance });
           if (selectedTargets.length > 1 && !distanceDamage) sharedDamage = damage;
         }
         if (!damage) continue;
