@@ -1,5 +1,6 @@
 import { DAMAGE_NATURES, DAMAGE_TYPES } from "../config/weapon-config.mjs";
 import { ARMOR_REDUCTION_RULES } from "../config/armor-config.mjs";
+import { getVersatileDamageParts, additionalDamageFormulas } from "./weapon-characteristics-service.mjs";
 
 const VALID_NATURES = new Set(DAMAGE_NATURES.map(({ key }) => key));
 const VALID_TYPES = new Set(DAMAGE_TYPES.map(({ key }) => key));
@@ -9,7 +10,10 @@ export function normalizeDamageParts(source) {
   return parts.map((part) => ({
     formula: String(part?.formula ?? "").trim(),
     nature: VALID_NATURES.has(part?.nature) ? part.nature : "physical",
-    type: VALID_TYPES.has(part?.type) ? part.type : "cortante"
+    type: VALID_TYPES.has(part?.type) ? part.type : "cortante",
+    availableTypes: Array.isArray(part?.availableTypes) ? part.availableTypes.filter((type) => VALID_TYPES.has(type)) : [],
+    ...(part?.criticalMax === false ? { criticalMax: false } : {}),
+    ...(part?.source ? { source: part.source } : {})
   }));
 }
 
@@ -51,8 +55,9 @@ function emptyFormula(item) {
   ui.notifications.warn(game.i18n.format("CMET.Damage.Notifications.EmptyFormula", { weapon: item?.name ?? "" }));
 }
 
-export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false } = {}) {
-  const parts = normalizeDamageParts(item);
+export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, pointWeak = false, polearm = false } = {}) {
+  const parts = normalizeDamageParts({ damage: getVersatileDamageParts(item, versatileSelections) });
+  parts.push(...additionalDamageFormulas(item, { critical, sequential, pointWeak, polearm }));
   if (!parts.length) {
     missingDamage(item);
     return null;
@@ -78,8 +83,8 @@ export async function rollWeaponDamage(item, { attacker = null, target = null, c
     try {
       await part.roll.evaluate();
       rolledDamage = Number(part.roll.total);
-      maximumDamage = critical ? getMaximumRollTotal(part.roll) : null;
-      if (!Number.isFinite(rolledDamage) || (critical && !Number.isFinite(maximumDamage))) throw new TypeError("Invalid damage total");
+      maximumDamage = critical && part.criticalMax !== false ? getMaximumRollTotal(part.roll) : null;
+      if (!Number.isFinite(rolledDamage) || (critical && part.criticalMax !== false && !Number.isFinite(maximumDamage))) throw new TypeError("Invalid damage total");
     } catch (error) {
       invalidFormula(item, part.formula);
       return null;
@@ -88,7 +93,7 @@ export async function rollWeaponDamage(item, { attacker = null, target = null, c
       ...part,
       rolledDamage,
       ...(critical ? { maximumDamage } : {}),
-      total: critical ? rolledDamage + maximumDamage : rolledDamage,
+      total: critical && part.criticalMax !== false ? rolledDamage + maximumDamage : rolledDamage,
       critical
     });
   }

@@ -1,4 +1,5 @@
 import { SYSTEM_ID } from "../config/constants.mjs";
+import { getAvailableActionPenalty } from "./combat-condition-service.mjs";
 
 const resetOperations = new Map();
 
@@ -19,7 +20,7 @@ function getMax(combatant) {
   if (!combatant?.actor || !Number.isInteger(max) || max < 0) {
     throw new CombatActionError("invalidActor", "CMET | Combatant sem ações máximas válidas.");
   }
-  return max;
+  return Math.max(0, max - getAvailableActionPenalty(combatant.actor));
 }
 
 function validateState(state, max) {
@@ -45,7 +46,8 @@ export const CombatActionService = Object.freeze({
     const max = getMax(combatant);
     const stored = readStoredState(combatant);
     if (!stored) return { current: max, reserved: 0, turnKey: null };
-    const state = { current: Number(stored.current), reserved: Number(stored.reserved), turnKey: stored.turnKey ?? null };
+    const reserved = Math.min(Number(stored.reserved), max);
+    const state = { current: Math.min(Number(stored.current), Math.max(0, max - reserved)), reserved, turnKey: stored.turnKey ?? null };
     validateState(state, max);
     return state;
   },
