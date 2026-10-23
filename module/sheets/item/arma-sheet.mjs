@@ -21,13 +21,13 @@ export class ArmaSheet extends CmetTabbedItemSheet {
       availableTypeOptions: DAMAGE_TYPES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: (part.availableTypes ?? []).includes(entry.key) })),
       availableTypes: Array.isArray(part.availableTypes) ? part.availableTypes : []
     }));
-    const damagePartOptions = damageParts.map((part) => ({
+    const damagePartOptions = (characteristicKey) => damageParts.map((part) => ({
       value: part.index,
       label: game.i18n.format("CMET.Weapon.Fields.DamagePartOption", {
         index: part.index + 1,
         formula: part.formula || game.i18n.localize("CMET.Weapon.Fields.NoDamageFormula")
       }),
-      selected: Number(system.characteristics?.alcance?.damagePartIndex) === part.index
+      selected: Number(system.characteristics?.[characteristicKey]?.damagePartIndex) === part.index
     }));
     return {
       ...context,
@@ -46,7 +46,9 @@ export class ArmaSheet extends CmetTabbedItemSheet {
           label: game.i18n.localize(parameter.label),
           suffix: parameter.suffix ? game.i18n.localize(parameter.suffix) : "",
           value: system.characteristics[entry.key][parameter.key],
-          options: entry.key === "alcance" && parameter.key === "damagePartIndex" ? damagePartOptions : parameter.options
+          options: ["alcance", "sequencial"].includes(entry.key) && parameter.key === "damagePartIndex"
+            ? damagePartOptions(entry.key)
+            : parameter.options
         }))
       }))
     };
@@ -76,11 +78,12 @@ export class ArmaSheet extends CmetTabbedItemSheet {
       const update = { "system.damage": damage };
       if (button.dataset.damageAction === "remove") {
         if (!Number.isInteger(index) || index < 0 || index >= damage.length) return;
-        const linkedIndex = Number(this.element.querySelector('[name="system.characteristics.alcance.damagePartIndex"]')?.value);
         damage.splice(index, 1);
-        if (Number.isInteger(linkedIndex)) {
+        for (const characteristicKey of ["alcance", "sequencial"]) {
+          const linkedIndex = Number(this.element.querySelector(`[name="system.characteristics.${characteristicKey}.damagePartIndex"]`)?.value);
+          if (!Number.isInteger(linkedIndex)) continue;
           const nextIndex = damage.length === 0 ? 0 : index < linkedIndex ? linkedIndex - 1 : Math.min(linkedIndex, damage.length - 1);
-          update["system.characteristics.alcance.damagePartIndex"] = nextIndex;
+          update[`system.characteristics.${characteristicKey}.damagePartIndex`] = nextIndex;
         }
       }
       this._damageUpdate = this._damageUpdate.catch(() => {}).then(() => this.item.update(update));

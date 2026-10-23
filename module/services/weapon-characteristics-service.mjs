@@ -57,18 +57,32 @@ export function multiplyDamageFormula(formula, multiplier) {
 export function additionalDamageFormulas(item, { critical = false, sequential = false, pointWeak = false, polearm = false, reachDistance = null, versatileSelections = {} } = {}) {
   const characteristics = item?.system?.characteristics ?? {};
   const additions = [];
-  const add = (key, enabled) => {
-    const formula = characteristics[key]?.damageFormula?.trim();
-    if (enabled && formula) additions.push({ formula, nature: "physical", type: "impacto", criticalMax: true, source: key });
+  const damageParts = getVersatileDamageParts(item, versatileSelections);
+  const linkedDamagePart = (key) => {
+    const characteristic = characteristics[key];
+    const configuredIndex = Object.prototype.hasOwnProperty.call(characteristic ?? {}, "damagePartIndex")
+      ? Number(characteristic.damagePartIndex)
+      : 0;
+    if (!Number.isInteger(configuredIndex) || configuredIndex < 0) return null;
+    return damageParts[configuredIndex] ? { ...damageParts[configuredIndex], sourcePartIndex: configuredIndex } : null;
   };
-  add("sequencial", sequential);
+  const add = (key, enabled, { inheritLinkedPart = false } = {}) => {
+    const characteristic = characteristics[key];
+    const formula = characteristic?.damageFormula?.trim();
+    if (!enabled || !characteristicEnabled(item, key) || !formula) return;
+    if (!inheritLinkedPart) {
+      additions.push({ formula, nature: "physical", type: "impacto", criticalMax: true, source: key });
+      return;
+    }
+    const linkedPart = linkedDamagePart(key);
+    if (!linkedPart || !VALID_DAMAGE_NATURES.has(linkedPart.nature) || !VALID_DAMAGE_TYPES.has(linkedPart.type)) return;
+    additions.push({ formula, nature: linkedPart.nature, type: linkedPart.type, criticalMax: true, source: key, sourcePartIndex: linkedPart.sourcePartIndex });
+  };
   add("pontoFraco", pointWeak);
   add("armaDeHaste", polearm);
   const alcance = characteristics.alcance;
   const distance = Number(reachDistance);
-  const damageParts = getVersatileDamageParts(item, versatileSelections);
-  const damagePartIndex = Number(alcance?.damagePartIndex);
-  const linkedPart = Number.isInteger(damagePartIndex) && damagePartIndex >= 0 ? damageParts[damagePartIndex] : null;
+  const linkedPart = linkedDamagePart("alcance");
   const reachFormula = alcance?.damageFormula?.trim();
   const maximum = Number(alcance?.spaces);
   if (alcance?.enabled === true
@@ -84,9 +98,10 @@ export function additionalDamageFormulas(item, { critical = false, sequential = 
       type: linkedPart.type,
       criticalMax: true,
       source: "alcance",
-      sourcePartIndex: damagePartIndex
+      sourcePartIndex: linkedPart.sourcePartIndex
     });
   }
+  add("sequencial", sequential, { inheritLinkedPart: true });
   const execute = characteristics.executar?.damageFormula?.trim();
   if (critical && characteristicEnabled(item, "executar") && execute) {
     additions.push({ formula: execute, nature: "physical", type: "impacto", criticalMax: false, source: "executar" });
