@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { arePotentialAdversaries, clearWeaponCombatState, didCrossWeaponReach, getLateralEnemies, getSequentialBonusCount, getSequentialBonusState, getTokenSide, isLaterallyAdjacent, measureTokenDistanceAtPosition, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, clearWeaponCombatState, didCrossWeaponReach, getLateralEnemies, getSequentialBonusCount, getSequentialBonusState, getTokenSide, isLaterallyAdjacent, measureTokenDistanceAtPosition, recordImpactOutcome, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
+import { compareAttackAndDefense } from "../module/services/combat-attack-service.mjs";
 
 globalThis.canvas = { grid: { size: 100, measurePath: ([origin, target]) => ({ spaces: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) / 100, distance: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) }) } };
 globalThis.game = { system: { id: "contos-de-mar-e-terra" } };
@@ -53,6 +54,19 @@ function combatWithState(initial = {}) {
   };
 }
 
+function delayedCombatWithState(initial = {}, delay = 5) {
+  let state = structuredClone(initial);
+  return {
+    getFlag() { return state; },
+    setFlag(_scope, _key, value) {
+      return new Promise((resolve) => setTimeout(() => {
+        state = structuredClone(value);
+        resolve(state);
+      }, delay));
+    }
+  };
+}
+
 test("Sequencial acumula acertos com a mesma arma e persiste entre turnos", async () => {
   const combat = combatWithState();
   const actor = { id: "actor-1" };
@@ -62,6 +76,7 @@ test("Sequencial acumula acertos com a mesma arma e persiste entre turnos", asyn
   assert.equal(getSequentialBonusState(combat, actor, weaponA), false);
   await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
   assert.equal(getSequentialBonusCount(combat, actor, weaponA), 1);
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], { weaponId: weaponA.id, streak: 1 });
   assert.equal(getSequentialBonusState(combat, actor, weaponA), true);
   await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
   assert.equal(getSequentialBonusCount(combat, actor, weaponA), 2);
@@ -80,6 +95,7 @@ test("Erro ou defesa efetiva interrompe Sequencial; mudança de arma também", a
   await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
   await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: false });
   assert.equal(getSequentialBonusCount(combat, actor, weaponA), 0);
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], {});
   assert.equal(getSequentialBonusState(combat, actor, weaponA), false);
   await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
   await recordSequentialOutcome(combat, actor, weaponB, { effectiveHit: false });
@@ -98,4 +114,55 @@ test("Sequencial não depende do alvo e é apagado ao terminar o combate", async
   await clearWeaponCombatState(combat);
   assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
   assert.equal(getSequentialBonusState(combat, actor, weapon), false);
+});
+
+test("falha da perícia e defesa bem-sucedida zeram Sequencial antes do próximo acerto", async () => {
+  const combat = combatWithState();
+  const actor = { id: "actor-1" };
+  const weapon = { id: "weapon-a" };
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 3);
+
+  const attackFailure = compareAttackAndDefense({ success: false, degree: "normalFailure", selectedRoll: 80 }, null);
+  assert.equal(attackFailure.reason, "attackFailure");
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: attackFailure.winner === "attack" });
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], {});
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
+
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 1);
+  const defended = compareAttackAndDefense(
+    { success: true, degree: "normalSuccess", selectedRoll: 50 },
+    { success: true, degree: "goodSuccess", selectedRoll: 40 }
+  );
+  assert.equal(defended.winner, "defense");
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: defended.winner === "attack" });
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], {});
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
+
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 1);
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 2);
+});
+
+test("reset de Sequencial não é sobrescrito por uma atualização assíncrona antiga", async () => {
+  const combat = delayedCombatWithState({
+    sequences: { "actor-1": { weaponId: "weapon-a", streak: 3 } }
+  });
+  const actor = { id: "actor-1" };
+  const weapon = { id: "weapon-a" };
+  const defender = { document: { id: "target-1", x: 100, y: 0, rotation: 0 } };
+
+  await Promise.all([
+    recordSequentialOutcome(combat, actor, weapon, { effectiveHit: false }),
+    recordImpactOutcome(combat, actor, weapon, defender, { effectiveHit: true })
+  ]);
+
+  assert.deepEqual(combat.getFlag("contos-de-mar-e-terra", "weaponCombat").sequences[actor.id], {});
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  assert.equal(getSequentialBonusCount(combat, actor, weapon), 1);
 });
