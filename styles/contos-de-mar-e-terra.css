@@ -338,9 +338,15 @@
 .application.cmet-configured-item-sheet .cmet-config-tab--description > label { color: var(--cmet-text-muted); font-size: .8rem; text-transform: uppercase; }
 .application.cmet-configured-item-sheet .cmet-config-tab--description textarea { flex: 1 0 320px; width: 100%; min-height: 320px; padding: 12px; resize: vertical; }
 .application.cmet-configured-item-sheet .cmet-config-parameter input[type="number"] { width: 64px; }
-.application.cmet-weapon-sheet .cmet-damage-list { display: grid; gap: 6px; }
-.application.cmet-weapon-sheet .cmet-damage-row { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(100px, 1fr) minmax(100px, 1fr) 28px; align-items: center; gap: 6px; }
-.application.cmet-weapon-sheet .cmet-damage-row input[type="text"], .application.cmet-weapon-sheet .cmet-damage-row select { width: 100%; min-width: 0; padding: 4px 5px; }
+.application.cmet-weapon-sheet .cmet-damage-list { display: grid; gap: 8px; min-width: 0; }
+.application.cmet-weapon-sheet .cmet-damage-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; padding: 7px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 4px; }
+.application.cmet-weapon-sheet .cmet-damage-main-row { display: grid; grid-template-columns: minmax(82px, 1.1fr) minmax(105px, 1fr) minmax(115px, 1fr) 30px; align-items: center; gap: 6px; min-width: 0; }
+.application.cmet-weapon-sheet .cmet-damage-main-row input[type="text"], .application.cmet-weapon-sheet .cmet-damage-main-row select { width: 100%; min-width: 0; padding: 4px 5px; }
+.application.cmet-weapon-sheet .cmet-damage-versatile { min-width: 0; margin: 0; padding: 5px 7px 6px; border: 1px solid var(--cmet-border-soft); }
+.application.cmet-weapon-sheet .cmet-damage-versatile legend { padding: 0 4px; color: var(--cmet-text-muted); font-size: .72rem; }
+.application.cmet-weapon-sheet .cmet-damage-versatile-options { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 12px; min-width: 0; }
+.application.cmet-weapon-sheet .cmet-damage-versatile-options label { display: inline-flex; align-items: center; gap: 4px; min-width: max-content; color: var(--cmet-text); font-size: .76rem; }
+.application.cmet-weapon-sheet .cmet-damage-versatile-options input[type="checkbox"] { width: auto; min-width: 16px; flex: 0 0 auto; }
 .application.cmet-weapon-sheet .cmet-damage-remove { width: 28px; min-height: 28px; padding: 2px; color: var(--cmet-text-muted); background: transparent; border: 1px solid transparent; cursor: pointer; }
 .application.cmet-weapon-sheet .cmet-damage-remove:hover { color: var(--cmet-danger); border-color: var(--cmet-danger); }
 .application.cmet-weapon-sheet .cmet-damage-add { align-self: flex-start; margin-top: 8px; padding: 5px 8px; color: var(--cmet-text); background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border); border-radius: 4px; cursor: pointer; }

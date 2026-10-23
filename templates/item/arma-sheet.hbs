@@ -21,10 +21,24 @@
       <div class="cmet-damage-list">
         {{#each damageParts}}
           <div class="cmet-damage-row" data-damage-row data-damage-index="{{index}}">
-            <input class="cmet-damage-formula" name="system.damage.{{index}}.formula" type="text" value="{{formula}}" placeholder="2d8" aria-label="{{localize 'CMET.Weapon.Fields.DamageFormula'}}" />
-            <select class="cmet-damage-nature" name="system.damage.{{index}}.nature" aria-label="{{localize 'CMET.Weapon.Fields.DamageNature'}}">{{#each natureOptions}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
-            <select class="cmet-damage-type" name="system.damage.{{index}}.type" aria-label="{{localize 'CMET.Weapon.Fields.DamageType'}}">{{#each typeOptions}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
-            <button type="button" class="cmet-damage-remove" data-damage-action="remove" data-damage-index="{{index}}" title="{{localize 'CMET.Actions.Remove'}}" aria-label="{{localize 'CMET.Actions.Remove'}}">🗑</button>
+            <div class="cmet-damage-main-row">
+              <input class="cmet-damage-formula" name="system.damage.{{index}}.formula" type="text" value="{{formula}}" placeholder="2d8" aria-label="{{localize 'CMET.Weapon.Fields.DamageFormula'}}" />
+              <select class="cmet-damage-nature" name="system.damage.{{index}}.nature" aria-label="{{localize 'CMET.Weapon.Fields.DamageNature'}}">{{#each natureOptions}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+              <select class="cmet-damage-type" name="system.damage.{{index}}.type" aria-label="{{localize 'CMET.Weapon.Fields.DamageType'}}">{{#each typeOptions}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+              <button type="button" class="cmet-damage-remove" data-damage-action="remove" data-damage-index="{{index}}" title="{{localize 'CMET.Actions.Remove'}}" aria-label="{{localize 'CMET.Actions.Remove'}}">🗑</button>
+            </div>
+            {{#if @root.versatileEnabled}}
+              <fieldset class="cmet-damage-versatile">
+                <legend>{{localize "CMET.Weapon.Fields.AvailableDamageTypes"}}</legend>
+                <div class="cmet-damage-versatile-options">
+                  {{#each availableTypeOptions}}
+                    <label><input type="checkbox" name="system.damage.{{../index}}.availableTypes" value="{{key}}" data-damage-available-type {{#if selected}}checked{{/if}} />{{label}}</label>
+                  {{/each}}
+                </div>
+              </fieldset>
+            {{else}}
+              {{#each availableTypes}}<input type="hidden" value="{{this}}" data-damage-available-type-preserved />{{/each}}
+            {{/if}}
           </div>
         {{else}}
           <p class="cmet-damage-empty">{{localize "CMET.Weapon.Fields.NoDamageParts"}}</p>
