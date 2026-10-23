@@ -26,7 +26,7 @@ let emitted = [];
 let dialogInstances = [];
 let socketHandler = null;
 
-function createActor({ synthetic = false } = {}) {
+function createActor({ synthetic = false, maxActions = 1 } = {}) {
   const weapon = {
     id: weaponId,
     type: "arma",
@@ -43,7 +43,7 @@ function createActor({ synthetic = false } = {}) {
     id: synthetic ? "synthetic-reactor" : "actor-reactor",
     name: "Tyra",
     system: {
-      actions: { max: 1 },
+      actions: { max: maxActions },
       hands: { mainHand: weaponId, offHand: "" },
       attributes: { combate: { skills: { armasDeHaste: 50 } } }
     },
@@ -130,6 +130,17 @@ function configureClient({ actor, combat, user, users = [owner, mover, gm], synt
     }
   };
   const actors = includeActorInWorld ? new Collection([[actor.id, actor]]) : new Collection();
+  const translations = {
+    "CMET.CombatAttack.ReactionTitle": "Ataque de reação — Arma de Haste",
+    "CMET.CombatAttack.ReactionEntering": "entrando",
+    "CMET.CombatAttack.ReactionLeaving": "saindo",
+    "CMET.CombatAttack.UnknownEnemy": "o inimigo",
+    "CMET.CombatAttack.UnknownWeapon": "Arma de Haste"
+  };
+  const prompts = {
+    "CMET.CombatAttack.ReactionPromptSingular": "{enemyName} está {movementDirection} do alcance de {weaponName}.\n\nVocê possui {reservedActions} ação reservada.\n\nDeseja gastar 1 ação reservada para realizar um ataque reativo?",
+    "CMET.CombatAttack.ReactionPromptPlural": "{enemyName} está {movementDirection} do alcance de {weaponName}.\n\nVocê possui {reservedActions} ações reservadas.\n\nDeseja gastar 1 ação reservada para realizar um ataque reativo?"
+  };
   globalThis.game = {
     user,
     users,
@@ -137,7 +148,10 @@ function configureClient({ actor, combat, user, users = [owner, mover, gm], synt
     combat,
     system: { id: "contos-de-mar-e-terra" },
     socket,
-    i18n: { localize: (key) => key, format: (key, data) => `${key}:${JSON.stringify(data)}` }
+    i18n: {
+      localize: (key) => translations[key] ?? key,
+      format: (key, data) => (prompts[key] ?? key).replace(/\{(\w+)\}/g, (_match, name) => data[name] ?? "undefined")
+    }
   };
   globalThis.canvas = {
     scene: { id: sceneId },
@@ -174,8 +188,8 @@ function movementFromTo(fromX, toX) {
   };
 }
 
-async function detectReaction({ synthetic = false, reserved = 1, moverUser = mover, includeActorInWorld = true, fromX = 300, toX = 500 } = {}) {
-  const actor = createActor({ synthetic });
+async function detectReaction({ synthetic = false, reserved = 1, maxActions = 1, moverUser = mover, includeActorInWorld = true, fromX = 300, toX = 500 } = {}) {
+  const actor = createActor({ synthetic, maxActions });
   const combat = createCombat({ actor, reserved, movingX: toX });
   const client = configureClient({ actor, combat, user: moverUser, includeActorInWorld });
   await handlePolearmMovement(client.movingToken.document, movementFromTo(fromX, toX), {}, moverUser);
@@ -231,6 +245,12 @@ test("entrega via socket e renderiza exatamente um DialogV2", async () => {
   await Promise.resolve();
   assert.equal(dialogInstances.length, 1);
   assert.equal(dialogInstances[0].renderCount, 1);
+  assert.deepEqual(dialogInstances[0].options.classes, ["cmet-polearm-reaction-dialog"]);
+  assert.equal(dialogInstances[0].options.position.width, 360);
+  assert.match(dialogInstances[0].options.content, /Inimigo/);
+  assert.match(dialogInstances[0].options.content, /Alabarda/);
+  assert.match(dialogInstances[0].options.content, /1 ação reservada\./);
+  assert.doesNotMatch(dialogInstances[0].options.content, /undefined/);
   globalThis.game.user = mover;
   dialogInstances[0].close();
   await requestPromise;
@@ -247,6 +267,19 @@ test("ignorar a reação não consome ação reservada", async () => {
   dialogInstances[0].close();
   await requestPromise;
   assert.equal(result.client.reactorCombatant.getFlag("contos-de-mar-e-terra", "actions").reserved, 1);
+});
+
+test("exibe ações reservadas no plural", async () => {
+  const result = await detectReaction({ reserved: 4, maxActions: 4 });
+  registerCombatAttackSocket();
+  globalThis.game.user = owner;
+  const requestPromise = processPolearmReactionRequest(result.request);
+  await Promise.resolve();
+  assert.match(dialogInstances[0].options.content, /4 ações reservadas\./);
+  assert.doesNotMatch(dialogInstances[0].options.content, /undefined/);
+  globalThis.game.user = mover;
+  dialogInstances[0].close();
+  await requestPromise;
 });
 
 test("Reagir abre a rolagem de ataque e consome uma ação reservada", async () => {

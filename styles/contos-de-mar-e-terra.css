@@ -401,3 +401,67 @@
 @media (max-width: 560px) {
   .application.cmet-ability-sheet .cmet-ability-fields { grid-template-columns: 1fr; }
 }
+
+.application.cmet-polearm-reaction-dialog {
+  --cmet-bg: #11171a;
+  --cmet-surface: #192226;
+  --cmet-border: #3b5057;
+  --cmet-border-soft: #2b3a40;
+  --cmet-text: #e7e2d8;
+  --cmet-text-muted: #9faeb2;
+  --cmet-accent: #4f8f92;
+  --cmet-accent-bright: #69b4b3;
+  min-width: 320px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.application.cmet-polearm-reaction-dialog .window-header {
+  background: var(--cmet-surface);
+  border-color: var(--cmet-border-soft);
+  color: var(--cmet-text);
+}
+
+.application.cmet-polearm-reaction-dialog .window-content {
+  padding: 12px 14px 8px;
+  background: var(--cmet-bg);
+  color: var(--cmet-text);
+}
+
+.application.cmet-polearm-reaction-dialog .cmet-polearm-reaction-content {
+  color: var(--cmet-text);
+  font-size: .9rem;
+  line-height: 1.4;
+}
+
+.application.cmet-polearm-reaction-dialog .cmet-polearm-reaction-content p {
+  margin: 0 0 8px;
+}
+
+.application.cmet-polearm-reaction-dialog .cmet-polearm-reaction-content p:last-child {
+  margin-bottom: 0;
+  color: var(--cmet-text-muted);
+  font-size: .84rem;
+}
+
+.application.cmet-polearm-reaction-dialog .dialog-buttons {
+  display: flex;
+  gap: 8px;
+  padding: 4px 14px 12px;
+}
+
+.application.cmet-polearm-reaction-dialog .dialog-buttons button {
+  flex: 1 1 0;
+  min-height: 2.1rem;
+  border-color: var(--cmet-border);
+  color: var(--cmet-text);
+}
+
+.application.cmet-polearm-reaction-dialog .dialog-buttons button:first-child {
+  border-color: var(--cmet-accent);
+  background: color-mix(in srgb, var(--cmet-accent) 22%, transparent);
+}
+
+.application.cmet-polearm-reaction-dialog .dialog-buttons button:hover {
+  border-color: var(--cmet-accent-bright);
+  color: var(--cmet-text);
+}

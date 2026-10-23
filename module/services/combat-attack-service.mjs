@@ -556,6 +556,13 @@ function waitForPolearmReaction({ enemyName, weaponName, movementDirection, rese
   const { DialogV2 } = foundry.applications.api;
   const movementDirectionKey = movementDirection === "entering" ? "ReactionEntering" : "ReactionLeaving";
   const movementDirectionLabel = game.i18n.localize(`CMET.CombatAttack.${movementDirectionKey}`);
+  const promptKey = reservedActions === 1 ? "ReactionPromptSingular" : "ReactionPromptPlural";
+  const content = game.i18n.format(`CMET.CombatAttack.${promptKey}`, {
+    enemyName,
+    movementDirection: movementDirectionLabel,
+    weaponName,
+    reservedActions
+  });
   return new Promise((resolve) => {
     let settled = false;
     let timeoutId;
@@ -568,7 +575,9 @@ function waitForPolearmReaction({ enemyName, weaponName, movementDirection, rese
     };
     const dialog = new DialogV2({
       window: { title: game.i18n.localize("CMET.CombatAttack.ReactionTitle") },
-      content: `<p>${game.i18n.format("CMET.CombatAttack.ReactionPrompt", { enemyName, weaponName, movementDirection: movementDirectionLabel, reservedActions })}</p>`,
+      classes: ["cmet-polearm-reaction-dialog"],
+      position: { width: 360 },
+      content: `<div class="cmet-polearm-reaction-content">${content.split("\n\n").map((paragraph) => `<p>${paragraph}</p>`).join("")}</div>`,
       buttons: [
         { action: "react", label: game.i18n.localize("CMET.CombatAttack.React"), type: "button", callback: () => "react" },
         { action: "ignore", label: game.i18n.localize("CMET.CombatAttack.Ignore"), type: "button", callback: () => "ignore" }
@@ -615,6 +624,11 @@ function sendPolearmReactionResponse(message, choice) {
   debugPolearm("Resposta de reação enviada", { requestId: message.requestId, requesterId: message.requesterId, choice });
 }
 
+function reactionDisplayName(value, fallback) {
+  const name = typeof value === "string" ? value.trim() : "";
+  return name || fallback;
+}
+
 export async function processPolearmReactionRequest(message) {
   if (message?.targetUserId !== game.user.id) return;
   if (reactionRequests.has(message.requestId)) {
@@ -633,6 +647,8 @@ export async function processPolearmReactionRequest(message) {
   const reactorToken = reactorCombatant?.token?.object ?? getTokenObject(message.reactorTokenId, message.sceneId);
   const targetToken = getTokenObject(message.targetTokenId, message.sceneId);
   const item = reactorActor?.items?.get?.(message.weaponId) ?? reactorActor?.items?.find?.((entry) => entry.id === message.weaponId) ?? null;
+  const enemyName = reactionDisplayName(message.enemyName || targetToken?.name || targetToken?.document?.name, game.i18n.localize("CMET.CombatAttack.UnknownEnemy"));
+  const weaponName = reactionDisplayName(message.weaponName || item?.name, game.i18n.localize("CMET.CombatAttack.UnknownWeapon"));
   const responsible = reactorActor && getActorUpdateAuthority(reactorActor);
   const combatantTokenId = reactorCombatant?.tokenId ?? reactorCombatant?.token?.id ?? reactorToken?.document?.id ?? reactorToken?.id;
   const reservedActions = reactorCombatant ? CombatActionService.getState(reactorCombatant).reserved : 0;
@@ -655,7 +671,7 @@ export async function processPolearmReactionRequest(message) {
 
   reactionRequests.add(message.requestId);
   try {
-    const choice = await waitForPolearmReaction({ enemyName: message.enemyName, weaponName: message.weaponName, movementDirection: message.movementDirection, reservedActions, requestId: message.requestId });
+    const choice = await waitForPolearmReaction({ enemyName, weaponName, movementDirection: message.movementDirection, reservedActions, requestId: message.requestId });
     sendPolearmReactionResponse(message, choice);
     if (choice === "react") await startReactiveWeaponAttack({ actor: reactorActor, item, targetToken, reactorCombatant, reactorToken });
   } finally {
@@ -766,8 +782,8 @@ export async function handlePolearmMovement(tokenDocument, movement, _operation,
       sceneId: getSceneId(tokenDocument),
       weaponId: weapon.id,
       targetTokenId: tokenDocument.id,
-      enemyName: tokenDocument.name ?? movingToken.name ?? "",
-      weaponName: weapon.name,
+      enemyName: reactionDisplayName(tokenDocument.name || movingToken.name, game.i18n.localize("CMET.CombatAttack.UnknownEnemy")),
+      weaponName: reactionDisplayName(weapon.name, game.i18n.localize("CMET.CombatAttack.UnknownWeapon")),
       movementDirection,
       reservedActions
     };
