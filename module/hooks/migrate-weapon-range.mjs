@@ -1,5 +1,6 @@
 const SYSTEM_ID = "contos-de-mar-e-terra";
 const MIGRATION_FLAG = "damageAndRangeMigrated";
+const POLEARM_MIGRATION_FLAG = "polearmReachMigrated";
 
 function legacyDamageParts(source) {
   const current = source.system?.damage;
@@ -15,20 +16,34 @@ function legacyDamageParts(source) {
 }
 
 async function migrateWeapon(item) {
-  if (item.type !== "arma" || item.getFlag(SYSTEM_ID, MIGRATION_FLAG)) return;
+  if (item.type !== "arma") return;
 
   const source = item.toObject(true);
-  const legacy = source.system?.range;
-  const current = source.system?.characteristics?.alcance;
-  const hasNewConfiguration = Boolean(current?.enabled || current?.spaces);
-  const update = { [`flags.${SYSTEM_ID}.${MIGRATION_FLAG}`]: true };
-  const damage = legacyDamageParts(source);
-  if (damage) update["system.damage"] = damage;
-  if (!legacy?.ranged && !damage) return;
-  if (!hasNewConfiguration) {
-    update["system.characteristics.alcance.enabled"] = true;
-    update["system.characteristics.alcance.spaces"] = legacy.max ?? 0;
+  const update = {};
+
+  if (!item.getFlag(SYSTEM_ID, MIGRATION_FLAG)) {
+    const legacy = source.system?.range;
+    const current = source.system?.characteristics?.alcance;
+    const hasNewConfiguration = Boolean(current?.enabled || current?.spaces);
+    const damage = legacyDamageParts(source);
+    if (damage) update["system.damage"] = damage;
+    if (legacy?.ranged && !hasNewConfiguration) {
+      update["system.characteristics.alcance.enabled"] = true;
+      update["system.characteristics.alcance.spaces"] = legacy.max ?? 0;
+    }
+    update[`flags.${SYSTEM_ID}.${MIGRATION_FLAG}`] = true;
   }
+
+  if (!item.getFlag(SYSTEM_ID, POLEARM_MIGRATION_FLAG)) {
+    const polearm = source.system?.characteristics?.armaDeHaste;
+    const oldReach = source.system?.characteristics?.alcance;
+    if (polearm?.enabled === true && Number(polearm.spaces) <= 0 && Number(oldReach?.spaces) > 0) {
+      update["system.characteristics.armaDeHaste.spaces"] = Number(oldReach.spaces);
+    }
+    update[`flags.${SYSTEM_ID}.${POLEARM_MIGRATION_FLAG}`] = true;
+  }
+
+  if (!Object.keys(update).length) return;
 
   // A marca impede que um alcance desativado voluntariamente seja reativado no próximo login.
   await item.update(update);

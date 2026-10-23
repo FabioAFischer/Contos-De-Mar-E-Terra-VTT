@@ -66,6 +66,13 @@
       "AttackHit": "ATAQUE ACERTOU",
       "AttackMiss": "ATAQUE ERROU",
       "AttackDefended": "ATAQUE DEFENDIDO",
+      "ReactionTitle": "Ataque de reação — Arma de Haste",
+      "ReactionPrompt": "O inimigo {{enemyName}} está {{movementDirection}} do alcance de {{weaponName}}.\n\nVocê possui {{reservedActions}} ação(ões) reservada(s).\n\nDeseja gastar 1 ação reservada para realizar um ataque reativo?",
+      "ReactionEntering": "entrando",
+      "ReactionLeaving": "saindo",
+      "React": "Reagir",
+      "Ignore": "Ignorar",
+      "ChooseDamageType": "Escolha o tipo de dano deste componente",
       "AbsoluteTie": "Empate favorece a defesa",
       "Notifications": {
         "CombatRequired": "É necessário um combate ativo.",
@@ -78,7 +85,16 @@
         "ActionInsufficient": "Ação insuficiente.",
         "ReservedActionInsufficient": "Ação reservada insuficiente.",
         "InvalidActionState": "O estado de ações do combate é inválido.",
-        "InvalidWeaponSkill": "A arma não possui uma perícia válida para ataque."
+        "InvalidWeaponSkill": "A arma não possui uma perícia válida para ataque.",
+        "WeaponNotThrowable": "Esta arma não pode ser arremessada.",
+        "ThrowRangeExceeded": "O alvo está além do alcance de arremesso.",
+        "WeaponRangeExceeded": "O alvo está além do alcance da arma.",
+        "WeaponNotWielded": "A arma precisa estar empunhada.",
+        "ItemUnavailable": "O item da ação não está mais disponível.",
+        "AttackUnavailable": "Não foi possível iniciar o ataque. Verifique o combate, o turno, o alvo e a configuração da arma.",
+        "InvalidTwoWeaponAttack": "É necessário empunhar duas armas de uma mão válidas.",
+        "WeaponNotLoaded": "A arma precisa ser recarregada antes de atacar.",
+        "ReloadOnlyOnTurn": "A recarga só pode ser feita no turno ativo."
       }
     },
     "Fields": {
@@ -110,6 +126,9 @@
       "armadura": "Armadura"
     },
     "Inventory": {
+      "Hands": "Empunhadura",
+      "MainHand": "Mão principal",
+      "OffHand": "Mão secundária",
       "Weapons": "Armas",
       "CreateWeapon": "+ Nova Arma",
       "NoWeapons": "Nenhuma arma adicionada.",
@@ -200,10 +219,12 @@
       "CortarProjeteis": "Cortar projéteis"
     },
     "Weapon": {
+      "States": { "Loaded": "Carregada", "Unloaded": "Descarregada", "Thrown": "Arremessada" },
       "Tabs": {
         "Configuration": "Configuração",
         "Description": "Descrição"
       },
+      "Actions": { "Reload": "Recarregar", "Recover": "Recuperar", "Throw": "Arremessar", "CombinedAttack": "Atacar com as duas armas" },
       "Fields": {
         "Quality": "Qualidade",
         "CombatSkill": "Perícia de Combate",
@@ -217,7 +238,9 @@
         "NoDamageParts": "Nenhuma parcela de dano.",
         "RangeMax": "Espaços de alcance",
         "Spaces": "espaços",
-        "Description": "Descrição"
+        "Description": "Descrição",
+        "AvailableDamageTypes": "Tipos disponíveis (Versátil)",
+        "ThrowRange": "Alcance de arremesso"
       },
       "Sections": {
         "Damage": "Dano",
@@ -299,7 +322,8 @@
       "Biography": "Biografia"
     },
     "Notifications": {
-      "SkillPoolExceeded": "Não existem pontos suficientes para essa distribuição."
+      "SkillPoolExceeded": "Não existem pontos suficientes para essa distribuição.",
+      "DuplicateHandWeapon": "A mesma arma não pode ocupar as duas mãos."
     },
     "Validation": {
       "OverPool": "Distribuição acima do pool disponível. Reduza alguma perícia antes de continuar."

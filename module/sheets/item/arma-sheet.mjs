@@ -12,17 +12,21 @@ export class ArmaSheet extends CmetTabbedItemSheet {
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     const system = this.item.system;
+    const versatileEnabled = Boolean(system.characteristics?.versatil?.enabled);
     return {
       ...context,
       item: this.item,
       system,
+      versatileEnabled,
       qualities: WEAPON_QUALITIES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === system.quality })),
       combatSkills: WEAPON_COMBAT_SKILLS.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === system.combatSkill })),
       damageParts: (Array.isArray(system.damage) ? system.damage : []).map((part, index) => ({
         ...part,
         index,
         natureOptions: DAMAGE_NATURES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === part.nature })),
-        typeOptions: DAMAGE_TYPES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === part.type }))
+        typeOptions: DAMAGE_TYPES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === part.type })),
+        availableTypeOptions: DAMAGE_TYPES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: (part.availableTypes ?? []).includes(entry.key) })),
+        availableTypes: Array.isArray(part.availableTypes) ? part.availableTypes : []
       })),
       characteristics: WEAPON_CHARACTERISTICS.map((entry) => ({
         ...entry,
@@ -44,13 +48,16 @@ export class ArmaSheet extends CmetTabbedItemSheet {
       const damage = this.#readDamageRows(this.element);
       this._damageUpdate = this._damageUpdate.catch(() => {}).then(() => this.item.update({ "system.damage": damage }));
     }, { capture: true, signal: this._weaponRenderListeners.signal });
+    this.element.addEventListener("change", (event) => {
+      if (event.target.name === "system.characteristics.versatil.enabled") this.render();
+    }, { signal: this._weaponRenderListeners.signal });
     this.element.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-damage-action]");
       if (!button) return;
       event.preventDefault();
       const damage = this.#readDamageRows(this.element);
       const index = Number(button.dataset.damageIndex);
-      if (button.dataset.damageAction === "add") damage.push({ formula: "1d6", nature: "physical", type: "cortante" });
+      if (button.dataset.damageAction === "add") damage.push({ formula: "1d6", nature: "physical", type: "cortante", availableTypes: [] });
       if (button.dataset.damageAction === "remove" && Number.isInteger(index) && index >= 0 && index < damage.length) damage.splice(index, 1);
       else if (button.dataset.damageAction === "remove") return;
       this._damageUpdate = this._damageUpdate.catch(() => {}).then(() => this.item.update({ "system.damage": damage }));
@@ -62,7 +69,10 @@ export class ArmaSheet extends CmetTabbedItemSheet {
     return [...root.querySelectorAll("[data-damage-row]")].map((row) => ({
       formula: row.querySelector("[data-damage-formula], .cmet-damage-formula")?.value?.trim() ?? "",
       nature: row.querySelector("[data-damage-nature], .cmet-damage-nature")?.value ?? "physical",
-      type: row.querySelector("[data-damage-type], .cmet-damage-type")?.value ?? "cortante"
+      type: row.querySelector("[data-damage-type], .cmet-damage-type")?.value ?? "cortante",
+      availableTypes: [...row.querySelectorAll("[data-damage-available-type]:checked")].map((input) => input.value).concat(
+        [...row.querySelectorAll("[data-damage-available-type-preserved]")].map((input) => input.value)
+      )
     }));
   }
 }

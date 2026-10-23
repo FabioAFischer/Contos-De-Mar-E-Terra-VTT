@@ -13,6 +13,7 @@ export class PersonagemData extends TypeDataModel {
       attributes: new SchemaField(createAttributesSchema()),
       resources: new SchemaField({ vida: new SchemaField({ value: new NumberField({ initial: 10, min: 0, integer: true }) }), mana: new SchemaField({ value: new NumberField({ initial: 10, min: 0, integer: true }) }), sanidade: new SchemaField({ value: new NumberField({ initial: 10, min: 0, integer: true }) }) }),
       actions: new SchemaField({ max: new NumberField({ initial: 1, min: 0, integer: true }) }),
+      hands: new SchemaField({ mainHand: new StringField({ initial: "", blank: true }), offHand: new StringField({ initial: "", blank: true }) }),
       currency: new SchemaField({ gyllen: new NumberField({ initial: 0, min: 0, integer: true }) }),
       biography: new SchemaField({ historia: new StringField({ initial: "", blank: true }), personalidade: new StringField({ initial: "", blank: true }), ideais: new StringField({ initial: "", blank: true }), defeitos: new StringField({ initial: "", blank: true }) })
     };

@@ -64,6 +64,13 @@
       "AttackHit": "ATTACK HIT",
       "AttackMiss": "ATTACK MISSED",
       "AttackDefended": "ATTACK DEFENDED",
+      "ReactionTitle": "Reaction Attack — Polearm",
+      "ReactionPrompt": "The enemy {{enemyName}} is {{movementDirection}} the reach of {{weaponName}}.\n\nYou have {{reservedActions}} reserved action(s).\n\nDo you want to spend 1 reserved action to make a reaction attack?",
+      "ReactionEntering": "entering",
+      "ReactionLeaving": "leaving",
+      "React": "React",
+      "Ignore": "Ignore",
+      "ChooseDamageType": "Choose the damage type for this component",
       "AbsoluteTie": "A tie favors the defense",
       "Notifications": {
         "CombatRequired": "An active combat is required.",
@@ -76,7 +83,16 @@
         "ActionInsufficient": "Not enough actions.",
         "ReservedActionInsufficient": "Not enough reserved actions.",
         "InvalidActionState": "The combat action state is invalid.",
-        "InvalidWeaponSkill": "The weapon does not have a valid attack skill."
+        "InvalidWeaponSkill": "The weapon does not have a valid attack skill.",
+        "WeaponNotThrowable": "This weapon cannot be thrown.",
+        "ThrowRangeExceeded": "The target is beyond the throwing range.",
+        "WeaponRangeExceeded": "The target is beyond the weapon's reach.",
+        "WeaponNotWielded": "The weapon must be wielded.",
+        "ItemUnavailable": "The item for this action is no longer available.",
+        "AttackUnavailable": "The attack could not be started. Check the combat, turn, target, and weapon configuration.",
+        "InvalidTwoWeaponAttack": "You must wield two valid one-handed weapons.",
+        "WeaponNotLoaded": "The weapon must be reloaded before attacking.",
+        "ReloadOnlyOnTurn": "Reloading is only possible during the active turn."
       }
     },
     "Fields": {
@@ -108,6 +124,9 @@
       "armadura": "Armor"
     },
     "Inventory": {
+      "Hands": "Hands",
+      "MainHand": "Main hand",
+      "OffHand": "Off hand",
       "Weapons": "Weapons",
       "CreateWeapon": "+ New Weapon",
       "NoWeapons": "No weapons added.",
@@ -198,6 +217,7 @@
       "CortarProjeteis": "Cut Projectiles"
     },
     "Weapon": {
+      "States": { "Loaded": "Loaded", "Unloaded": "Unloaded", "Thrown": "Thrown" },
       "Tabs": { "Configuration": "Configuration", "Description": "Description" },
       "Fields": {
         "Quality": "Quality",
@@ -212,8 +232,11 @@
         "NoDamageParts": "No damage parts.",
         "RangeMax": "Range spaces",
         "Spaces": "spaces",
-        "Description": "Description"
+        "Description": "Description",
+        "AvailableDamageTypes": "Available types (Versatile)",
+        "ThrowRange": "Throw range"
       },
+      "Actions": { "Reload": "Reload", "Recover": "Recover", "Throw": "Throw", "CombinedAttack": "Attack with both weapons" },
       "Sections": { "Damage": "Damage", "Characteristics": "Characteristics" }
     },
     "Armor": {
@@ -285,7 +308,7 @@
       "Spells": "Spells",
       "Biography": "Biography"
     },
-    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution." },
+    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution.", "DuplicateHandWeapon": "The same weapon cannot occupy both hands." },
     "Rolling": {
       "SkillTest": "Skill Test",
       "BaseValue": "Base value",
