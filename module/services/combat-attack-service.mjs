@@ -6,7 +6,7 @@ import { openSkillRollDialog } from "../dialogs/skill-roll-dialog.mjs";
 import { DamageRollService } from "./damage-roll-service.mjs";
 import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
-import { getActorUpdateAuthority, isAuthoritativeGM } from "./combat-authority-service.mjs";
+import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
 import { getLateralEnemies, getSequentialBonusState, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
@@ -24,7 +24,7 @@ let hooksRegistered = false;
 const reactionRequests = new Set();
 const pendingReactionRequests = new Map();
 const activeReactionDialogs = new Map();
-const DEBUG_POLEARM_REACTION = false;
+const DEBUG_POLEARM_REACTION = true;
 
 function debugPolearm(message, data = {}) {
   if (DEBUG_POLEARM_REACTION) console.debug(`[HASTE] ${message}`, data);
@@ -110,6 +110,13 @@ function isEffectivelyWielded(actor, item) {
     return hands.mainHand === item.id && !hands.offHand;
   }
   return hands.mainHand === item.id || hands.offHand === item.id;
+}
+
+function isEligiblePolearmWeapon(actor, item) {
+  return item?.type === "arma"
+    && item.system?.equipped === true
+    && characteristicEnabled(item, "armaDeHaste")
+    && isEffectivelyWielded(actor, item);
 }
 
 async function chooseVersatileSelections(item) {
@@ -261,11 +268,11 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   };
 }
 
-async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, actionGate = null, disableCharacteristics = false }) {
+async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, actionGate = null, disableCharacteristics = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null }) {
   if (!canFire(item)) return notify("WeaponNotLoaded");
   if (characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
-  const attackerToken = getAttackerToken(actor, combat);
-  const attackerCombatant = getCombatantForToken(combat, attackerToken);
+  const attackerToken = providedAttackerToken ?? getAttackerToken(actor, combat);
+  const attackerCombatant = providedAttackerCombatant ?? getCombatantForToken(combat, attackerToken);
   if (!attackerCombatant) return notify("AttackerNotInCombat");
   if (!reaction && combat.combatant?.id !== attackerCombatant.id) return notify("NotActiveTurn");
   if (!reaction && !actionGate && CombatActionService.getState(attackerCombatant).current < 1) return notify("ActionInsufficient");
@@ -376,10 +383,10 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   });
 }
 
-export async function startReactiveWeaponAttack({ actor, item, targetToken }) {
+export async function startReactiveWeaponAttack({ actor, item, targetToken, reactorCombatant = null, reactorToken = null }) {
   const combat = game.combat;
-  if (!combat?.started || !characteristicEnabled(item, "armaDeHaste") || !isEffectivelyWielded(actor, item)) return;
-  return prepareWeaponAttack({ actor, item, targetToken, combat, reaction: true });
+  if (!combat?.started || !isEligiblePolearmWeapon(actor, item)) return;
+  return prepareWeaponAttack({ actor, item, targetToken, combat, reaction: true, attackerCombatant: reactorCombatant, attackerToken: reactorToken });
 }
 
 export async function startThrownWeaponAttack({ actor, item }) {
@@ -551,9 +558,11 @@ function waitForPolearmReaction({ enemyName, weaponName, movementDirection, rese
   const movementDirectionLabel = game.i18n.localize(`CMET.CombatAttack.${movementDirectionKey}`);
   return new Promise((resolve) => {
     let settled = false;
+    let timeoutId;
     const finish = (choice) => {
       if (settled) return;
       settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
       activeReactionDialogs.delete(requestId);
       resolve(choice);
     };
@@ -570,15 +579,27 @@ function waitForPolearmReaction({ enemyName, weaponName, movementDirection, rese
     dialog.addEventListener("render", () => debugPolearm("Popup renderizado", { requestId, enemyName, weaponName, reservedActions }), { once: true });
     dialog.addEventListener("close", () => finish("ignore"), { once: true });
     dialog.render({ force: true });
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       if (settled) return;
       dialog.close();
       finish("ignore");
     }, 30000);
+    timeoutId?.unref?.();
   });
 }
 
-function getTokenObject(tokenId) {
+function getCombatantById(combat, combatantId) {
+  return combat?.combatants?.get?.(combatantId)
+    ?? combat?.combatants?.find?.((combatant) => combatant.id === combatantId)
+    ?? null;
+}
+
+function getSceneId(document) {
+  return document?.parent?.id ?? document?.scene?.id ?? null;
+}
+
+function getTokenObject(tokenId, sceneId = null) {
+  if (sceneId && globalThis.canvas?.scene?.id && globalThis.canvas.scene.id !== sceneId) return null;
   return globalThis.canvas?.tokens?.get(tokenId)
     ?? globalThis.canvas?.tokens?.placeables?.find((token) => (token.document?.id ?? token.id) === tokenId)
     ?? null;
@@ -591,9 +612,10 @@ function sendPolearmReactionResponse(message, choice) {
     requestId: message.requestId,
     choice
   });
+  debugPolearm("Resposta de reação enviada", { requestId: message.requestId, requesterId: message.requesterId, choice });
 }
 
-async function processPolearmReactionRequest(message) {
+export async function processPolearmReactionRequest(message) {
   if (message?.targetUserId !== game.user.id) return;
   if (reactionRequests.has(message.requestId)) {
     debugPolearm("Solicitação duplicada ignorada", { requestId: message.requestId });
@@ -605,39 +627,54 @@ async function processPolearmReactionRequest(message) {
     sendPolearmReactionResponse(message, "ignore");
     return;
   }
-  const actor = game.actors.get(message.actorId);
-  const item = actor?.items.get(message.weaponId);
-  const targetToken = getTokenObject(message.targetTokenId);
-  const combatant = game.combat.combatants.find((entry) => entry.actor?.id === actor?.id);
-  const responsible = actor && getActorUpdateAuthority(actor);
-  if (!actor || !item || !targetToken || !combatant || responsible?.id !== game.user.id
-    || !characteristicEnabled(item, "armaDeHaste") || !isEffectivelyWielded(actor, item)
-    || CombatActionService.getState(combatant).reserved < 1) {
-    debugPolearm("Reação rejeitada: dados ou autoridade inválidos", { requestId: message.requestId, actorId: message.actorId, responsibleUserId: responsible?.id });
+  const combat = game.combat;
+  const reactorCombatant = getCombatantById(combat, message.reactorCombatantId);
+  const reactorActor = reactorCombatant?.actor ?? null;
+  const reactorToken = reactorCombatant?.token?.object ?? getTokenObject(message.reactorTokenId, message.sceneId);
+  const targetToken = getTokenObject(message.targetTokenId, message.sceneId);
+  const item = reactorActor?.items?.get?.(message.weaponId) ?? reactorActor?.items?.find?.((entry) => entry.id === message.weaponId) ?? null;
+  const responsible = reactorActor && getActorUpdateAuthority(reactorActor);
+  const combatantTokenId = reactorCombatant?.tokenId ?? reactorCombatant?.token?.id ?? reactorToken?.document?.id ?? reactorToken?.id;
+  const reservedActions = reactorCombatant ? CombatActionService.getState(reactorCombatant).reserved : 0;
+  if (!reactorCombatant || !reactorActor || !reactorToken || !targetToken || !item
+    || (message.reactorTokenId && combatantTokenId !== message.reactorTokenId)
+    || responsible?.id !== game.user.id
+    || !isEligiblePolearmWeapon(reactorActor, item)
+    || reservedActions < 1) {
+    debugPolearm("Reação rejeitada: dados ou autoridade inválidos", {
+      requestId: message.requestId,
+      reactorCombatantId: message.reactorCombatantId,
+      reactorTokenId: message.reactorTokenId,
+      actorId: reactorActor?.id,
+      responsibleUserId: responsible?.id,
+      reservedActions
+    });
     sendPolearmReactionResponse(message, "ignore");
     return;
   }
 
   reactionRequests.add(message.requestId);
   try {
-    const choice = await waitForPolearmReaction({ enemyName: message.enemyName, weaponName: message.weaponName, movementDirection: message.movementDirection, reservedActions: CombatActionService.getState(combatant).reserved, requestId: message.requestId });
+    const choice = await waitForPolearmReaction({ enemyName: message.enemyName, weaponName: message.weaponName, movementDirection: message.movementDirection, reservedActions, requestId: message.requestId });
     sendPolearmReactionResponse(message, choice);
-    if (choice === "react") await startReactiveWeaponAttack({ actor, item, targetToken });
+    if (choice === "react") await startReactiveWeaponAttack({ actor: reactorActor, item, targetToken, reactorCombatant, reactorToken });
   } finally {
     reactionRequests.delete(message.requestId);
   }
 }
 
-function shouldProcessPolearmMovement(user) {
+function shouldProcessPolearmMovement(tokenDocument, user) {
   const movementUserId = typeof user === "string" ? user : user?.id;
-  const authoritativeGM = isAuthoritativeGM();
-  if (authoritativeGM || Array.from(game.users ?? []).some((entry) => entry.active && entry.isGM)) {
-    return authoritativeGM;
+  const movementSceneId = getSceneId(tokenDocument);
+  const currentSceneId = globalThis.canvas?.scene?.id;
+  if (movementSceneId && currentSceneId && movementSceneId !== currentSceneId) {
+    debugPolearm("Movimento ignorado: cliente está em outra cena", { movementSceneId, currentSceneId, tokenId: tokenDocument?.id });
+    return false;
   }
-  return !movementUserId || movementUserId === game.user.id;
+  return Boolean(movementUserId && movementUserId === game.user.id);
 }
 
-async function handlePolearmMovement(tokenDocument, movement, _operation, user = null) {
+export async function handlePolearmMovement(tokenDocument, movement, _operation, user = null) {
   // Foundry v14 supplies movement.origin/destination/waypoints and the requesting user here.
   // Movement classification must come from this API object, not legacy operation flags.
   const combat = game.combat;
@@ -653,7 +690,7 @@ async function handlePolearmMovement(tokenDocument, movement, _operation, user =
     debugPolearm("Movimento ignorado: forçado ou teleporte", { tokenId: tokenDocument?.id, movementId: movement.id });
     return;
   }
-  if (!shouldProcessPolearmMovement(user)) {
+  if (!shouldProcessPolearmMovement(tokenDocument, user)) {
     debugPolearm("Movimento ignorado: cliente sem autoridade de processamento", { tokenId: tokenDocument?.id, movementId: movement.id });
     return;
   }
@@ -672,28 +709,29 @@ async function handlePolearmMovement(tokenDocument, movement, _operation, user =
     if (processedActors.has(reactorActor?.id)) continue;
     const reactorToken = reactorCombatant.token?.object;
     if (!reactorActor || !reactorToken || reactorToken === movingToken || Number(reactorToken.document?.disposition ?? 0) === Number(tokenDocument.disposition ?? 0)) continue;
-    const weapon = reactorActor.items.find((item) => item.type === "arma" && item.system?.equipped === true && item.system?.characteristics?.armaDeHaste?.enabled === true);
+    const weapon = reactorActor.items.find((item) => isEligiblePolearmWeapon(reactorActor, item));
     if (!weapon) {
       debugPolearm("Combatente ignorado: Arma de Haste não encontrada", { actorId: reactorActor.id });
       continue;
     }
-    if (CombatActionService.getState(reactorCombatant).reserved < 1) {
+    const reservedActions = CombatActionService.getState(reactorCombatant).reserved;
+    if (reservedActions < 1) {
       debugPolearm("Combatente ignorado: sem ações reservadas", { actorId: reactorActor.id });
       continue;
     }
-    debugPolearm("Combatente reativo encontrado", { actorId: reactorActor.id, tokenId: reactorToken.document?.id, weaponId: weapon.id });
+    debugPolearm("Combatente reativo encontrado", { actorId: reactorActor.id, tokenId: reactorToken.document?.id, weaponId: weapon.id, reservedActions });
     const maximum = Number(weapon.system.characteristics.armaDeHaste?.spaces);
     if (!Number.isFinite(maximum) || maximum <= 0) {
       debugPolearm("Combatente ignorado: alcance inválido", { actorId: reactorActor.id, maximum });
       continue;
     }
-    const reservedActions = CombatActionService.getState(reactorCombatant).reserved;
     let movementDirection = null;
     const crossed = path.slice(1).some((position, index) => {
       const beforeDistance = measureTokenDistanceAtPosition(reactorToken, tokenDocument, path[index]);
       const afterDistance = measureTokenDistanceAtPosition(reactorToken, tokenDocument, position);
       debugPolearm("Distâncias calculadas", { actorId: reactorActor.id, beforeDistance, afterDistance, maximum });
       if (!didCrossWeaponReach(beforeDistance, afterDistance, maximum)) return false;
+      debugPolearm("Cruzamento de alcance confirmado", { actorId: reactorActor.id, beforeDistance, afterDistance, maximum });
       movementDirection = afterDistance > maximum ? "leaving" : "entering";
       return true;
     });
@@ -707,13 +745,15 @@ async function handlePolearmMovement(tokenDocument, movement, _operation, user =
       debugPolearm("Reação ignorada: usuário responsável não encontrado", { actorId: reactorActor.id });
       continue;
     }
-    const requestKey = `${combat.id}:${tokenDocument.uuid ?? tokenDocument.id}:${origin.x},${origin.y}->${destination.x},${destination.y}:${reactorActor.id}`;
+    debugPolearm("Autoridade escolhida", { actorId: reactorActor.id, responsibleUserId: responsible.id, sceneId: getSceneId(tokenDocument) });
+    const requestKey = `${combat.id}:${movement.id ?? "movement"}:${tokenDocument.uuid ?? tokenDocument.id}:${origin.x},${origin.y}->${destination.x},${destination.y}:${reactorActor.id}`;
     if ([...pendingReactionRequests.values()].includes(requestKey)) continue;
     const requestId = foundry.utils.randomID();
     pendingReactionRequests.set(requestId, requestKey);
-    setTimeout(() => {
+    const requestTimeout = setTimeout(() => {
       if (pendingReactionRequests.get(requestId) === requestKey) pendingReactionRequests.delete(requestId);
     }, 35000);
+    requestTimeout?.unref?.();
     const request = {
       type: "combat-polearm-reaction-request",
       targetUserId: responsible.id,
@@ -721,6 +761,9 @@ async function handlePolearmMovement(tokenDocument, movement, _operation, user =
       requestId,
       combatId: combat.id,
       actorId: reactorActor.id,
+      reactorCombatantId: reactorCombatant.id,
+      reactorTokenId: reactorCombatant.tokenId ?? reactorToken.document?.id ?? reactorToken.id,
+      sceneId: getSceneId(tokenDocument),
       weaponId: weapon.id,
       targetTokenId: tokenDocument.id,
       enemyName: tokenDocument.name ?? movingToken.name ?? "",
@@ -758,6 +801,7 @@ export function registerCombatAttackSocket() {
       return;
     }
     if (message?.type === "combat-polearm-reaction-request") {
+      debugPolearm("Mensagem socket recebida", { requestId: message.requestId, targetUserId: message.targetUserId });
       await processPolearmReactionRequest(message);
       return;
     }
