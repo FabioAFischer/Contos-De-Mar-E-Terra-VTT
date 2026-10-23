@@ -54,7 +54,14 @@
             <label class="cmet-config-check"><input type="checkbox" name="system.characteristics.{{key}}.enabled" {{#if parameters.length}}data-parameter-toggle{{/if}} {{#if enabled}}checked{{/if}} />{{label}}</label>
             {{#if enabled}}
               {{#each parameters}}
-                <label class="cmet-config-parameter">{{label}}<span class="cmet-config-inline"><input name="system.characteristics.{{../key}}.{{key}}" type="{{field}}" {{#if (eq field "number")}}min="0" step="1"{{/if}} value="{{value}}" />{{#if suffix}}<span>{{suffix}}</span>{{/if}}</span></label>
+                <label class="cmet-config-parameter">{{label}}<span class="cmet-config-inline">
+                  {{#if (eq field "select")}}
+                    <select name="system.characteristics.{{../key}}.{{key}}">{{#each options}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+                  {{else}}
+                    <input name="system.characteristics.{{../key}}.{{key}}" type="{{field}}" {{#if (eq field "number")}}min="0" step="1"{{/if}} value="{{value}}" />
+                  {{/if}}
+                  {{#if suffix}}<span>{{suffix}}</span>{{/if}}
+                </span></label>
               {{/each}}
             {{/if}}
           </div>

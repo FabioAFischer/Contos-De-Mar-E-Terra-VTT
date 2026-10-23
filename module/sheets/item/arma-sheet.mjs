@@ -13,6 +13,22 @@ export class ArmaSheet extends CmetTabbedItemSheet {
     const context = await super._prepareContext(options);
     const system = this.item.system;
     const versatileEnabled = Boolean(system.characteristics?.versatil?.enabled);
+    const damageParts = (Array.isArray(system.damage) ? system.damage : []).map((part, index) => ({
+      ...part,
+      index,
+      natureOptions: DAMAGE_NATURES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === part.nature })),
+      typeOptions: DAMAGE_TYPES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === part.type })),
+      availableTypeOptions: DAMAGE_TYPES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: (part.availableTypes ?? []).includes(entry.key) })),
+      availableTypes: Array.isArray(part.availableTypes) ? part.availableTypes : []
+    }));
+    const damagePartOptions = damageParts.map((part) => ({
+      value: part.index,
+      label: game.i18n.format("CMET.Weapon.Fields.DamagePartOption", {
+        index: part.index + 1,
+        formula: part.formula || game.i18n.localize("CMET.Weapon.Fields.NoDamageFormula")
+      }),
+      selected: Number(system.characteristics?.alcance?.damagePartIndex) === part.index
+    }));
     return {
       ...context,
       item: this.item,
@@ -20,19 +36,18 @@ export class ArmaSheet extends CmetTabbedItemSheet {
       versatileEnabled,
       qualities: WEAPON_QUALITIES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === system.quality })),
       combatSkills: WEAPON_COMBAT_SKILLS.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === system.combatSkill })),
-      damageParts: (Array.isArray(system.damage) ? system.damage : []).map((part, index) => ({
-        ...part,
-        index,
-        natureOptions: DAMAGE_NATURES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === part.nature })),
-        typeOptions: DAMAGE_TYPES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === part.type })),
-        availableTypeOptions: DAMAGE_TYPES.map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: (part.availableTypes ?? []).includes(entry.key) })),
-        availableTypes: Array.isArray(part.availableTypes) ? part.availableTypes : []
-      })),
+      damageParts,
       characteristics: WEAPON_CHARACTERISTICS.map((entry) => ({
         ...entry,
         label: game.i18n.localize(entry.label),
         enabled: Boolean(system.characteristics[entry.key].enabled),
-        parameters: (entry.parameters ?? []).map((parameter) => ({ ...parameter, label: game.i18n.localize(parameter.label), suffix: parameter.suffix ? game.i18n.localize(parameter.suffix) : "", value: system.characteristics[entry.key][parameter.key] }))
+        parameters: (entry.parameters ?? []).map((parameter) => ({
+          ...parameter,
+          label: game.i18n.localize(parameter.label),
+          suffix: parameter.suffix ? game.i18n.localize(parameter.suffix) : "",
+          value: system.characteristics[entry.key][parameter.key],
+          options: entry.key === "alcance" && parameter.key === "damagePartIndex" ? damagePartOptions : parameter.options
+        }))
       }))
     };
   }
@@ -58,9 +73,17 @@ export class ArmaSheet extends CmetTabbedItemSheet {
       const damage = this.#readDamageRows(this.element);
       const index = Number(button.dataset.damageIndex);
       if (button.dataset.damageAction === "add") damage.push({ formula: "1d6", nature: "physical", type: "cortante", availableTypes: [] });
-      if (button.dataset.damageAction === "remove" && Number.isInteger(index) && index >= 0 && index < damage.length) damage.splice(index, 1);
-      else if (button.dataset.damageAction === "remove") return;
-      this._damageUpdate = this._damageUpdate.catch(() => {}).then(() => this.item.update({ "system.damage": damage }));
+      const update = { "system.damage": damage };
+      if (button.dataset.damageAction === "remove") {
+        if (!Number.isInteger(index) || index < 0 || index >= damage.length) return;
+        const linkedIndex = Number(this.element.querySelector('[name="system.characteristics.alcance.damagePartIndex"]')?.value);
+        damage.splice(index, 1);
+        if (Number.isInteger(linkedIndex)) {
+          const nextIndex = damage.length === 0 ? 0 : index < linkedIndex ? linkedIndex - 1 : Math.min(linkedIndex, damage.length - 1);
+          update["system.characteristics.alcance.damagePartIndex"] = nextIndex;
+        }
+      }
+      this._damageUpdate = this._damageUpdate.catch(() => {}).then(() => this.item.update(update));
       await this._damageUpdate;
     }, { signal: this._weaponRenderListeners.signal });
   }
