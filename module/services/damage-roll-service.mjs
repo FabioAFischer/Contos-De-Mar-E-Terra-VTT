@@ -4,16 +4,25 @@ import { getVersatileDamageParts, additionalDamageFormulas } from "./weapon-char
 
 const VALID_NATURES = new Set(DAMAGE_NATURES.map(({ key }) => key));
 const VALID_TYPES = new Set(DAMAGE_TYPES.map(({ key }) => key));
+const DAMAGE_SOURCE_LABELS = Object.freeze({
+  base: "CMET.Damage.Sources.Base",
+  alcance: "CMET.Damage.Sources.Alcance",
+  sequencial: "CMET.Damage.Sources.Sequencial",
+  armaDeHaste: "CMET.Damage.Sources.ArmaDeHaste",
+  pontoFraco: "CMET.Damage.Sources.PontoFraco",
+  executar: "CMET.Damage.Sources.Executar"
+});
 
 export function normalizeDamageParts(source) {
   const parts = Array.isArray(source?.system?.damage) ? source.system.damage : Array.isArray(source?.damage) ? source.damage : [];
-  return parts.map((part) => ({
+  return parts.map((part, index) => ({
     formula: String(part?.formula ?? "").trim(),
     nature: VALID_NATURES.has(part?.nature) ? part.nature : "physical",
     type: VALID_TYPES.has(part?.type) ? part.type : "cortante",
     availableTypes: Array.isArray(part?.availableTypes) ? part.availableTypes.filter((type) => VALID_TYPES.has(type)) : [],
+    source: part?.source ?? "base",
+    sourcePartIndex: Number.isInteger(part?.sourcePartIndex) ? part.sourcePartIndex : index,
     ...(part?.criticalMax === false ? { criticalMax: false } : {}),
-    ...(part?.source ? { source: part.source } : {})
   }));
 }
 
@@ -106,6 +115,11 @@ function localizedDamageLabel(namespace, key) {
   return entry ? game.i18n.localize(entry.label) : key;
 }
 
+function localizedDamageSource(source) {
+  const key = DAMAGE_SOURCE_LABELS[source] ?? source;
+  return DAMAGE_SOURCE_LABELS[source] ? game.i18n.localize(key) : source;
+}
+
 export async function sendDamageToChat(result, { attackerName, defenderName, item, damageApplication = null } = {}) {
   const { renderTemplate } = foundry.applications.handlebars;
   const presentation = {
@@ -119,7 +133,15 @@ export async function sendDamageToChat(result, { attackerName, defenderName, ite
         ...group,
         natureLabel: localizedDamageLabel(DAMAGE_NATURES, group.nature),
         typeLabel: localizedDamageLabel(DAMAGE_TYPES, group.type),
-        components: group.components.map(({ formula, total, rolledDamage, maximumDamage, critical }) => ({ formula, total, rolledDamage, maximumDamage, critical })),
+        components: group.components.map(({ formula, total, rolledDamage, maximumDamage, critical, source }) => ({
+          formula,
+          total,
+          rolledDamage,
+          maximumDamage,
+          critical,
+          source,
+          sourceLabel: localizedDamageSource(source)
+        })),
         reductions: reductions.map((reduction) => ({
           ...reduction,
           displayLabel: reduction.key === "revestimento"

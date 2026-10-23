@@ -30,12 +30,12 @@
         <summary>{{localize "CMET.Damage.Details"}}</summary>
         <div class="cmet-damage-detail-section">
           <h4>{{localize "CMET.Damage.Rolling"}}</h4>
-          {{#each components}}<div class="cmet-damage-detail-row"><span>{{formula}}</span><strong>{{rolledDamage}}</strong></div>{{/each}}
+          {{#each components}}<div class="cmet-damage-detail-row"><span><b>{{sourceLabel}}</b><small>{{formula}}</small></span><strong>{{rolledDamage}}</strong></div>{{/each}}
         </div>
         {{#if ../critical}}
           <div class="cmet-damage-detail-section">
             <h4>{{localize "CMET.Damage.CriticalBonus"}}</h4>
-            {{#each components}}<div class="cmet-damage-detail-row"><span>{{localize "CMET.Damage.MaximumOf"}} {{formula}}</span><strong>+{{maximumDamage}}</strong></div>{{/each}}
+            {{#each components}}<div class="cmet-damage-detail-row"><span><b>{{sourceLabel}}</b><small>{{localize "CMET.Damage.MaximumOf"}} {{formula}}</small></span><strong>+{{maximumDamage}}</strong></div>{{/each}}
             <div class="cmet-damage-detail-row"><span>{{localize "CMET.Damage.RawComponent"}}</span><strong>{{rawDamage}}</strong></div>
           </div>
         {{/if}}

@@ -184,6 +184,14 @@
       "CriticalBonus": "Critical bonus",
       "MaximumOf": "Maximum of",
       "RawComponent": "Component raw damage",
+      "Sources": {
+        "Base": "Base damage",
+        "Alcance": "Range",
+        "Sequencial": "Sequential",
+        "ArmaDeHaste": "Polearm",
+        "PontoFraco": "Weak point",
+        "Executar": "Execute"
+      },
       "Notifications": {
         "InvalidFormula": "Weapon \"{weapon}\" has an invalid damage formula: {formula}.",
         "EmptyFormula": "Weapon \"{weapon}\" has a damage part without a formula.",
