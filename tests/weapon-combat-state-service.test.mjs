@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { arePotentialAdversaries, didCrossWeaponReach, getLateralEnemies, getTokenSide, isLaterallyAdjacent, measureTokenDistanceAtPosition } from "../module/services/weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, clearWeaponCombatState, didCrossWeaponReach, getLateralEnemies, getSequentialBonusState, getTokenSide, isLaterallyAdjacent, measureTokenDistanceAtPosition, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
 
 globalThis.canvas = { grid: { size: 100, measurePath: ([origin, target]) => ({ spaces: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) / 100, distance: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) }) } };
+globalThis.game = { system: { id: "contos-de-mar-e-terra" } };
+globalThis.foundry = { utils: { deepClone: (value) => structuredClone(value) } };
 
 const token = (x, y, width = 1, height = 1, rotation = 0) => ({ document: { id: `${x}:${y}`, x, y, width, height, rotation } });
 
@@ -41,4 +43,49 @@ test("mede distância pela borda dos tokens, respeitando token grande", () => {
   const largeTarget = token(300, 0, 2, 2);
   assert.equal(measureTokenDistanceAtPosition(attacker, largeTarget), 2);
   assert.equal(measureTokenDistanceAtPosition(attacker, largeTarget, { x: 100, y: 0 }), 0);
+});
+
+function combatWithState(initial = {}) {
+  let state = structuredClone(initial);
+  return {
+    getFlag() { return state; },
+    async setFlag(_scope, _key, value) { state = structuredClone(value); return state; }
+  };
+}
+
+test("Sequencial depende do acerto anterior, não acumula e persiste entre turnos", async () => {
+  const combat = combatWithState();
+  const actor = { id: "actor-1" };
+  const weaponA = { id: "weapon-a" };
+  const weaponB = { id: "weapon-b" };
+  assert.equal(getSequentialBonusState(combat, actor, weaponA), false);
+  await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
+  assert.equal(getSequentialBonusState(combat, actor, weaponA), true);
+  await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
+  assert.equal(getSequentialBonusState(combat, actor, weaponA), true);
+  assert.equal(getSequentialBonusState(combat, actor, weaponB), false);
+});
+
+test("Erro ou defesa efetiva interrompe Sequencial; mudança de arma também", async () => {
+  const combat = combatWithState();
+  const actor = { id: "actor-1" };
+  const weaponA = { id: "weapon-a" };
+  const weaponB = { id: "weapon-b" };
+  await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
+  await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: false });
+  assert.equal(getSequentialBonusState(combat, actor, weaponA), false);
+  await recordSequentialOutcome(combat, actor, weaponA, { effectiveHit: true });
+  await recordSequentialOutcome(combat, actor, weaponB, { effectiveHit: false });
+  assert.equal(getSequentialBonusState(combat, actor, weaponA), false);
+  assert.equal(getSequentialBonusState(combat, actor, weaponB), false);
+});
+
+test("Sequencial não depende do alvo e é apagado ao terminar o combate", async () => {
+  const combat = combatWithState();
+  const actor = { id: "actor-1" };
+  const weapon = { id: "weapon-a" };
+  await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
+  assert.equal(getSequentialBonusState(combat, actor, weapon), true);
+  await clearWeaponCombatState(combat);
+  assert.equal(getSequentialBonusState(combat, actor, weapon), false);
 });

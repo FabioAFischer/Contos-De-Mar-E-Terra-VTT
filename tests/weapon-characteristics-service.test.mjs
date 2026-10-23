@@ -94,3 +94,21 @@ test("Alcance ignora vínculo inválido sem inventar natureza ou tipo", () => {
   const item = weapon({ alcance: { enabled: true, spaces: 5, damageFormula: "1d8", damagePartIndex: 9 } });
   assert.deepEqual(additionalDamageFormulas(item, { reachDistance: 3 }), []);
 });
+
+test("Sequencial só aplica o bônus após acerto anterior e herda a parcela vinculada", () => {
+  const item = weapon({ sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } });
+  assert.deepEqual(additionalDamageFormulas(item, { sequential: false }), []);
+  assert.deepEqual(additionalDamageFormulas(item, { sequential: true }), [{
+    formula: "+1",
+    nature: "physical",
+    type: "cortante",
+    criticalMax: true,
+    source: "sequencial",
+    sourcePartIndex: 0
+  }]);
+});
+
+test("Sequencial desabilitado nunca concede bônus mesmo com histórico", () => {
+  const item = weapon({ sequencial: { enabled: false, damageFormula: "+1", damagePartIndex: 0 } });
+  assert.deepEqual(additionalDamageFormulas(item, { sequential: true }), []);
+});
