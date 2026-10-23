@@ -8,7 +8,7 @@ import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
 import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
-import { getLateralEnemies, getSequentialBonusState, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusState, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
@@ -719,12 +719,17 @@ export async function handlePolearmMovement(tokenDocument, movement, _operation,
   }
   const origin = path[0];
   const destination = path[path.length - 1];
+  const movingCombatant = combat.combatants.find((combatant) => combatant.tokenId === tokenDocument.id || combatant.token?.object === movingToken);
+  if (!movingCombatant) {
+    debugPolearm("Movimento ignorado: token não está no combate", { tokenId: tokenDocument.id, movementId: movement.id });
+    return;
+  }
   const processedActors = new Set();
   for (const reactorCombatant of combat.combatants) {
     const reactorActor = reactorCombatant.actor;
     if (processedActors.has(reactorActor?.id)) continue;
     const reactorToken = reactorCombatant.token?.object;
-    if (!reactorActor || !reactorToken || reactorToken === movingToken || Number(reactorToken.document?.disposition ?? 0) === Number(tokenDocument.disposition ?? 0)) continue;
+    if (!reactorActor || !reactorToken || !arePotentialAdversaries(reactorCombatant, movingCombatant) || reactorToken === movingToken) continue;
     const weapon = reactorActor.items.find((item) => isEligiblePolearmWeapon(reactorActor, item));
     if (!weapon) {
       debugPolearm("Combatente ignorado: Arma de Haste não encontrada", { actorId: reactorActor.id });

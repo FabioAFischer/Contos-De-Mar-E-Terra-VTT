@@ -103,10 +103,21 @@ export function isLaterallyAdjacent(originToken, candidateToken, tolerance = 0.0
   return (verticalTouch && overlapX > tolerance) || (horizontalTouch && overlapY > tolerance);
 }
 
+/**
+ * There is no canonical faction/alliance field in the current system data.
+ * Until that relationship is modeled explicitly, distinct documents are
+ * potential adversaries; token disposition is only presentation metadata.
+ */
+export function arePotentialAdversaries(first, second) {
+  if (!first || !second || first === second) return false;
+  const firstId = first?.document?.id ?? first?.id;
+  const secondId = second?.document?.id ?? second?.id;
+  return !firstId || !secondId || firstId !== secondId;
+}
+
 export function getLateralEnemies(originToken, { tokens = globalThis.canvas?.tokens?.placeables ?? [] } = {}) {
-  const originDisposition = Number(originToken?.document?.disposition ?? originToken?.disposition ?? 0);
   return tokens.filter((token) => token !== originToken
-    && Number(token?.document?.disposition ?? token?.disposition ?? 0) !== originDisposition
+    && arePotentialAdversaries(originToken, token)
     && isLaterallyAdjacent(originToken, token));
 }
 
@@ -171,4 +182,4 @@ export async function clearWeaponCombatState(combat) {
   return writeWeaponCombatState(combat, emptyWeaponCombatState());
 }
 
-export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });
+export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });

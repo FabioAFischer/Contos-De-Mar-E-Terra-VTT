@@ -59,13 +59,13 @@ function createToken(id, x, disposition) {
   return token;
 }
 
-function createCombat({ actor, reserved = 1, movingX = 500 }) {
-  const reactorToken = createToken(reactorTokenId, 0, 1);
-  const movingToken = createToken(movingTokenId, movingX, -1);
+function createCombat({ actor, reserved = 1, movingX = 500, reactorDisposition = 1, movingDisposition = -1, sameToken = false }) {
+  const movingToken = createToken(movingTokenId, movingX, movingDisposition);
+  const reactorToken = sameToken ? movingToken : createToken(reactorTokenId, 0, reactorDisposition);
   const actionState = { current: 0, reserved, turnKey: null };
   const reactorCombatant = {
     id: reactorCombatantId,
-    tokenId: reactorTokenId,
+    tokenId: sameToken ? movingTokenId : reactorTokenId,
     actor,
     token: { object: reactorToken },
     getFlag() { return actionState; },
@@ -188,9 +188,9 @@ function movementFromTo(fromX, toX) {
   };
 }
 
-async function detectReaction({ synthetic = false, reserved = 1, maxActions = 1, moverUser = mover, includeActorInWorld = true, fromX = 300, toX = 500 } = {}) {
+async function detectReaction({ synthetic = false, reserved = 1, maxActions = 1, moverUser = mover, includeActorInWorld = true, fromX = 300, toX = 500, reactorDisposition = 1, movingDisposition = -1, sameToken = false } = {}) {
   const actor = createActor({ synthetic, maxActions });
-  const combat = createCombat({ actor, reserved, movingX: toX });
+  const combat = createCombat({ actor, reserved, movingX: toX, reactorDisposition, movingDisposition, sameToken });
   const client = configureClient({ actor, combat, user: moverUser, includeActorInWorld });
   await handlePolearmMovement(client.movingToken.document, movementFromTo(fromX, toX), {}, moverUser);
   return { actor, combat, client, request: emitted.find((message) => message.type === "combat-polearm-reaction-request") };
@@ -204,6 +204,16 @@ test("identifica Actor vinculado e entrega a solicitação ao usuário reativo",
   assert.equal(result.request.movementDirection, "leaving");
 });
 
+test("permite reação entre adversários com a mesma disposição hostil", async () => {
+  const result = await detectReaction({ reactorDisposition: -1, movingDisposition: -1 });
+  assert.equal(result.request.targetUserId, owner.id);
+});
+
+test("permite reação entre adversários com a mesma disposição amigável", async () => {
+  const result = await detectReaction({ reactorDisposition: 1, movingDisposition: 1 });
+  assert.equal(result.request.targetUserId, owner.id);
+});
+
 test("usa combatant.actor para Actor sintético, sem consultar game.actors", async () => {
   const result = await detectReaction({ synthetic: true, includeActorInWorld: false });
   assert.equal(result.request.actorId, result.actor.id);
@@ -211,7 +221,7 @@ test("usa combatant.actor para Actor sintético, sem consultar game.actors", asy
 });
 
 test("GM movimentando o inimigo ainda entrega ao jogador reativo", async () => {
-  const result = await detectReaction({ moverUser: gm });
+  const result = await detectReaction({ moverUser: gm, reactorDisposition: -1, movingDisposition: -1 });
   assert.equal(result.request.targetUserId, owner.id);
 });
 
@@ -228,6 +238,11 @@ test("GM conectado em outra cena não substitui o cliente que iniciou o moviment
 
 test("sem ações reservadas não envia solicitação", async () => {
   const result = await detectReaction({ reserved: 0 });
+  assert.equal(result.request, undefined);
+});
+
+test("não oferece reação contra o próprio Combatant", async () => {
+  const result = await detectReaction({ sameToken: true });
   assert.equal(result.request, undefined);
 });
 
