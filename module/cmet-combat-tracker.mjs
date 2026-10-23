@@ -1,5 +1,7 @@
 import { CombatActionService } from "./services/combat-action-service.mjs";
 import { isAuthoritativeGM } from "./services/combat-authority-service.mjs";
+import { clearWeaponCombatState } from "./services/weapon-combat-state-service.mjs";
+import { expireDazedConditions } from "./services/combat-condition-service.mjs";
 
 let combatHooksRegistered = false;
 
@@ -67,20 +69,7 @@ export function registerCombatHooks() {
       ? combat.combatants.get(current.combatantId)
       : null;
     const forward = isForwardTurnProgression(prior, current);
-
-    console.log("CMET | TURN TRANSITION", {
-      prior: {
-        id: prior?.combatantId,
-        round: prior?.round,
-        turn: prior?.turn
-      },
-      current: {
-        id: current?.combatantId,
-        round: current?.round,
-        turn: current?.turn
-      },
-      forward
-    });
+    await expireDazedConditions(combat, prior);
 
     if (!currentCombatant?.actor) return;
     if (!prior?.combatantId) {
@@ -95,15 +84,7 @@ export function registerCombatHooks() {
     if (!forward) return;
 
     if (previousCombatant?.actor) {
-      console.log("CMET | AUTO RESERVE TURN END", {
-        combatant: previousCombatant.name,
-        before: CombatActionService.getState(previousCombatant)
-      });
       await CombatActionService.reserveRemainingActions(previousCombatant);
-      console.log("CMET | AUTO RESERVE RESULT", {
-        combatant: previousCombatant.name,
-        after: CombatActionService.getState(previousCombatant)
-      });
     }
 
     await CombatActionService.resetTurn(currentCombatant, {
@@ -116,5 +97,19 @@ export function registerCombatHooks() {
   Hooks.on("createCombatant", async (combatant) => {
     if (!isAuthoritativeGM() || !combatant.combat?.started || !combatant.actor) return;
     await CombatActionService.initialize(combatant);
+  });
+  const reloadWeaponsAtCombatEnd = async () => {
+    if (!isAuthoritativeGM()) return;
+    const items = [...game.items.contents, ...game.actors.contents.flatMap((actor) => actor.items.contents)];
+    for (const item of items) {
+      if (item.type !== "arma" || item.system?.characteristics?.recarregar?.enabled !== true || item.system.loaded === true) continue;
+      await item.update({ "system.loaded": true });
+    }
+  };
+  Hooks.on("deleteCombat", reloadWeaponsAtCombatEnd);
+  Hooks.on("deleteCombat", (combat) => isAuthoritativeGM() && clearWeaponCombatState(combat));
+  Hooks.on("updateCombat", (combat, changes) => {
+    if (changes.started === false) return reloadWeaponsAtCombatEnd();
+    return undefined;
   });
 }
