@@ -400,8 +400,145 @@
 .application.cmet-ability-sheet .cmet-ability-description > label { display: flex; flex-direction: column; flex: 1 0 auto; gap: 6px; }
 .application.cmet-ability-sheet .cmet-ability-description textarea { flex: 1 0 190px; min-height: 190px; }
 
+.application.cmet-da-ability-sheet .window-content { min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.application.cmet-da-ability-sheet .cmet-da-effect { margin: 10px 0; padding: 10px; border: 1px solid var(--cmet-border-soft); background: var(--cmet-surface); }
+.application.cmet-da-ability-sheet .cmet-da-effect > header { display: flex; align-items: center; gap: 6px; color: var(--cmet-text); }
+.application.cmet-da-ability-sheet .cmet-da-effect > header strong { flex: 1; }
+.application.cmet-da-ability-sheet .cmet-da-effect > header span { color: var(--cmet-text-muted); font-size: .72rem; }
+.application.cmet-da-ability-sheet .cmet-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.application.cmet-da-ability-sheet .cmet-form-grid label { display: flex; flex-direction: column; gap: 4px; color: var(--cmet-text-muted); font-size: .78rem; }
+.application.cmet-da-ability-sheet .cmet-form-grid__wide { grid-column: 1 / -1; }
+.application.cmet-da-ability-sheet .cmet-description-editor { min-height: 360px; width: 100%; resize: vertical; }
+.application.cmet-da-ability-sheet .cmet-da-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.application.cmet-da-ability-sheet .cmet-da-fields label { display: flex; flex-direction: column; gap: 4px; color: var(--cmet-text-muted); font-size: .78rem; }
+.application.cmet-da-ability-sheet .cmet-da-wide { grid-column: 1 / -1; }
+.application.cmet-da-ability-sheet .cmet-da-fields textarea { min-height: 70px; resize: vertical; }
+.application.cmet-da-ability-sheet .cmet-da-effect__header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.application.cmet-da-ability-sheet .cmet-da-effect__header div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.application.cmet-da-ability-sheet .cmet-da-effect__header span,
+.application.cmet-da-ability-sheet .cmet-da-effect__summary { color: var(--cmet-text-muted); font-size: .78rem; }
+.application.cmet-da-ability-sheet .cmet-da-effect__summary { margin: 6px 0 10px; }
+.application.cmet-da-ability-sheet .cmet-da-effect__editor { border-top: 1px solid var(--cmet-border-soft); padding-top: 10px; }
+.application.cmet-da-ability-sheet .cmet-da-subsection { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--cmet-border-soft); }
+.application.cmet-da-ability-sheet .cmet-da-subsection h3 { display: flex; align-items: center; justify-content: space-between; margin: 0 0 7px; font-size: .9rem; color: var(--cmet-text); }
+.application.cmet-da-ability-sheet .cmet-da-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+.application.cmet-da-ability-sheet .cmet-da-description label { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; color: var(--cmet-text-muted); }
+.application.cmet-da-ability-sheet .cmet-da-description textarea { min-height: 120px; resize: vertical; }
+.application.cmet-actor-sheet .cmet-da-effect-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.application.cmet-actor-sheet .cmet-da-effect-list button { font-size: .78rem; }
+.application.cmet-actor-sheet .cmet-da-resources .cmet-item-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.application.cmet-actor-sheet .cmet-da-resources .cmet-item-row label { display: flex; flex-direction: column; gap: 3px; }
+
+/* DA visual editor: compact summary cards, progressive disclosure, and narrow-window support. */
+.application.cmet-da-ability-sheet { --cmet-gold: #b99a5e; background: var(--cmet-bg); color: var(--cmet-text); }
+.application.cmet-da-ability-sheet .window-content { display: flex; flex-direction: column; min-height: 0; padding: 12px; overflow-x: hidden; overflow-y: auto; }
+.application.cmet-da-ability-sheet > form { display: flex; flex: 1 0 auto; flex-direction: column; gap: 10px; min-height: 100%; }
+.application.cmet-da-ability-sheet .cmet-da-header { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 7px; }
+.application.cmet-da-ability-sheet .cmet-da-header__image { width: 58px; height: 58px; flex: 0 0 58px; object-fit: cover; border: 1px solid var(--cmet-accent); border-radius: 5px; }
+.application.cmet-da-ability-sheet .cmet-da-header__image[data-action="editImage"] { cursor: pointer; }
+.application.cmet-da-ability-sheet .cmet-da-header__identity { min-width: 0; flex: 1; }
+.application.cmet-da-ability-sheet .cmet-da-header__identity h1 { margin: 0; font-size: 1.25rem; }
+.application.cmet-da-ability-sheet .cmet-da-header__name { width: 100%; padding: 2px 0; color: var(--cmet-text); background: transparent; border: 0; font-size: 1.25rem; font-weight: 700; }
+.application.cmet-da-ability-sheet .cmet-da-header__meta { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 4px; color: var(--cmet-text-muted); font-size: .72rem; }
+.application.cmet-da-ability-sheet .cmet-da-mode-button,
+.application.cmet-da-ability-sheet .cmet-da-section-heading button,
+.application.cmet-da-ability-sheet .cmet-da-secondary { flex: 0 0 auto; padding: 5px 9px; color: var(--cmet-text); background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border); border-radius: 4px; cursor: pointer; }
+.application.cmet-da-ability-sheet .cmet-da-mode-button:hover,
+.application.cmet-da-ability-sheet button:hover { border-color: var(--cmet-accent-bright); color: var(--cmet-text); }
+.application.cmet-da-ability-sheet .cmet-da-tabs { display: flex; flex: 0 0 auto; gap: 14px; margin: 0; border-bottom: 1px solid var(--cmet-border); }
+.application.cmet-da-ability-sheet .cmet-da-tabs .item { padding: 7px 5px; color: var(--cmet-text-muted); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.application.cmet-da-ability-sheet .cmet-da-tabs .item.active { color: var(--cmet-text); border-bottom-color: var(--cmet-accent-bright); }
+.application.cmet-da-ability-sheet .cmet-da-tab.active { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.application.cmet-da-ability-sheet .cmet-da-tab:not(.active) { display: none; }
+.application.cmet-da-ability-sheet .cmet-da-summary-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 10px; }
+.application.cmet-da-ability-sheet .cmet-da-panel { min-width: 0; padding: 12px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 7px; }
+.application.cmet-da-ability-sheet .cmet-da-panel h2,
+.application.cmet-da-ability-sheet .cmet-da-panel h3 { margin: 0 0 7px; color: var(--cmet-accent-bright); }
+.application.cmet-da-ability-sheet .cmet-da-summary-intro h2 { color: var(--cmet-text); }
+.application.cmet-da-ability-sheet .cmet-da-summary-intro p { margin: 0 0 12px; color: var(--cmet-text-muted); line-height: 1.45; }
+.application.cmet-da-ability-sheet .cmet-da-eyebrow { color: var(--cmet-gold); font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.application.cmet-da-ability-sheet .cmet-da-facts { display: grid; gap: 5px; color: var(--cmet-text-muted); font-size: .72rem; }
+.application.cmet-da-ability-sheet .cmet-da-facts span { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--cmet-border-soft); padding-top: 4px; }
+.application.cmet-da-ability-sheet .cmet-da-facts strong { color: var(--cmet-text); text-align: right; }
+.application.cmet-da-ability-sheet .cmet-da-summary-card { margin-top: 7px; padding: 9px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 5px; }
+.application.cmet-da-ability-sheet .cmet-da-summary-card header { display: flex; justify-content: space-between; gap: 8px; color: var(--cmet-text); }
+.application.cmet-da-ability-sheet .cmet-da-summary-card header span { color: var(--cmet-accent-bright); font-size: .7rem; }
+.application.cmet-da-ability-sheet .cmet-da-summary-card p { margin: 5px 0; color: var(--cmet-text-muted); font-size: .78rem; }
+.application.cmet-da-ability-sheet .cmet-da-summary-lines { display: grid; gap: 2px; color: var(--cmet-text-muted); font-size: .7rem; }
+.application.cmet-da-ability-sheet .cmet-da-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; }
+.application.cmet-da-ability-sheet .cmet-da-section-heading h2 { margin: 1px 0 0; color: var(--cmet-text); }
+.application.cmet-da-ability-sheet .cmet-da-effect-card { background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 7px; overflow: hidden; }
+.application.cmet-da-ability-sheet .cmet-da-effect-card__header { display: flex; align-items: center; gap: 7px; padding: 9px 10px; }
+.application.cmet-da-ability-sheet .cmet-da-effect-card__toggle { display: flex; flex: 1; align-items: center; gap: 7px; min-width: 0; padding: 0; color: var(--cmet-text); background: transparent; border: 0; text-align: left; cursor: pointer; }
+.application.cmet-da-ability-sheet .cmet-da-effect-card__toggle > span:last-child { display: grid; gap: 2px; min-width: 0; }
+.application.cmet-da-ability-sheet .cmet-da-effect-card__toggle small { color: var(--cmet-text-muted); }
+.application.cmet-da-ability-sheet .cmet-da-chevron { width: 14px; color: var(--cmet-accent-bright); }
+.application.cmet-da-ability-sheet .cmet-da-card-actions { display: flex; gap: 2px; }
+.application.cmet-da-ability-sheet .cmet-da-card-actions button { width: 25px; min-height: 25px; padding: 2px; color: var(--cmet-text-muted); background: transparent; border: 1px solid transparent; cursor: pointer; }
+.application.cmet-da-ability-sheet .cmet-da-effect-card__summary { display: flex; justify-content: space-between; gap: 8px; padding: 0 10px 9px 31px; color: var(--cmet-text-muted); font-size: .72rem; }
+.application.cmet-da-ability-sheet .cmet-da-effect-card__summary span:last-child { color: var(--cmet-accent-bright); text-align: right; }
+.application.cmet-da-ability-sheet .cmet-da-editor { display: grid; gap: 6px; padding: 0 10px 10px; }
+.application.cmet-da-ability-sheet .cmet-da-editor details { border-top: 1px solid var(--cmet-border-soft); }
+.application.cmet-da-ability-sheet .cmet-da-editor summary { padding: 8px 2px; color: var(--cmet-text); cursor: pointer; font-weight: 700; }
+.application.cmet-da-ability-sheet .cmet-da-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding: 2px 0 8px; }
+.application.cmet-da-ability-sheet .cmet-da-form-grid label,
+.application.cmet-da-ability-sheet .cmet-da-operation-card > label { display: flex; flex-direction: column; gap: 3px; color: var(--cmet-text-muted); font-size: .72rem; }
+.application.cmet-da-ability-sheet .cmet-da-form-grid input,
+.application.cmet-da-ability-sheet .cmet-da-form-grid select,
+.application.cmet-da-ability-sheet .cmet-da-editor-list input,
+.application.cmet-da-ability-sheet .cmet-da-editor-list select,
+.application.cmet-da-ability-sheet .cmet-da-editor-list textarea { width: 100%; min-width: 0; padding: 4px 6px; color: var(--cmet-text); background: var(--cmet-surface-raised); border: 1px solid var(--cmet-border); border-radius: 3px; }
+.application.cmet-da-ability-sheet .cmet-da-form-grid input[type="checkbox"] { width: 16px; }
+.application.cmet-da-ability-sheet .cmet-da-wide { grid-column: 1 / -1; }
+.application.cmet-da-ability-sheet .cmet-da-check { flex-direction: row !important; align-items: center; gap: 6px; }
+.application.cmet-da-ability-sheet .cmet-da-editor-list { display: grid; gap: 6px; padding-bottom: 8px; }
+.application.cmet-da-ability-sheet .cmet-da-editor-list h4 { margin: 5px 0 0; color: var(--cmet-text); }
+.application.cmet-da-ability-sheet .cmet-da-condition-row,
+.application.cmet-da-ability-sheet .cmet-da-cost-row,
+.application.cmet-da-ability-sheet .cmet-da-roll-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 28px; gap: 5px; align-items: center; }
+.application.cmet-da-ability-sheet .cmet-da-condition-row button,
+.application.cmet-da-ability-sheet .cmet-da-cost-row button,
+.application.cmet-da-ability-sheet .cmet-da-roll-row button,
+.application.cmet-da-ability-sheet .cmet-da-operation-head button { min-height: 27px; color: var(--cmet-text-muted); background: transparent; border: 1px solid transparent; cursor: pointer; }
+.application.cmet-da-ability-sheet .cmet-da-operation-card { display: grid; gap: 6px; padding: 7px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 5px; }
+.application.cmet-da-ability-sheet .cmet-da-operation-head { display: grid; grid-template-columns: minmax(0, 1fr) auto 28px; align-items: center; gap: 6px; }
+.application.cmet-da-ability-sheet .cmet-da-operation-head span { color: var(--cmet-text-muted); font-size: .68rem; }
+.application.cmet-da-ability-sheet .cmet-da-operation-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.application.cmet-da-ability-sheet .cmet-da-readonly-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 10px 10px 31px; }
+.application.cmet-da-ability-sheet .cmet-da-readonly-groups > div { padding: 8px; background: var(--cmet-surface-alt); border-radius: 4px; }
+.application.cmet-da-ability-sheet .cmet-da-readonly-groups strong { color: var(--cmet-accent-bright); font-size: .72rem; }
+.application.cmet-da-ability-sheet .cmet-da-readonly-groups p { margin: 4px 0 0; color: var(--cmet-text-muted); font-size: .75rem; }
+.application.cmet-da-ability-sheet .cmet-da-narrative-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.application.cmet-da-ability-sheet .cmet-da-narrative-grid label { display: flex; flex-direction: column; gap: 5px; color: var(--cmet-text-muted); font-size: .75rem; }
+.application.cmet-da-ability-sheet .cmet-da-narrative-grid textarea { min-height: 70px; field-sizing: content; resize: vertical; }
+.application.cmet-da-ability-sheet .cmet-da-narrative-grid label:first-child { grid-column: 1 / -1; }
+.application.cmet-da-ability-sheet .cmet-da-narrative-view { padding: 14px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 7px; }
+.application.cmet-da-ability-sheet .cmet-da-narrative-view h2 { margin-top: 0; color: var(--cmet-accent-bright); }
+.application.cmet-da-ability-sheet .cmet-da-narrative-view h3 { margin: 12px 0 3px; color: var(--cmet-gold); font-size: .8rem; }
+.application.cmet-da-ability-sheet .cmet-da-narrative-view p { margin: 0; color: var(--cmet-text-muted); white-space: pre-wrap; line-height: 1.45; }
+.application.cmet-da-ability-sheet .cmet-da-advanced pre { max-height: 420px; margin: 10px 0 0; padding: 10px; overflow: auto; color: var(--cmet-text-muted); background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); font-size: .7rem; white-space: pre-wrap; }
+.application.cmet-da-ability-sheet .cmet-da-advanced dl { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 4px 10px; margin: 0; color: var(--cmet-text-muted); font-size: .75rem; }
+.application.cmet-da-ability-sheet .cmet-da-advanced dd { margin: 0; color: var(--cmet-text); overflow-wrap: anywhere; }
+.application.cmet-da-ability-sheet .cmet-da-empty { margin: 0; color: var(--cmet-text-muted); font-style: italic; }
+
+@media (max-width: 620px) {
+  .application.cmet-da-ability-sheet .cmet-da-summary-grid,
+  .application.cmet-da-ability-sheet .cmet-da-narrative-grid,
+  .application.cmet-da-ability-sheet .cmet-da-form-grid,
+  .application.cmet-da-ability-sheet .cmet-da-readonly-groups { grid-template-columns: 1fr; }
+  .application.cmet-da-ability-sheet .cmet-da-wide,
+  .application.cmet-da-ability-sheet .cmet-da-narrative-grid label:first-child { grid-column: auto; }
+  .application.cmet-da-ability-sheet .cmet-da-condition-row,
+  .application.cmet-da-ability-sheet .cmet-da-cost-row,
+  .application.cmet-da-ability-sheet .cmet-da-roll-row { grid-template-columns: 1fr 1fr 28px; }
+  .application.cmet-da-ability-sheet .cmet-da-header__meta { display: grid; }
+}
+
 @media (max-width: 560px) {
   .application.cmet-ability-sheet .cmet-ability-fields { grid-template-columns: 1fr; }
+  .application.cmet-da-ability-sheet .cmet-da-fields,
+  .application.cmet-da-ability-sheet .cmet-da-row { grid-template-columns: 1fr; }
+  .application.cmet-da-ability-sheet .cmet-da-wide { grid-column: auto; }
 }
 
 .application.cmet-polearm-reaction-dialog {
