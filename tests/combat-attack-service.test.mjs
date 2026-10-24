@@ -476,7 +476,7 @@ test("Puxar usa ataque e defesa normais, move sem dano e registra Sequencial", a
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(setupData.targetToken.document.x, 300);
-  assert.equal(setupData.lastMoveOptions.method, "forced");
+  assert.equal(setupData.lastMoveOptions.method, "api");
   assert.equal(setupData.targetActor.system.resources.vida.value, 20);
   assert.equal(damageCards.length, 0);
   assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 2);

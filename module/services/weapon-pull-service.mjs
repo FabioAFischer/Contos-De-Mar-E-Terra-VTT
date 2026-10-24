@@ -2,10 +2,73 @@ import { SYSTEM_ID } from "../config/constants.mjs";
 import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 
 const SOCKET_CHANNEL = `system.${SYSTEM_ID}`;
+const PULL_MOVEMENT_METHOD = "api";
+const PULL_MOVEMENT_TIMEOUT_MS = 35000;
 const forcedPullTokenIds = new Set();
 const pendingPullRequests = new Map();
 const processedPullRequests = new Map();
 const processingPullRequests = new Set();
+
+function movementErrorDetails(error) {
+  return {
+    errorName: error?.name ?? "Error",
+    errorMessage: error?.message ?? String(error),
+    errorStack: error?.stack ?? null
+  };
+}
+
+function logMovementError(error, context = {}) {
+  console.error("CMET | Falha ao executar movimento de Puxar", {
+    ...context,
+    error
+  });
+}
+
+function targetActor(token) {
+  const document = tokenDocument(token);
+  return document?.actor ?? token?.actor ?? null;
+}
+
+function targetMovementAuthority(token) {
+  const actor = targetActor(token);
+  if (!actor || !globalThis.game?.users || !globalThis.game?.user) return null;
+  return getActorUpdateAuthority(actor);
+}
+
+function currentUserCanMoveTarget(token) {
+  const document = tokenDocument(token);
+  const currentUser = globalThis.game?.user;
+  const users = globalThis.game?.users;
+
+  // Direct service tests can run without a Foundry game. In Foundry, both
+  // the Actor authority and the TokenDocument permission are required.
+  if (!currentUser || !users) return { allowed: true, authority: null };
+
+  const authority = targetMovementAuthority(token);
+  if (!authority || authority.id !== currentUser.id) {
+    return { allowed: false, reason: "permission", authority };
+  }
+
+  if (typeof document?.canUserModify !== "function") {
+    return { allowed: true, authority };
+  }
+
+  try {
+    if (!document.canUserModify(currentUser, "update")) {
+      return { allowed: false, reason: "permission", authority };
+    }
+  } catch (error) {
+    logMovementError(error, { tokenId: tokenId(token), phase: "permission-check" });
+    return { allowed: false, reason: "apiError", authority, error: movementErrorDetails(error) };
+  }
+
+  return { allowed: true, authority };
+}
+
+function currentPosition(document, fallback) {
+  const position = point({ x: document?.x, y: document?.y });
+  return position ?? fallback;
+}
 
 function tokenDocument(token) {
   return token?.document ?? token ?? null;
@@ -214,24 +277,82 @@ export function calculatePullPath({ attackerToken, targetToken, spaces } = {}) {
 
 export async function executePullMovement({ attackerToken, targetToken, spaces } = {}) {
   const path = calculatePullPath({ attackerToken, targetToken, spaces });
-  if (path.positions.length < 2) return { ...path, moved: false, executed: true };
   const document = tokenDocument(targetToken);
-  if (typeof document.move !== "function") return { ...path, moved: false, executed: false, blockedReason: "permission" };
+  if (path.positions.length < 2) {
+    return {
+      ...path,
+      moved: false,
+      executed: true,
+      failureReason: "noSpace"
+    };
+  }
+
+  const permission = currentUserCanMoveTarget(targetToken);
+  if (!permission.allowed) {
+    return {
+      ...path,
+      moved: false,
+      executed: false,
+      blockedReason: permission.reason,
+      failureReason: permission.reason,
+      ...(permission.error ?? {})
+    };
+  }
+
+  if (typeof document.move !== "function") {
+    const error = new TypeError("CMET | TokenDocument.move não está disponível para o movimento de Puxar.");
+    const details = movementErrorDetails(error);
+    logMovementError(error, { tokenId: tokenId(targetToken), phase: "api-availability" });
+    return {
+      ...path,
+      moved: false,
+      executed: false,
+      blockedReason: "apiError",
+      failureReason: "apiError",
+      ...details
+    };
+  }
+
   const id = tokenId(targetToken);
   forcedPullTokenIds.add(id);
   try {
-    const completed = await document.move(path.positions.slice(1), { method: "forced", broadcast: true, showRuler: false });
-    const current = { x: Number(document.x ?? path.origin.x), y: Number(document.y ?? path.origin.y) };
+    const completed = await document.move(path.positions.slice(1), {
+      method: PULL_MOVEMENT_METHOD,
+      broadcast: true,
+      showRuler: false
+    });
+    const current = currentPosition(document, path.origin);
     const moved = current.x !== path.origin.x || current.y !== path.origin.y;
+    const interrupted = completed === false;
     return {
       ...path,
       moved,
-      executed: completed !== false,
+      executed: !interrupted,
       movedSpaces: moved ? measureSpaces(document, path.origin, current) : 0,
-      blockedReason: completed === false && !path.blockedReason ? "movementStopped" : path.blockedReason
+      blockedReason: interrupted && !path.blockedReason ? "movementStopped" : path.blockedReason,
+      failureReason: interrupted ? "movementStopped" : path.blocked ? "noSpace" : null
     };
   } catch (error) {
-    return { ...path, moved: false, executed: false, blockedReason: "permission", error };
+    const current = currentPosition(document, path.origin);
+    const details = movementErrorDetails(error);
+    logMovementError(error, {
+      tokenId: id,
+      phase: "document.move",
+      method: PULL_MOVEMENT_METHOD,
+      origin: path.origin,
+      destination: path.destination
+    });
+    return {
+      ...path,
+      moved: current.x !== path.origin.x || current.y !== path.origin.y,
+      executed: false,
+      movedSpaces: current.x !== path.origin.x || current.y !== path.origin.y
+        ? measureSpaces(document, path.origin, current)
+        : 0,
+      blockedReason: "apiError",
+      failureReason: "apiError",
+      ...details
+    };
   } finally {
     forcedPullTokenIds.delete(id);
   }
@@ -270,12 +391,20 @@ export async function processPullMovementRequest(message) {
     }
     const targetToken = resolveToken(message.targetTokenId, message.sceneId);
     const attackerToken = resolveToken(message.attackerTokenId, message.sceneId);
-    const authority = targetToken?.actor && getActorUpdateAuthority(targetToken.actor);
-    const result = !targetToken || !attackerToken || authority?.id !== game.user.id
-      ? { moved: false, executed: false, blockedReason: "permission" }
+    const permission = targetToken && currentUserCanMoveTarget(targetToken);
+    const result = !targetToken || !attackerToken
+      ? { moved: false, executed: false, blockedReason: "permission", failureReason: "permission" }
+      : !permission.allowed
+        ? {
+          moved: false,
+          executed: false,
+          blockedReason: permission.reason,
+          failureReason: permission.reason,
+          ...(permission.error ?? {})
+        }
       : await executePullMovement({ attackerToken, targetToken, spaces: message.spaces });
     processedPullRequests.set(message.requestId, result);
-    setTimeout(() => processedPullRequests.delete(message.requestId), 35000)?.unref?.();
+    setTimeout(() => processedPullRequests.delete(message.requestId), PULL_MOVEMENT_TIMEOUT_MS)?.unref?.();
     emitPullResponse(message, result);
     return result;
   } finally {
@@ -292,16 +421,21 @@ export function resolvePullMovementResponse(message) {
   pending.resolve(message.result ?? { moved: false, executed: false, blockedReason: "unknown" });
 }
 
-export async function requestPullMovement({ attackerToken, targetToken, spaces, combatId } = {}) {
-  const authority = targetToken?.actor && getActorUpdateAuthority(targetToken.actor);
-  if (!authority) return { moved: false, executed: false, blockedReason: "permission" };
+export async function requestPullMovement({ attackerToken, targetToken, spaces, combatId, timeoutMs = PULL_MOVEMENT_TIMEOUT_MS } = {}) {
+  const authority = targetMovementAuthority(targetToken);
+  if (!authority) return { moved: false, executed: false, blockedReason: "permission", failureReason: "permission" };
   if (authority.id === game.user.id) return executePullMovement({ attackerToken, targetToken, spaces });
   const requestId = foundry.utils.randomID();
   const result = await new Promise((resolve) => {
     const timeoutId = setTimeout(() => {
       pendingPullRequests.delete(requestId);
-      resolve({ moved: false, executed: false, blockedReason: "timeout" });
-    }, 35000);
+      console.warn("CMET | Tempo limite aguardando a autoridade do alvo para Puxar", {
+        requestId,
+        targetTokenId: tokenId(targetToken),
+        authorityId: authority.id
+      });
+      resolve({ moved: false, executed: false, blockedReason: "timeout", failureReason: "timeout" });
+    }, timeoutMs);
     timeoutId?.unref?.();
     pendingPullRequests.set(requestId, { resolve, timeoutId });
     game.socket.emit(SOCKET_CHANNEL, {
