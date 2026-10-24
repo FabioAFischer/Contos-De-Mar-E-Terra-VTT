@@ -8,7 +8,7 @@ import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
 import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
-import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach, isAttackerBehindDefender } from "./weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach, isAttackerBehindDefender, getTargetPositionRelativeToAttacker } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
 import { isForcedPullMovement, processPullMovementRequest, recordPullMovementConfirmation, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
 
@@ -51,6 +51,46 @@ function getAttackerToken(actor, combat) {
 function getSingleTarget() {
   const targets = Array.from(game.user.targets ?? []);
   return targets.length === 1 ? targets[0] : null;
+}
+
+export function validateRearStrikeTargets({ actor, item, attackerToken, combat, targetTokens }) {
+  if (!characteristicEnabled(item, "golpeDeRetaguarda")) return { valid: false, reason: "RearStrikeUnavailable" };
+  if (!Array.isArray(targetTokens) || targetTokens.length !== 2) return { valid: false, reason: "RearStrikeRequiresTwoTargets" };
+  const ids = targetTokens.map((token) => token?.document?.id ?? token?.id);
+  if (ids.some((id, index) => !id || ids.indexOf(id) !== index)) return { valid: false, reason: "RearStrikeRequiresTwoTargets" };
+  const attackerId = attackerToken?.document?.id ?? attackerToken?.id;
+  if (targetTokens.some((token) => (token?.document?.id ?? token?.id) === attackerId)) return { valid: false, reason: "CannotTargetSelf" };
+  if (targetTokens.some((token) => !arePotentialAdversaries(attackerToken, token))) return { valid: false, reason: "RearStrikeInvalidTarget" };
+  const actorIds = targetTokens.map((token) => token?.actor?.id).filter(Boolean);
+  if (actorIds.length === 2 && actorIds[0] === actorIds[1]) return { valid: false, reason: "RearStrikeInvalidTarget" };
+  const combatants = targetTokens.map((token) => getCombatantForToken(combat, token));
+  if (combatants.some((combatant) => !combatant?.actor)) return { valid: false, reason: "TargetNotInCombat" };
+  const range = item.system.characteristics?.alcance;
+  if (range?.enabled === true) {
+    const maximum = Number(range.spaces);
+    if (!Number.isInteger(maximum) || maximum <= 0 || targetTokens.some((token) => measureTokenReachDistance(attackerToken, token) > maximum)) {
+      return { valid: false, reason: "WeaponRangeExceeded" };
+    }
+  }
+  const polearm = item.system.characteristics?.armaDeHaste;
+  if (polearm?.enabled === true) {
+    const maximum = Number(polearm.spaces);
+    if (Number.isFinite(maximum) && maximum > 0 && targetTokens.some((token) => measureTokenDistance(attackerToken, token) > maximum)) {
+      return { valid: false, reason: "WeaponRangeExceeded" };
+    }
+  }
+  const positions = targetTokens.map((token) => getTargetPositionRelativeToAttacker(attackerToken, token));
+  if (positions.includes(null) || positions.filter((position) => position === "frente").length !== 1 || positions.filter((position) => position === "costas").length !== 1) {
+    return { valid: false, reason: "RearStrikeInvalidPosition" };
+  }
+  const orderedTargets = targetTokens
+    .map((token, index) => ({ token, position: positions[index] }))
+    .sort((first, second) => Number(second.position === "frente") - Number(first.position === "frente"));
+  return {
+    valid: true,
+    targetTokens: orderedTargets.map(({ token }) => token),
+    positions
+  };
 }
 
 function notifyInfo(key) {
@@ -310,6 +350,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
     onComplete?.({ status: "failed" });
     return result;
   };
+  if (attackMode === "golpeDeRetaguarda" && (disableCharacteristics || reaction || thrownAttack)) return fail("RearStrikeUnavailable");
   if (attackMode === "pull" && !isValidPullConfiguration(item)) return fail("InvalidPullSpaces");
   if (!disableCharacteristics && !canFire(item)) return fail("WeaponNotLoaded");
   if (!disableCharacteristics && characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
@@ -380,23 +421,34 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
     },
     onResult: async (rawAttack, attackMessage) => {
       const sequentialCount = ignoreSequentialState ? 0 : getSequentialBonusCount(combat, actor, item);
-      const pointWeak = specialCharacteristicsDisabled ? false : pointWeakBonusState(combat, actor, item, attackerToken, targetToken);
-      const impactSequence = specialCharacteristicsDisabled ? false : impactSequenceBonusState(combat, actor, item, targetToken);
+      const pointWeakByTarget = new Map(selectedTargets.map((candidateToken) => [
+        candidateToken,
+        specialCharacteristicsDisabled ? false : pointWeakBonusState(combat, actor, item, attackerToken, candidateToken)
+      ]));
+      const impactSequenceByTarget = new Map(selectedTargets.map((candidateToken) => [
+        candidateToken,
+        specialCharacteristicsDisabled ? false : impactSequenceBonusState(combat, actor, item, candidateToken)
+      ]));
       const attack = specialCharacteristicsDisabled ? rawAttack : applyRetaliar(rawAttack, item);
       if (!disableCharacteristics && shouldUnloadAfterShot(item)) await item.update({ "system.loaded": false });
       if (thrownAttack) await item.update({ "system.thrown": true });
       if (!attack.success) {
         if (!ignoreSequentialState) await recordSequentialOutcome(combat, actor, item, { effectiveHit: false });
         if (!disableCharacteristics) {
-          await recordImpactOutcome(combat, actor, item, targetToken, { effectiveHit: false });
-          if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, targetToken);
+          for (const candidateToken of selectedTargets) {
+            await recordImpactOutcome(combat, actor, item, candidateToken, { effectiveHit: false });
+            if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, candidateToken);
+          }
         }
         await updateSkillRollMessage(attackMessage, "AttackMiss");
         if (attackMode === "pull") await sendPullOutcomeToChat({ actor, attackerName, defenderName, weaponName: item.name, attack });
         return;
       }
       let anyHit = false;
+      const effectiveHitTargets = new Set();
       let sharedDamage = null;
+      let sharedBaseDamage = null;
+      const multiTargetAttack = selectedTargets.length > 1;
       for (const currentTargetToken of selectedTargets) {
         const currentTargetCombatant = getCombatantForToken(combat, currentTargetToken);
         if (!currentTargetCombatant?.actor) continue;
@@ -405,7 +457,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         const outcome = compareAttackAndDefense(attack, defense);
         const finalOutcome = { ...outcome, reason: defense ? outcome.reason : reason };
         if (defense) await updateDefenseOutcome({ ...defenseResult, outcome: finalOutcome });
-        else await updateSkillRollMessage(attackMessage, outcomeKey(finalOutcome));
+        else if (!multiTargetAttack) await updateSkillRollMessage(attackMessage, outcomeKey(finalOutcome));
         const effectiveHit = finalOutcome.winner === "attack";
         if (!effectiveHit) {
           if (!specialCharacteristicsDisabled) {
@@ -416,6 +468,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
           continue;
         }
         anyHit = true;
+        effectiveHitTargets.add(currentTargetToken);
         if (!specialCharacteristicsDisabled) {
           await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: true });
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
@@ -431,13 +484,22 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
           ? measureTokenReachDistance(attackerToken, currentTargetToken)
           : null;
         const damageItem = disableCharacteristics ? { ...item, system: { ...item.system, characteristics: Object.fromEntries(Object.entries(item.system.characteristics ?? {}).map(([key, value]) => [key, { ...value, enabled: false }])) } } : item;
+        const rearStrike = attackMode === "golpeDeRetaguarda";
         const apunhalharVariesByTarget = selectedTargets.length > 1
           && selectedTargets.some((candidateToken) => apunhalharEligible.get(candidateToken) !== apunhalharEligible.get(targetToken));
         const distanceDamage = (!specialCharacteristicsDisabled && characteristicEnabled(item, "alcance")) || apunhalharVariesByTarget;
-        let damage = distanceDamage ? null : sharedDamage;
+        let damage = distanceDamage || rearStrike ? null : sharedDamage;
         if (!damage) {
-          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: specialCharacteristicsDisabled ? false : pointWeak && currentTargetToken === targetToken, apunhalhar: apunhalharEligible.get(currentTargetToken) === true, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance });
-          if (selectedTargets.length > 1 && !distanceDamage) sharedDamage = damage;
+          let baseComponents = null;
+          if (rearStrike || apunhalharVariesByTarget) {
+            if (!sharedBaseDamage) {
+              sharedBaseDamage = await DamageRollService.rollWeaponBaseDamage(damageItem, { critical, versatileSelections });
+              if (!sharedBaseDamage) continue;
+            }
+            baseComponents = sharedBaseDamage;
+          }
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: pointWeakByTarget.get(currentTargetToken) === true, apunhalhar: apunhalharEligible.get(currentTargetToken) === true, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance, baseComponents });
+          if (selectedTargets.length > 1 && !distanceDamage && !rearStrike) sharedDamage = damage;
         }
         if (!damage) continue;
         const resolvedDamage = DamageReductionService.resolveDamageReduction({ groups: damage.groups, actor: currentTargetCombatant.actor });
@@ -447,12 +509,16 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       // A single attack may resolve against several targets. Record one
       // sequence outcome for the attack, never one outcome per target.
       if (!ignoreSequentialState) await recordSequentialOutcome(combat, actor, item, { effectiveHit: anyHit });
-      if (!anyHit && selectedTargets.length > 1) await updateSkillRollMessage(attackMessage, "AttackDefended");
-      if (!specialCharacteristicsDisabled && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || impactSequence)) {
-        const authority = getActorUpdateAuthority(targetCombatant.actor);
-        if (authority?.id === game.user.id) await applyDazedCondition(targetCombatant.actor, combat);
-        else if (authority) game.socket.emit(SOCKET_CHANNEL, { type: "combat-condition-apply", targetUserId: authority.id, actorId: targetCombatant.actor.id, combatId: combat.id });
-        await recordImpactOutcome(combat, actor, item, targetToken, { effectiveHit: false });
+      if (multiTargetAttack) await updateSkillRollMessage(attackMessage, anyHit ? "AttackHit" : "AttackDefended");
+      if (!specialCharacteristicsDisabled && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || [...effectiveHitTargets].some((token) => impactSequenceByTarget.get(token)))) {
+        for (const currentTargetToken of selectedTargets) {
+          const currentTargetCombatant = getCombatantForToken(combat, currentTargetToken);
+          if (!currentTargetCombatant?.actor || !effectiveHitTargets.has(currentTargetToken) || (attack.degree !== SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS && !impactSequenceByTarget.get(currentTargetToken))) continue;
+          const authority = getActorUpdateAuthority(currentTargetCombatant.actor);
+          if (authority?.id === game.user.id) await applyDazedCondition(currentTargetCombatant.actor, combat);
+          else if (authority) game.socket.emit(SOCKET_CHANNEL, { type: "combat-condition-apply", targetUserId: authority.id, actorId: currentTargetCombatant.actor.id, combatId: combat.id });
+          await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: false });
+        }
       }
     }
   });
@@ -490,6 +556,7 @@ function chooseCombinedAttackMode(item) {
 }
 
 export async function startCombinedWeaponAttack({ actor, attackMode = null }) {
+  if (attackMode === "golpeDeRetaguarda") return notify("RearStrikeUnavailable");
   const combat = game.combat;
   const hands = actor.system.hands ?? {};
   const main = actor.items.get(hands.mainHand);
@@ -530,6 +597,11 @@ export async function startWeaponAttack({ actor, item, attackMode = "normal" }) 
   if (attackMode === "pull" && !isValidPullConfiguration(item)) return notifyPullConfiguration(item);
   if (!canFire(item)) return notify("WeaponNotLoaded");
   if (characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
+  if (attackMode === "golpeDeRetaguarda") {
+    const validation = validateRearStrikeTargets({ actor, item, attackerToken, combat, targetTokens: Array.from(game.user.targets ?? []) });
+    if (!validation.valid) return notify(validation.reason);
+    return prepareWeaponAttack({ actor, item, targetToken: validation.targetTokens[0], targetTokens: validation.targetTokens, combat, attackMode });
+  }
   const targetCount = Array.from(game.user.targets ?? []).length;
   if (targetCount > 1) return notify("SelectOnlyOneTarget");
   const targetToken = getSingleTarget();

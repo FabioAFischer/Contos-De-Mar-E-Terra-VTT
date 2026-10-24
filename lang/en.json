@@ -64,6 +64,7 @@
       "AttackHit": "ATTACK HIT",
       "AttackMiss": "ATTACK MISSED",
       "AttackDefended": "ATTACK DEFENDED",
+      "RearStrikeDescription": "Attack one enemy in front and another behind the attacker.",
       "ReactionTitle": "Reaction Attack — Polearm",
       "ReactionPromptSingular": "{enemyName} is {movementDirection} the reach of {weaponName}.\n\nYou have {reservedActions} reserved action.\n\nDo you want to spend 1 reserved action to make a reaction attack?",
       "ReactionPromptPlural": "{enemyName} is {movementDirection} the reach of {weaponName}.\n\nYou have {reservedActions} reserved actions.\n\nDo you want to spend 1 reserved action to make a reaction attack?",
@@ -108,6 +109,10 @@
         "InvalidTwoWeaponAttack": "You must wield two valid one-handed weapons.",
         "WeaponNotLoaded": "The weapon must be reloaded before attacking.",
         "InvalidPullSpaces": "The Pull characteristic requires a positive configured space value.",
+        "RearStrikeUnavailable": "Rear Strike is not available in this attack flow.",
+        "RearStrikeRequiresTwoTargets": "Rear Strike requires exactly two distinct targets.",
+        "RearStrikeInvalidTarget": "Both targets must be valid and distinct enemies.",
+        "RearStrikeInvalidPosition": "Select one enemy in front and another behind the attacker.",
         "ReloadOnlyOnTurn": "Reloading is only possible during the active turn."
       }
     },
@@ -265,7 +270,7 @@
         "AvailableDamageTypes": "Available types (Versatile)",
         "ThrowRange": "Throw range"
       },
-      "Actions": { "Reload": "Reload", "Recover": "Recover", "Throw": "Throw", "Pull": "Pull", "CombinedAttack": "Attack with both weapons" },
+      "Actions": { "Reload": "Reload", "Recover": "Recover", "Throw": "Throw", "Pull": "Pull", "RearStrike": "Rear Strike", "CombinedAttack": "Attack with both weapons" },
       "Sections": { "Damage": "Damage", "Characteristics": "Characteristics" }
     },
     "Armor": {

@@ -53,6 +53,38 @@ export function getMaximumRollTotal(roll) {
   return maximum;
 }
 
+async function evaluateDamageParts(item, parts, critical) {
+  const emptyPart = parts.find(({ formula }) => !formula);
+  if (emptyPart) {
+    emptyFormula(item);
+    return null;
+  }
+  const components = [];
+  for (const part of parts) {
+    try {
+      const roll = new Roll(part.formula);
+      await roll.evaluate();
+      const rolledDamage = Number(roll.total);
+      const maximumDamage = critical && part.criticalMax !== false ? getMaximumRollTotal(roll) : null;
+      if (!Number.isFinite(rolledDamage) || (critical && part.criticalMax !== false && !Number.isFinite(maximumDamage))) throw new TypeError("Invalid damage total");
+      components.push({ ...part, roll, rolledDamage, ...(critical ? { maximumDamage } : {}), total: critical && part.criticalMax !== false ? rolledDamage + maximumDamage : rolledDamage, critical });
+    } catch (error) {
+      invalidFormula(item, part.formula);
+      return null;
+    }
+  }
+  return components;
+}
+
+export async function rollWeaponBaseDamage(item, { critical = false, versatileSelections = {} } = {}) {
+  const parts = normalizeDamageParts({ damage: getVersatileDamageParts(item, versatileSelections) });
+  if (!parts.length) {
+    missingDamage(item);
+    return null;
+  }
+  return evaluateDamageParts(item, parts, critical);
+}
+
 function invalidFormula(item, formula) {
   ui.notifications.warn(game.i18n.format("CMET.Damage.Notifications.InvalidFormula", { weapon: item?.name ?? "", formula }));
 }
@@ -65,48 +97,18 @@ function emptyFormula(item) {
   ui.notifications.warn(game.i18n.format("CMET.Damage.Notifications.EmptyFormula", { weapon: item?.name ?? "" }));
 }
 
-export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, sequentialCount = null, pointWeak = false, apunhalhar = false, polearm = false, reachDistance = null } = {}) {
-  const parts = normalizeDamageParts({ damage: getVersatileDamageParts(item, versatileSelections) });
-  parts.push(...additionalDamageFormulas(item, { critical, sequential, sequentialCount, pointWeak, apunhalhar, polearm, reachDistance, versatileSelections }));
-  if (!parts.length) {
+export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, sequentialCount = null, pointWeak = false, apunhalhar = false, polearm = false, reachDistance = null, baseComponents = null } = {}) {
+  const parts = additionalDamageFormulas(item, { critical, sequential, sequentialCount, pointWeak, apunhalhar, polearm, reachDistance, versatileSelections });
+  const baseParts = normalizeDamageParts({ damage: getVersatileDamageParts(item, versatileSelections) });
+  const base = baseComponents ?? (baseParts.length ? await evaluateDamageParts(item, baseParts, critical) : []);
+  if (base === null) return null;
+  if (!base.length && !parts.length) {
     missingDamage(item);
     return null;
   }
-  const emptyPart = parts.find(({ formula }) => !formula);
-  if (emptyPart) {
-    emptyFormula(item);
-    return null;
-  }
-  const prepared = [];
-  for (const part of parts) {
-    try {
-      prepared.push({ ...part, roll: new Roll(part.formula) });
-    } catch (error) {
-      invalidFormula(item, part.formula);
-      return null;
-    }
-  }
-  const components = [];
-  for (const part of prepared) {
-    let rolledDamage;
-    let maximumDamage;
-    try {
-      await part.roll.evaluate();
-      rolledDamage = Number(part.roll.total);
-      maximumDamage = critical && part.criticalMax !== false ? getMaximumRollTotal(part.roll) : null;
-      if (!Number.isFinite(rolledDamage) || (critical && part.criticalMax !== false && !Number.isFinite(maximumDamage))) throw new TypeError("Invalid damage total");
-    } catch (error) {
-      invalidFormula(item, part.formula);
-      return null;
-    }
-    components.push({
-      ...part,
-      rolledDamage,
-      ...(critical ? { maximumDamage } : {}),
-      total: critical && part.criticalMax !== false ? rolledDamage + maximumDamage : rolledDamage,
-      critical
-    });
-  }
+  const additional = await evaluateDamageParts(item, parts, critical);
+  if (!additional) return null;
+  const components = [...base, ...additional];
   const groups = groupDamageComponents(components);
   return { weapon: item, attacker, target, critical, components, groups, totalRawDamage: groups.reduce((total, group) => total + group.rawDamage, 0) };
 }
@@ -164,4 +166,4 @@ export async function sendDamageToChat(result, { attackerName, defenderName, ite
   return ChatMessage.create({ speaker, content, rolls: rolls.map((roll) => roll.toJSON()) });
 }
 
-export const DamageRollService = Object.freeze({ getMaximumRollTotal, rollWeaponDamage, sendDamageToChat });
+export const DamageRollService = Object.freeze({ getMaximumRollTotal, rollWeaponBaseDamage, rollWeaponDamage, sendDamageToChat });

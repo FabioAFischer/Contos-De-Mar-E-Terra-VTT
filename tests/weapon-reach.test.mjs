@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { rollWeaponDamage } from "../module/services/damage-roll-service.mjs";
+import { rollWeaponBaseDamage, rollWeaponDamage } from "../module/services/damage-roll-service.mjs";
 import { measureTokenReachDistanceAtPosition } from "../module/services/weapon-combat-state-service.mjs";
 
 globalThis.canvas = {
@@ -102,6 +102,32 @@ test("Alcance e Sequencial preservam os componentes no mesmo ataque", async () =
     { source: "sequencial", formula: "+1", nature: "physical", type: "perfurante" }
   ]);
   assert.equal(third.components[2].formula, "+2");
+});
+
+test("Golpe de Retaguarda reutiliza a rolagem base e compõe bônus por alvo", async () => {
+  let rolls = 0;
+  globalThis.Roll = class MockRoll {
+    constructor(formula) { this.formula = formula; this.total = formula === "2d10" ? ++rolls : 1; }
+    async evaluate() { return this; }
+    clone() { return new MockRoll(this.formula); }
+    evaluateSync() { return this; }
+  };
+  const item = {
+    name: "Nunchaku",
+    system: {
+      damage: [{ formula: "2d10", nature: "physical", type: "impacto" }],
+      characteristics: {
+        golpeDeRetaguarda: { enabled: true },
+        apunhalhar: { enabled: true, damageFormula: "+2", damagePartIndex: 0 }
+      }
+    }
+  };
+  const base = await rollWeaponBaseDamage(item);
+  const first = await rollWeaponDamage(item, { baseComponents: base, apunhalhar: true });
+  const second = await rollWeaponDamage(item, { baseComponents: base, apunhalhar: false });
+  assert.equal(rolls, 1);
+  assert.equal(first.totalRawDamage, 3);
+  assert.equal(second.totalRawDamage, 1);
 });
 
 test("Sequencial progressivo mantém o máximo crítico da fórmula atual", async () => {
