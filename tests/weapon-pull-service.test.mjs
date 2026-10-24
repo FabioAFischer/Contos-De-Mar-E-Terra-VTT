@@ -89,6 +89,32 @@ test("executa movimento pela API v14 e mantém a marcação de Puxar durante o m
   assert.equal(isForcedPullMovement(target, {}), false);
 });
 
+test("aguarda a confirmação da movimentação antes de medir a posição final", async () => {
+  makeScene();
+  const attacker = makeToken("attacker", 0, 0);
+  const target = makeToken("target", 500, 0);
+  let resolveFinished;
+  target.document.move = async (_waypoints, options) => {
+    assert.equal(options.method, "api");
+    target.document.movement = {
+      passed: { waypoints: [{ x: 500, y: 0 }, { x: 200, y: 0 }] },
+      finished: new Promise((resolve) => { resolveFinished = resolve; })
+    };
+    setImmediate(() => {
+      target.document.x = 200;
+      resolveFinished(true);
+    });
+    return true;
+  };
+  canvas.tokens.placeables = [attacker, target];
+
+  const result = await executePullMovement({ attackerToken: attacker, targetToken: target, spaces: 3 });
+
+  assert.equal(result.moved, true);
+  assert.equal(result.movedSpaces, 3);
+  assert.equal(result.destination.x, 200);
+});
+
 test("classifica erro real da API sem tratá-lo como falha de permissão", async () => {
   makeScene();
   const attacker = makeToken("attacker", 0, 0);
@@ -137,6 +163,30 @@ test("diferencia movimento interrompido e preserva deslocamento parcial", async 
   assert.equal(result.movedSpaces, 1);
   assert.equal(result.failureReason, "movementStopped");
   assert.equal(result.blockedReason, "movementStopped");
+});
+
+test("mede um único espaço efetivamente percorrido antes de um obstáculo", async () => {
+  makeScene();
+  const attacker = makeToken("attacker", 0, 0);
+  let collisionChecks = 0;
+  const target = makeToken("target", 500, 0, {
+    collision: () => ++collisionChecks > 1
+  });
+  target.document.move = async (waypoints, options) => {
+    assert.equal(options.method, "api");
+    const destination = waypoints.at(-1);
+    target.document.x = destination.x;
+    target.document.y = destination.y;
+    return true;
+  };
+  canvas.tokens.placeables = [attacker, target];
+
+  const result = await executePullMovement({ attackerToken: attacker, targetToken: target, spaces: 3 });
+
+  assert.equal(result.moved, true);
+  assert.equal(result.movedSpaces, 1);
+  assert.equal(result.blocked, true);
+  assert.equal(result.failureReason, "noSpace");
 });
 
 test("classifica ausência de espaço livre sem chamar a API de movimento", async () => {

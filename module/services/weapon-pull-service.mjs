@@ -65,9 +65,31 @@ function currentUserCanMoveTarget(token) {
   return { allowed: true, authority };
 }
 
-function currentPosition(document, fallback) {
-  const position = point({ x: document?.x, y: document?.y });
-  return position ?? fallback;
+function currentPosition(document, fallback, movement = document?.movement) {
+  const persisted = point({ x: document?.x, y: document?.y });
+  const sections = [
+    movement?.passed,
+    movement?.history?.recorded,
+    movement?.history?.unrecorded
+  ];
+  const passedWaypoints = sections.flatMap((section) => section?.waypoints ?? []);
+  const passed = point(passedWaypoints.at?.(-1) ?? passedWaypoints[passedWaypoints.length - 1]);
+
+  // The persisted TokenDocument position is authoritative once it differs
+  // from the origin. When a mock or a movement hook exposes the confirmed
+  // passed waypoint before the document source is refreshed, use that
+  // confirmed waypoint instead of the planned destination.
+  if (persisted && passed && persisted.x === fallback.x && persisted.y === fallback.y
+    && (passed.x !== fallback.x || passed.y !== fallback.y)) return passed;
+  return persisted ?? passed ?? fallback;
+}
+
+async function waitForMovementConfirmation(document, previousMovement) {
+  const movement = document?.movement;
+  if (!movement || movement === previousMovement) return movement;
+  const finished = document?.movement?.finished;
+  if (typeof finished?.then === "function") await finished;
+  return movement;
 }
 
 function tokenDocument(token) {
@@ -268,6 +290,7 @@ export function calculatePullPath({ attackerToken, targetToken, spaces } = {}) {
   return {
     origin,
     destination,
+    requestedSpaces: maximum,
     positions,
     movedSpaces: Number.isFinite(measuredSpaces) ? Math.max(0, measuredSpaces) : Math.max(0, positions.length - 1),
     blocked,
@@ -315,13 +338,15 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
 
   const id = tokenId(targetToken);
   forcedPullTokenIds.add(id);
+  const previousMovement = document.movement;
   try {
     const completed = await document.move(path.positions.slice(1), {
       method: PULL_MOVEMENT_METHOD,
       broadcast: true,
       showRuler: false
     });
-    const current = currentPosition(document, path.origin);
+    const movement = await waitForMovementConfirmation(document, previousMovement);
+    const current = currentPosition(document, path.origin, movement);
     const moved = current.x !== path.origin.x || current.y !== path.origin.y;
     const interrupted = completed === false;
     return {
@@ -333,7 +358,7 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
       failureReason: interrupted ? "movementStopped" : path.blocked ? "noSpace" : null
     };
   } catch (error) {
-    const current = currentPosition(document, path.origin);
+    const current = currentPosition(document, path.origin, null);
     const details = movementErrorDetails(error);
     logMovementError(error, {
       tokenId: id,

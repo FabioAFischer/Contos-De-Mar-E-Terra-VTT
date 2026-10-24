@@ -480,6 +480,35 @@ test("Puxar usa ataque e defesa normais, move sem dano e registra Sequencial", a
   assert.equal(setupData.targetActor.system.resources.vida.value, 20);
   assert.equal(damageCards.length, 0);
   assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 2);
+  const pullMessage = Array.from(game.messages.values()).at(-1);
+  assert.match(pullMessage.content, /PullResultMovedPlural/);
+  assert.match(pullMessage.content, /"movedSpaces":2/);
+});
+
+test("Puxar informa deslocamento parcial quando um obstáculo interrompe a trajetória", async () => {
+  const setupData = setup({
+    targetX: 500,
+    attackResults: [50],
+    mainSpecial: {
+      puxar: { enabled: true, spaces: 3 },
+      sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 }
+    }
+  });
+  let collisionChecks = 0;
+  setupData.targetToken.checkCollision = () => ++collisionChecks > 2;
+
+  startWeaponAttack({ actor: setupData.actor, item: setupData.main, attackMode: "pull" });
+  await Promise.resolve();
+  await rollDialog(dialogs[0]);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(setupData.targetToken.document.x, 300);
+  const pullMessage = Array.from(game.messages.values()).at(-1);
+  assert.match(pullMessage.content, /PullResultPartialPlural/);
+  assert.match(pullMessage.content, /"movedSpaces":2/);
+  assert.doesNotMatch(pullMessage.content, /PullResultBlocked/);
+  assert.equal(damageCards.length, 0);
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 1);
 });
 
 test("Puxar inválido impede somente o modo Puxar", async () => {
