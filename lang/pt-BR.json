@@ -66,6 +66,7 @@
       "AttackHit": "ATAQUE ACERTOU",
       "AttackMiss": "ATAQUE ERROU",
       "AttackDefended": "ATAQUE DEFENDIDO",
+      "RearStrikeDescription": "Ataque um inimigo à frente e outro atrás do atacante.",
       "ReactionTitle": "Ataque de reação — Arma de Haste",
       "ReactionPromptSingular": "{enemyName} está {movementDirection} do alcance de {weaponName}.\n\nVocê possui {reservedActions} ação reservada.\n\nDeseja gastar 1 ação reservada para realizar um ataque reativo?",
       "ReactionPromptPlural": "{enemyName} está {movementDirection} do alcance de {weaponName}.\n\nVocê possui {reservedActions} ações reservadas.\n\nDeseja gastar 1 ação reservada para realizar um ataque reativo?",
@@ -110,6 +111,10 @@
         "InvalidTwoWeaponAttack": "É necessário empunhar duas armas de uma mão válidas.",
         "WeaponNotLoaded": "A arma precisa ser recarregada antes de atacar.",
         "InvalidPullSpaces": "A característica Puxar exige uma quantidade positiva de espaços configurada.",
+        "RearStrikeUnavailable": "Golpe de Retaguarda não está disponível neste fluxo de ataque.",
+        "RearStrikeRequiresTwoTargets": "Golpe de Retaguarda exige exatamente dois alvos distintos.",
+        "RearStrikeInvalidTarget": "Os dois alvos precisam ser inimigos válidos e distintos.",
+        "RearStrikeInvalidPosition": "Selecione um inimigo à frente e outro atrás do atacante.",
         "ReloadOnlyOnTurn": "A recarga só pode ser feita no turno ativo."
       }
     },
@@ -249,7 +254,7 @@
         "Configuration": "Configuração",
         "Description": "Descrição"
       },
-      "Actions": { "Reload": "Recarregar", "Recover": "Recuperar", "Throw": "Arremessar", "Pull": "Puxar", "CombinedAttack": "Atacar com as duas armas" },
+      "Actions": { "Reload": "Recarregar", "Recover": "Recuperar", "Throw": "Arremessar", "Pull": "Puxar", "RearStrike": "Golpe de Retaguarda", "CombinedAttack": "Atacar com as duas armas" },
       "Fields": {
         "Quality": "Qualidade",
         "CombatSkill": "Perícia de Combate",

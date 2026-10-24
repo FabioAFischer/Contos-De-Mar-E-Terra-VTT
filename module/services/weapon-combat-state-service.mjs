@@ -122,6 +122,25 @@ export function isAttackerBehindDefender(attackerToken, defenderToken) {
   return dotProduct <= -Math.cos(Math.PI / 4);
 }
 
+export function getTargetPositionRelativeToAttacker(attackerToken, targetToken) {
+  const attacker = tokenCenter(attackerToken);
+  const target = tokenCenter(targetToken);
+  const rotation = Number((attackerToken?.document ?? attackerToken)?.rotation);
+  if (!attacker || !target || !Number.isFinite(rotation)) return null;
+  const dx = target.x - attacker.x;
+  const dy = target.y - attacker.y;
+  const length = Math.hypot(dx, dy);
+  if (!(length > 0)) return null;
+  const radians = rotation * Math.PI / 180;
+  const frontX = -Math.sin(radians);
+  const frontY = Math.cos(radians);
+  const dotProduct = (dx / length) * frontX + (dy / length) * frontY;
+  const threshold = Math.cos(Math.PI / 4);
+  if (dotProduct >= threshold) return "frente";
+  if (dotProduct <= -threshold) return "costas";
+  return "lateral";
+}
+
 export function getTokenSide(defenderToken, attackerToken) {
   const defender = tokenPosition(defenderToken);
   const attacker = tokenPosition(attackerToken);
@@ -154,17 +173,27 @@ export async function recordPointWeakAttack(combat, actor, item, attackerToken, 
 }
 
 export function impactSequenceBonusState(combat, actor, item, defenderToken) {
-  const entry = readWeaponCombatState(combat).impact?.[attackerKey(actor)];
+  const actorState = readWeaponCombatState(combat).impact?.[attackerKey(actor)];
+  const targetId = targetKey(defenderToken);
+  const entry = actorState?.targets?.[targetId]
+    ?? (actorState?.targetId === targetId ? actorState : null);
   return Boolean(entry?.weaponId === item?.id && entry?.targetId === targetKey(defenderToken) && entry.streak > 0);
 }
 
 export async function recordImpactOutcome(combat, actor, item, defenderToken, { effectiveHit = false } = {}) {
   return enqueueWeaponCombatStateMutation(combat, (state) => {
     const key = attackerKey(actor);
-    const previous = state.impact[key];
-    state.impact[key] = effectiveHit && previous?.weaponId === item.id && previous?.targetId === targetKey(defenderToken)
-      ? { weaponId: item.id, targetId: targetKey(defenderToken), streak: 1 }
-      : effectiveHit ? { weaponId: item.id, targetId: targetKey(defenderToken), streak: 1 } : {};
+    const targetId = targetKey(defenderToken);
+    const previousActorState = state.impact[key];
+    const targets = previousActorState?.targets
+      ? { ...previousActorState.targets }
+      : previousActorState?.targetId ? { [previousActorState.targetId]: previousActorState } : {};
+    if (effectiveHit) {
+      targets[targetId] = { weaponId: item.id, targetId, streak: 1 };
+    } else {
+      delete targets[targetId];
+    }
+    state.impact[key] = { targets };
   });
 }
 
@@ -320,4 +349,4 @@ export async function clearWeaponCombatState(combat) {
   });
 }
 
-export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusCount, getSequentialBonusState, recordSequentialOutcome, getTokenSide, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });
+export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusCount, getSequentialBonusState, recordSequentialOutcome, getTokenSide, isAttackerBehindDefender, getTargetPositionRelativeToAttacker, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });

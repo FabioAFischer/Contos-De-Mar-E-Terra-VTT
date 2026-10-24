@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { arePotentialAdversaries, clearWeaponCombatState, didCrossWeaponReach, getLateralEnemies, getSequentialBonusCount, getSequentialBonusState, getTokenSide, isAttackerBehindDefender, isLaterallyAdjacent, measureTokenDistanceAtPosition, recordImpactOutcome, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, clearWeaponCombatState, didCrossWeaponReach, getLateralEnemies, getSequentialBonusCount, getSequentialBonusState, getTargetPositionRelativeToAttacker, getTokenSide, impactSequenceBonusState, isAttackerBehindDefender, isLaterallyAdjacent, measureTokenDistanceAtPosition, recordImpactOutcome, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
 import { compareAttackAndDefense } from "../module/services/combat-attack-service.mjs";
 
 globalThis.canvas = { grid: { size: 100, measurePath: ([origin, target]) => ({ spaces: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) / 100, distance: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) }) } };
@@ -37,6 +37,17 @@ test("Apunhalhar usa centros e o setor traseiro de 90 graus", () => {
   assert.equal(isAttackerBehindDefender(token(300, 100), defender), false);
   assert.equal(isAttackerBehindDefender(token(100, 300), defender), false);
   assert.equal(isAttackerBehindDefender(token(100, 100, 2, 2, 0), defender), false);
+});
+
+test("Golpe de Retaguarda classifica os setores pela rotação do atacante", () => {
+  const attacker = token(100, 100, 2, 2, 0);
+  assert.equal(getTargetPositionRelativeToAttacker(attacker, token(100, 300)), "frente");
+  assert.equal(getTargetPositionRelativeToAttacker(attacker, token(100, -100)), "costas");
+  assert.equal(getTargetPositionRelativeToAttacker(attacker, token(300, 100)), "lateral");
+  assert.equal(getTargetPositionRelativeToAttacker({ document: { ...attacker.document, rotation: 90 } }, token(-100, 100)), "frente");
+  assert.equal(getTargetPositionRelativeToAttacker({ document: { ...attacker.document, rotation: 180 } }, token(100, -100)), "frente");
+  assert.equal(getTargetPositionRelativeToAttacker({ document: { ...attacker.document, rotation: 270 } }, token(300, 100)), "frente");
+  assert.equal(getTargetPositionRelativeToAttacker(attacker, token(100, 100, 2, 2)), null);
 });
 
 test("detecta saída e entrada do alcance, mas não movimento interno", () => {
@@ -212,6 +223,21 @@ test("reset de Sequencial não é sobrescrito por uma atualização assíncrona 
   assert.equal(getSequentialBonusCount(combat, actor, weapon), 0);
   await recordSequentialOutcome(combat, actor, weapon, { effectiveHit: true });
   assert.equal(getSequentialBonusCount(combat, actor, weapon), 1);
+});
+
+test("Impacto mantém o histórico independente por defensor", async () => {
+  const combat = combatWithState();
+  const actor = { id: "actor-1" };
+  const weapon = { id: "weapon-a" };
+  const firstTarget = { document: { id: "target-1", x: 100, y: 0, rotation: 0 } };
+  const secondTarget = { document: { id: "target-2", x: 200, y: 0, rotation: 0 } };
+  await recordImpactOutcome(combat, actor, weapon, firstTarget, { effectiveHit: true });
+  await recordImpactOutcome(combat, actor, weapon, secondTarget, { effectiveHit: true });
+  assert.equal(impactSequenceBonusState(combat, actor, weapon, firstTarget), true);
+  assert.equal(impactSequenceBonusState(combat, actor, weapon, secondTarget), true);
+  await recordImpactOutcome(combat, actor, weapon, firstTarget, { effectiveHit: false });
+  assert.equal(impactSequenceBonusState(combat, actor, weapon, firstTarget), false);
+  assert.equal(impactSequenceBonusState(combat, actor, weapon, secondTarget), true);
 });
 
 test("reset explícito sobrevive ao merge parcial e preserva outro personagem", async () => {
