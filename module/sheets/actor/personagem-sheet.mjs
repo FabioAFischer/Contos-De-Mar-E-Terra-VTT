@@ -10,6 +10,9 @@ import { startWeaponAttack, startThrownWeaponAttack, startCombinedWeaponAttack }
 import { canRecover } from "../../services/weapon-characteristics-service.mjs";
 import { recoverWeapon, reloadWeapon } from "../../services/item-action-service.mjs";
 import { calculateConditionMovement } from "../../services/combat-condition-service.mjs";
+import { getAbilityDaEffects, activateAbilityDaEffect, toggleAbilityDaEffect } from "../../services/ability-da-service.mjs";
+import { CombatActionService } from "../../services/combat-action-service.mjs";
+import { actorHasEmpunhaduraDoMaisForte, getWeaponGripOptions, resolveEffectiveWeaponWielding } from "../../services/weapon-wielding-service.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -29,6 +32,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     const items = this.actor.items.contents;
+    const hands = this.actor.system.hands ?? { mainHand: "", offHand: "", mainHandGrip: "duasMaos", offHandGrip: "umaMao" };
     const groupedItems = {
       equipamentos: items.filter((item) => item.type === ITEM_TYPES.EQUIPAMENTO).map((item) => ({
         id: item.id, name: item.name, img: item.img, firstMeta: "", secondMeta: "", detailLabel: item.system.description || ""
@@ -36,7 +40,9 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       armas: items.filter((item) => item.type === ITEM_TYPES.ARMA).map((item) => {
         const system = item.system;
         const roll = resolveItemRollSkill(item);
-        const quality = WEAPON_QUALITIES.find(({ key }) => key === system.quality);
+        const hand = hands.mainHand === item.id ? "mainHand" : hands.offHand === item.id ? "offHand" : "mainHand";
+        const wielding = resolveEffectiveWeaponWielding({ actor: this.actor, item, hand });
+        const quality = WEAPON_QUALITIES.find(({ key }) => key === wielding.effectiveQuality);
         const combatSkill = WEAPON_COMBAT_SKILLS.find(({ key }) => key === system.combatSkill);
         // Os controles dependem da perícia configurada, não das parcelas de dano.
         // A validade mecânica continua sendo verificada pelos serviços ao clicar.
@@ -57,7 +63,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
           firstMeta: quality ? game.i18n.localize(quality.label) : "",
           secondMeta: combatSkill ? game.i18n.localize(combatSkill.label) : "",
           sideLabel: damageParts.map(({ formula }) => formula).filter(Boolean).join(" + "),
-          detailLabel: [damageTypesLabel, range.enabled ? `${game.i18n.localize("CMET.WeaponCharacteristics.Alcance")} ${range.spaces}` : ""].filter(Boolean).join(" • "),
+          detailLabel: [damageTypesLabel, range.enabled ? `${game.i18n.localize("CMET.WeaponCharacteristics.Alcance")} ${range.spaces}` : "", wielding.exceptionActive ? game.i18n.localize("CMET.Weapon.Grip.QualityReduced") : ""].filter(Boolean).join(" • "),
           canRoll: hasCombatSkill,
           canAttack: hasCombatSkill,
           canPull: hasCombatSkill && pull?.enabled === true,
@@ -118,6 +124,15 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
           rollSkillLabel: roll?.skillLabel ?? ""
         };
       }),
+      habilidadesDa: items.filter((item) => item.type === ITEM_TYPES.HABILIDADE_DA).map((item) => ({
+        id: item.id,
+        name: item.name,
+        img: item.img,
+        firstMeta: item.system.origin || game.i18n.localize("CMET.AbilityDa.Fields.NoOrigin"),
+        secondMeta: game.i18n.localize(`CMET.AbilityDa.Activation.${item.system.activationType === "ativa" ? "Active" : item.system.activationType === "reativa" ? "Reactive" : "Passive"}`),
+        detailLabel: item.system.category || "",
+        effects: getAbilityDaEffects(item).map((effect) => ({ id: effect.id, name: effect.name || game.i18n.localize("CMET.AbilityDa.Actions.UntitledEffect"), activationType: effect.activationType, active: effect.active === true, canActivate: effect.enabled !== false && (["ativa", "reativa"].includes(effect.activationType) || effect.activationType === "passiva") }))
+      })),
       magias: items.filter((item) => item.type === ITEM_TYPES.MAGIA).map((item) => {
         const school = item.system.school;
         const roll = resolveItemRollSkill(item);
@@ -149,9 +164,13 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       movimento: calculateConditionMovement(derived.movimento, this.actor),
       actions: this.actor.system.actions.max
     };
+    const customResources = Array.isArray(this.actor.system.resources.custom) ? this.actor.system.resources.custom : [];
     const weaponOptions = [{ id: "", name: game.i18n.localize("CMET.Weapon.Fields.None") }, ...groupedItems.armas.map((weapon) => ({ id: weapon.id, name: weapon.name }))];
-    const hands = this.actor.system.hands ?? { mainHand: "", offHand: "" };
-    return { ...context, actor: this.actor, attributes, derived, resources, weaponOptions, hands, ...groupedItems };
+    const mainWeapon = this.actor.items.get(hands.mainHand);
+    const mainHandGripOptions = mainWeapon?.system?.characteristics?.duasMaos?.enabled === true
+      ? getWeaponGripOptions(this.actor, mainWeapon, "mainHand").map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === hands.mainHandGrip }))
+      : [];
+    return { ...context, actor: this.actor, attributes, derived, resources, customResources, weaponOptions, hands, mainHandGripOptions, ...groupedItems };
   }
 
   _onRender(context, options) {
@@ -167,11 +186,14 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     this.element.addEventListener("dragstart", (event) => {
       const dragTarget = event.target.closest("[data-item-drag]");
       if (!dragTarget || !this.element.contains(dragTarget)) return;
-      const itemId = dragTarget.closest("[data-item-id]")?.dataset.itemId;
+      const row = dragTarget.closest("[data-item-id]");
+      const itemId = row?.dataset.itemId;
       const item = this.actor.items.get(itemId);
       if (!item?.toDragData || !event.dataTransfer) return;
       event.dataTransfer.effectAllowed = "copy";
-      event.dataTransfer.setData("text/plain", JSON.stringify(item.toDragData()));
+      const dragData = item.toDragData();
+      const effectId = dragTarget.closest("[data-da-effect-id]")?.dataset.daEffectId;
+      event.dataTransfer.setData("text/plain", JSON.stringify(effectId ? { ...dragData, effectId } : dragData));
     }, { signal: this._renderListeners.signal });
     this.#restoreUiState();
   }
@@ -221,11 +243,37 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const value = input.type === "number" ? Number(input.value) : input.value;
     if (path === "name") return this.actor.update({ name: value });
     if (!path.startsWith("system.")) return;
-    if (path === "system.hands.mainHand" || path === "system.hands.offHand") {
+    if (["system.hands.mainHand", "system.hands.offHand", "system.hands.mainHandGrip", "system.hands.offHandGrip"].includes(path)) {
       const hands = this.actor.system.hands ?? { mainHand: "", offHand: "" };
+      if (path.endsWith("Grip")) {
+        const main = this.actor.items.get(hands.mainHand);
+        if (path.endsWith("mainHandGrip") && value === "umaMao" && (!main || !resolveEffectiveWeaponWielding({ actor: this.actor, item: main, hand: "mainHand", gripMode: value }).hasEmpunhaduraDoMaisForte)) {
+          ui.notifications.warn(game.i18n.localize("CMET.Notifications.EmpunhaduraUnavailable"));
+          return this.render();
+        }
+        if (path.endsWith("mainHandGrip") && value === "duasMaos" && hands.offHand) {
+          ui.notifications.warn(game.i18n.localize("CMET.Notifications.WeaponRequiresFreeHand"));
+          return this.render();
+        }
+        return this.actor.update({ [path]: value });
+      }
       const other = path.endsWith("mainHand") ? "offHand" : "mainHand";
       if (value && value === hands[other]) {
         ui.notifications.warn(game.i18n.localize("CMET.Notifications.DuplicateHandWeapon"));
+        return this.render();
+      }
+      const nextHands = { ...hands, [path.endsWith("mainHand") ? "mainHand" : "offHand"]: value };
+      const main = this.actor.items.get(nextHands.mainHand);
+      const off = this.actor.items.get(nextHands.offHand);
+      const hasEmpunhadura = actorHasEmpunhaduraDoMaisForte(this.actor);
+      const mainNeedsTwoHands = main?.system?.characteristics?.duasMaos?.enabled === true;
+      const offNeedsTwoHands = off?.system?.characteristics?.duasMaos?.enabled === true;
+      if (mainNeedsTwoHands && nextHands.offHand && !hasEmpunhadura) {
+        ui.notifications.warn(game.i18n.localize("CMET.Notifications.WeaponRequiresFreeHand"));
+        return this.render();
+      }
+      if (offNeedsTwoHands && !hasEmpunhadura) {
+        ui.notifications.warn(game.i18n.localize("CMET.Notifications.WeaponRequiresMainHand"));
         return this.render();
       }
       if (game.combat?.started && hands[path.endsWith("mainHand") ? "mainHand" : "offHand"] !== value) {
@@ -237,7 +285,11 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         }
         try { await CombatActionService.spendAction(combatant); } catch { ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ActionInsufficient")); return this.render(); }
       }
-      return this.actor.update({ [path]: value });
+      const updates = { [path]: value };
+      if (hasEmpunhadura && nextHands.mainHand && nextHands.offHand && mainNeedsTwoHands && nextHands.mainHandGrip !== "umaMao") {
+        updates["system.hands.mainHandGrip"] = "umaMao";
+      }
+      return this.actor.update(updates);
     }
     const parts = path.split(".");
     if (parts[1] === "attributes" && parts[3] === "skills") {
@@ -257,6 +309,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       }
       return this.actor.update({ [path]: nextSystem.attributes[parts[2]].value, ...resourceUpdates });
     }
+    if (parts[1] === "resources" && parts[2] === "custom") return this.actor.update({ [path]: Math.max(0, value) });
     if (parts[1] === "resources") {
       const max = calculateCharacterDerivedData(this.actor.system)[`${parts[2]}Max`];
       return this.actor.update({ [path]: Math.min(Math.max(0, value), max) });
@@ -301,6 +354,12 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     if (action.dataset.action === "combinedAttack") return startCombinedWeaponAttack({ actor: this.actor });
     if (action.dataset.action === "reloadItem" && item) return this.#reloadWeapon(item);
     if (action.dataset.action === "recoverItem" && item) return this.#recoverWeapon(item);
+    if (action.dataset.action === "activate-da-effect" && item?.type === ITEM_TYPES.HABILIDADE_DA) {
+      const effect = getAbilityDaEffects(item, { includeDisabled: true }).find((entry) => entry.id === action.dataset.effectId);
+    return effect?.activationType === "passiva"
+      ? toggleAbilityDaEffect({ actor: this.actor, item, effectId: action.dataset.effectId, token: canvas.tokens.controlled.find((token) => token.actor?.id === this.actor.id) })
+      : activateAbilityDaEffect({ actor: this.actor, item, effectId: action.dataset.effectId, context: { originToken: canvas.tokens.controlled.find((token) => token.actor?.id === this.actor.id) } });
+    }
     if (action.dataset.action === "open-item" && item) return item.sheet.render(true);
     if (action.dataset.action === "delete-item" && item) return item.delete();
     if (action.dataset.action === "create-item") {
@@ -308,6 +367,16 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       if (!Object.values(ITEM_TYPES).includes(type)) return;
       const [created] = await this.actor.createEmbeddedDocuments("Item", [{ name: game.i18n.localize(`CMET.ItemTypes.${type}`), type }]);
       return created.sheet.render(true);
+    }
+    if (action.dataset.action === "create-custom-resource") {
+      const custom = foundry.utils.deepClone(this.actor.system.resources.custom ?? []);
+      custom.push({ id: foundry.utils.randomID(), name: game.i18n.localize("CMET.AbilityDa.Resources.New"), current: 0, initial: 0, max: 0, resetRule: "manual", description: "", enabled: true });
+      return this.actor.update({ "system.resources.custom": custom });
+    }
+    if (action.dataset.action === "delete-custom-resource") {
+      const custom = foundry.utils.deepClone(this.actor.system.resources.custom ?? []);
+      custom.splice(Number(action.dataset.resourceIndex), 1);
+      return this.actor.update({ "system.resources.custom": custom });
     }
   }
 

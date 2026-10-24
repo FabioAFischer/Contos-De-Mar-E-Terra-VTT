@@ -8,6 +8,7 @@
       "armadura": "Armor",
       "equipamento": "Equipment",
       "habilidade": "Ability",
+      "habilidadeDa": "DA Ability",
       "magia": "Spell"
     }
   },
@@ -158,6 +159,7 @@
     "ItemTypes": {
       "equipamento": "Equipment",
       "habilidade": "Ability",
+      "habilidadeDa": "DA Ability",
       "magia": "Spell",
       "arma": "Weapon",
       "armadura": "Armor"
@@ -290,6 +292,7 @@
         "ThrowRange": "Throw range"
       },
       "Actions": { "Reload": "Reload", "Recover": "Recover", "Throw": "Throw", "Pull": "Pull", "RearStrike": "Rear Strike", "CombinedAttack": "Attack with both weapons" },
+      "Grip": { "Title": "Grip", "OneHand": "One hand", "TwoHands": "Two hands", "OneHandEmpunhadura": "One hand (Empunhadura do Mais Forte)", "QualityReduced": "effective quality reduced by one level" },
       "Sections": { "Damage": "Damage", "Characteristics": "Characteristics" }
     },
     "Armor": {
@@ -353,6 +356,37 @@
       "Categories": { "Origem": "Origin", "Corpo": "Body", "Armamento": "Armament", "Mistico": "Mystic", "Social": "Social", "Religiao": "Religion", "Tatica": "Tactics", "Cosmico": "Cosmic" },
       "Fields": { "Category": "Category", "NoCategory": "No category", "RollSkill": "Skill for roll", "NoRollSkill": "None", "Path": "Path", "Cost": "Cost", "Points": "points", "Requirements": "Requirements", "None": "None", "Description": "Description", "Effect": "Effect", "Upgrade": "Upgrade" }
     },
+    "AbilityDa": {
+      "Title": "Deuses Adormecidos — DA",
+      "Empty": "No DA abilities added.",
+      "EmptyEffects": "No subeffects configured.",
+      "Sections": { "General": "Identification" },
+      "Fields": { "ActivationType": "Main type", "Origin": "Origin", "NoOrigin": "No origin", "Category": "Thematic category", "AssociatedCharacter": "Associated character", "CharacterPlaceholder": "Optional", "Effects": "Subeffects", "Enabled": "Enabled", "Trigger": "Trigger", "TriggerPhase": "Trigger phase", "OncePolicy": "Frequency", "Summary": "Summary", "Description": "Narrative description", "Functioning": "Functioning", "GmNotes": "GM notes", "ManualResolution": "Manual resolution", "Notes": "Notes", "SkillKey": "Skill key" },
+      "Tabs": { "General": "General", "Effects": "Effects", "Summary": "Summary", "Mechanics": "Mechanics", "Narrative": "Narrative", "Advanced": "Advanced" },
+      "Activation": { "Passive": "Passive", "Active": "Active", "Reactive": "Reactive" },
+      "Triggers": { "Manual": "Manual", "AttackDeclared": "Attack declared", "AttackHit": "Attack hit", "AttackMiss": "Attack missed", "DamageReceived": "Damage received", "ResourceChanged": "Resource changed", "TurnStart": "Turn start", "TurnEnd": "Turn end", "CombatEnd": "Combat end" },
+      "Costs": { "Title": "Costs", "Actions": "Actions", "ReservedActions": "Reserved actions", "Health": "Health", "Mana": "Mana", "Sanity": "Sanity", "CustomResource": "Custom resource", "OnActivation": "On activation", "OnSuccess": "After success", "OnEvent": "After event" },
+      "Tests": { "Title": "Tests", "Manual": "No test / manual", "Skill": "Skill test", "Opposed": "Opposed test", "Resistance": "Resistance test" },
+      "Conditions": { "Title": "Conditions" },
+      "EmptyConditions": "No conditions configured.",
+      "Operations": { "Title": "Operations", "Resource": "Change resource", "WeaponGrip": "Weapon grip modifier", "SkillModifier": "Skill modifier", "ArmorBonus": "Armor bonus", "SizeIncrease": "Size increase", "Damage": "Damage", "Heal": "Heal", "ConditionAdd": "Add condition", "ConditionRemove": "Remove condition", "Manual": "Manual operation", "Instructions": "Instructions", "Formula": "Formula", "Amount": "Amount", "Characteristic": "Characteristic", "Stages": "Stages", "Condition": "Condition", "Skill": "Skill" },
+      "Branches": { "Title": "Branches", "Name": "Option name", "Manual": "Manual selection", "Exclusive": "Exclusive choice", "Multiple": "Multiple choice", "Sequence": "Sequence" },
+      "Duration": { "Title": "Duration", "Instant": "Instant", "Turns": "Turns", "Rounds": "Rounds", "Combat": "End of combat", "Permanent": "Permanent", "Condition": "Until condition", "Amount": "Amount", "Reference": "End condition" },
+      "Limits": { "Title": "Usage limits", "None": "No limit", "Turn": "Per turn", "Combat": "Per combat", "Day": "Per day", "Maximum": "Maximum" },
+      "Once": { "Always": "Always", "Attack": "Once per attack", "Target": "Once per target", "Event": "Once per event" },
+      "Targets": { "Self": "Self", "Ally": "Ally", "Enemy": "Enemy", "Any": "Any", "Manual": "Manual selection", "Relation": "Relation", "Count": "Count", "Range": "Range", "RequiresSelection": "Requires selection" },
+      "Actions": { "Create": "+ New DA ability", "AddEffect": "+ Add subeffect", "AddCost": "+ Add cost", "AddTest": "+ Add test", "AddCondition": "+ Add condition", "AddOperation": "+ Add operation", "AddBranch": "+ Add branch", "MoveUp": "Move up", "MoveDown": "Move down", "Duplicate": "Duplicate", "NoSummary": "No summary", "UntitledEffect": "Unnamed subeffect", "Activate": "Activate", "Deactivate": "Deactivate", "Confirm": "Confirm", "DeleteEffect": "Delete subeffect", "ConfirmDelete": "Delete this subeffect?", "View": "View", "Edit": "Edit" },
+      "Editor": { "Activation": "Activation", "Requirements": "Requirements", "CostsTests": "Costs and tests", "Targets": "Targets", "Operations": "Operations", "Persistence": "Persistence", "Branches": "Branches" },
+      "Summary": { "Effects": "Effects", "Cost": "Cost", "Duration": "Duration", "Automation": "Automation", "Automatic": "automatic", "Manual": "manual", "NoCost": "None", "NoTests": "No tests", "NoOperations": "No operations", "NoDescription": "No narrative description.", "None": "None" },
+      "Status": { "Active": "Active", "Inactive": "Inactive" },
+      "ConditionFields": { "TargetLevel": "Target level", "TargetSize": "Target size", "ActorLevel": "User level", "ActorSize": "User size", "Logic": "Logical grouping", "Or": "OR" },
+      "Operators": { "Equals": "Equals", "NotEquals": "Does not equal", "GreaterThan": "Greater than", "GreaterThanOrEqual": "Greater than or equal", "LessThan": "Less than", "LessThanOrEqual": "Less than or equal" },
+      "OperationSummary": { "Armor": "Carapace", "Size": "Size", "Heal": "Recover Health", "Resource": "Resource", "ConditionAdd": "Apply", "ConditionRemove": "Remove", "SkillModifier": "Modify skill", "Damage": "Damage", "WeaponGrip": "Weapon grip", "Manual": "Manual resolution" },
+      "Advanced": { "ReadOnly": "Technical data is read-only. Edit it through the Mechanics tab." },
+      "Resources": { "Title": "DA resources", "Add": "+ Add resource", "New": "New resource", "Name": "Name", "Current": "Current", "Maximum": "Maximum" },
+      "Chat": { "Activated": "Effect activated.", "Deactivated": "Effect deactivated.", "ManualEffects": "Some operations require manual resolution.", "TargetReview": "Review eligible targets before continuing:", "NoTargets": "No eligible adversary was found." },
+      "Notifications": { "EffectUnavailable": "That DA effect is unavailable.", "PassiveManual": "Passive effects remain as reference and have no activation button.", "InsufficientCost": "Insufficient cost or resource.", "InsufficientActions": "There are not enough actions for {ability}. Required: {amount}. Available: {available}.", "InsufficientReservedActions": "There are not enough reserved actions for {ability}. Required: {amount}. Available: {available}.", "NotActiveTurn": "It is not the character's turn to activate {ability}.", "MissingCombatant": "The character has no valid combatant in this combat.", "InsufficientResource": "Insufficient resource for {ability}. Required: {amount}. Available: {available}.", "MissingResource": "The resource required by {ability} was not found.", "InvalidCost": "The cost of {ability} is configured incorrectly.", "NoPermission": "You do not have permission to edit this ability." }
+    },
     "Navigation": {
       "Label": "Sheet sections",
       "Attributes": "Attributes",
@@ -361,7 +395,7 @@
       "Spells": "Spells",
       "Biography": "Biography"
     },
-    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution.", "DuplicateHandWeapon": "The same weapon cannot occupy both hands." },
+    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution.", "DuplicateHandWeapon": "The same weapon cannot occupy both hands.", "EmpunhaduraUnavailable": "Empunhadura do Mais Forte is not available for this character.", "WeaponRequiresFreeHand": "This weapon requires a free hand to wield.", "WeaponRequiresMainHand": "A two-handed weapon must occupy the main hand." },
     "Rolling": {
       "SkillTest": "Skill Test",
       "BaseValue": "Base value",
@@ -395,6 +429,7 @@
       "Item": "Item sheet",
       "Arma": "Weapon sheet",
       "Armadura": "Armor sheet",
+      "HabilidadeDa": "DA Ability sheet",
       "Magia": "Spell sheet",
       "Personagem": "Character sheet",
       "Spells": "Spells"

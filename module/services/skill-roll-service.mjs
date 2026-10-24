@@ -17,6 +17,26 @@ export const SKILL_ROLL_DEGREES = Object.freeze({
   CRITICAL_FAILURE: "criticalFailure"
 });
 
+const SUCCESS_RANK = Object.freeze({
+  [SKILL_ROLL_DEGREES.NORMAL_SUCCESS]: 1,
+  [SKILL_ROLL_DEGREES.GOOD_SUCCESS]: 2,
+  [SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS]: 3,
+  [SKILL_ROLL_DEGREES.CRITICAL_SUCCESS]: 4
+});
+
+export function compareSkillRolls(attack, defense) {
+  if (!attack?.success) return { winner: "defense", reason: "attackFailure" };
+  if (!defense) return { winner: "attack", reason: "noDefense" };
+  if (!defense.success) return { winner: "attack", reason: "defenseFailure" };
+  const attackRank = SUCCESS_RANK[attack.degree] ?? 0;
+  const defenseRank = SUCCESS_RANK[defense.degree] ?? 0;
+  if (attackRank > defenseRank) return { winner: "attack", reason: "degree" };
+  if (defenseRank > attackRank) return { winner: "defense", reason: "degree" };
+  if (attack.selectedRoll < defense.selectedRoll) return { winner: "attack", reason: "roll" };
+  if (defense.selectedRoll < attack.selectedRoll) return { winner: "defense", reason: "roll" };
+  return { winner: "defense", reason: "absoluteTie" };
+}
+
 const SUCCESS_DEGREES = new Set([
   SKILL_ROLL_DEGREES.CRITICAL_SUCCESS,
   SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS,
@@ -137,6 +157,9 @@ export async function rollSkill({ actor, skillKey, modifier = 0, rollMode = SKIL
 }
 
 function getContextTitle(context) {
+  if (context?.type === "abilityDa") {
+    return [context.itemName, context.effectName].filter(Boolean).join(" — ");
+  }
   if (context?.type === "attack") {
     return `${context.attackerName} ${game.i18n.localize("CMET.CombatAttack.Attacked")} ${context.defenderName}`;
   }
@@ -146,7 +169,7 @@ function getContextTitle(context) {
   return "";
 }
 
-export async function sendSkillRollToChat(result, { context: rollContext = result.context } = {}) {
+export async function sendSkillRollToChat(result, { context: rollContext = result.context, actor: explicitActor = null } = {}) {
   const localize = (key) => game.i18n.localize(`CMET.Rolling.${key}`);
   const rollModeLabel = result.rollMode === SKILL_ROLL_MODES.ADVANTAGE ? localize("Advantage") : result.rollMode === SKILL_ROLL_MODES.DISADVANTAGE ? localize("Disadvantage") : "";
   const { roll: nativeRoll, ...presentationResult } = result;
@@ -162,7 +185,7 @@ export async function sendSkillRollToChat(result, { context: rollContext = resul
   };
   const { renderTemplate } = foundry.applications.handlebars;
   const content = await renderTemplate("systems/contos-de-mar-e-terra/templates/chat/skill-roll-card.hbs", presentationContext);
-  const actor = presentationResult.actorId ? game.actors.get(presentationResult.actorId) : null;
+  const actor = explicitActor ?? presentationResult.actor ?? (presentationResult.actorId ? game.actors.get(presentationResult.actorId) : null);
   const speaker = ChatMessage.getSpeaker({ actor });
   const chatData = await nativeRoll.toMessage({ speaker, content }, { create: false });
   return ChatMessage.create(chatData);

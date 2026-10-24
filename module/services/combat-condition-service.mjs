@@ -4,6 +4,19 @@ const CONDITION_FLAG = "conditions";
 const namespace = () => globalThis.game?.system?.id ?? SYSTEM_ID;
 
 export function getDazed(actor) { return actor?.getFlag?.(namespace(), CONDITION_FLAG)?.desnorteado ?? null; }
+export function getNamedCondition(actor, key) { return actor?.getFlag?.(namespace(), CONDITION_FLAG)?.[key] ?? null; }
+export async function applyNamedCondition(actor, key, data = {}) {
+  if (!actor?.setFlag || !key) return false;
+  const current = actor.getFlag?.(namespace(), CONDITION_FLAG) ?? {};
+  if (current[key]?.active) return false;
+  await actor.setFlag(namespace(), CONDITION_FLAG, { ...current, [key]: { ...data, active: true } });
+  return true;
+}
+export async function clearNamedCondition(actor, key) {
+  if (!actor?.unsetFlag || !key) return false;
+  await actor.unsetFlag(namespace(), `${CONDITION_FLAG}.${key}`);
+  return true;
+}
 export function isDazed(actor) { return Boolean(getDazed(actor)?.active); }
 export function getAvailableActionPenalty(actor) { return isDazed(actor) ? 2 : 0; }
 export function calculateConditionMovement(movement, actor) { return isDazed(actor) ? Math.floor(Number(movement) / 2) : Number(movement); }
@@ -32,4 +45,4 @@ export async function expireDazedConditions(combat, prior) {
   if (Number(prior.round) === Number(condition.expires.round)) await clearDazedCondition(previous.actor);
 }
 
-export const CombatConditionService = Object.freeze({ getDazed, isDazed, getAvailableActionPenalty, calculateConditionMovement, applyDazedCondition, clearDazedCondition, expireDazedConditions });
+export const CombatConditionService = Object.freeze({ getDazed, getNamedCondition, applyNamedCondition, clearNamedCondition, isDazed, getAvailableActionPenalty, calculateConditionMovement, applyDazedCondition, clearDazedCondition, expireDazedConditions });
