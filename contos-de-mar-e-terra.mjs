@@ -6,6 +6,8 @@ import { registerCombatHooks } from "./module/cmet-combat-tracker.mjs";
 import { registerCombatAttackHooks, registerCombatAttackSocket } from "./module/services/combat-attack-service.mjs";
 import { registerDamageApplicationSocket } from "./module/services/damage-application-service.mjs";
 import { registerItemHotbarApi, registerItemHotbarHook } from "./module/services/item-hotbar-service.mjs";
+import { registerAbilityDaHooks } from "./module/services/ability-da-trigger-service.mjs";
+import { migrateAbilityDaCopies, registerAbilityDaSocket } from "./module/services/ability-da-service.mjs";
 
 Hooks.once("init", () => {
   registerDataModels();
@@ -17,10 +19,15 @@ Hooks.once("init", () => {
   registerCombatAttackHooks();
   registerItemHotbarApi();
   registerItemHotbarHook();
+  registerAbilityDaHooks();
+  registerAbilityDaSocket();
   CONFIG.contosDeMarETerra = {
     systemId: "contos-de-mar-e-terra"
   };
   console.log("CMET | Contos de Mar e Terra inicializado");
 });
 
-Hooks.once("ready", migrateWeaponRanges);
+Hooks.once("ready", async () => {
+  await migrateWeaponRanges();
+  await migrateAbilityDaCopies();
+});

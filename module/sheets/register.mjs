@@ -4,6 +4,7 @@ import { ArmaSheet } from "./item/arma-sheet.mjs";
 import { ArmaduraSheet } from "./item/armadura-sheet.mjs";
 import { MagiaSheet } from "./item/magia-sheet.mjs";
 import { HabilidadeSheet } from "./item/habilidade-sheet.mjs";
+import { HabilidadeDaSheet } from "./item/habilidade-da-sheet.mjs";
 
 export function registerSheets() {
   const { DocumentSheetConfig } = foundry.applications.apps;
@@ -13,6 +14,12 @@ export function registerSheets() {
     game.system.id,
     PersonagemSheet,
     { types: ["personagem"], makeDefault: true, label: "CMET.Sheets.Personagem" }
+  );
+  DocumentSheetConfig.registerSheet(
+    Item,
+    game.system.id,
+    HabilidadeDaSheet,
+    { types: ["habilidadeDa"], makeDefault: true, label: "CMET.Sheets.HabilidadeDa" }
   );
   DocumentSheetConfig.registerSheet(
     Item,

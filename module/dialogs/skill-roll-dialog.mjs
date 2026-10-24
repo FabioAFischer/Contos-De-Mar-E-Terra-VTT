@@ -10,9 +10,9 @@ function readModifier(value) {
   return Number.isInteger(modifier) ? modifier : 0;
 }
 
-export function openSkillRollDialog({ actor, skillKey, skillLabel, baseValue, beforeRoll, onResult, onCancel, onComplete, titleKey = "SkillTest", context } = {}) {
+export function openSkillRollDialog({ actor, skillKey, skillLabel, baseValue, initialModifier = 0, beforeRoll, onResult, onCancel, onComplete, titleKey = "SkillTest", context } = {}) {
   const { DialogV2 } = foundry.applications.api;
-  const content = `<div class="cmet-skill-roll-dialog"><p><strong>${skillLabel}</strong></p><p><span>${localize("BaseValue")}:</span> <strong>${baseValue}</strong></p><label>${localize("Modifier")}<input name="modifier" type="number" step="1" value="0" /></label><fieldset><legend>${localize("RollType")}</legend><label><input type="radio" name="rollMode" value="${SKILL_ROLL_MODES.NORMAL}" checked /> ${localize("Normal")}</label><label><input type="radio" name="rollMode" value="${SKILL_ROLL_MODES.ADVANTAGE}" /> ${localize("Advantage")}</label><label><input type="radio" name="rollMode" value="${SKILL_ROLL_MODES.DISADVANTAGE}" /> ${localize("Disadvantage")}</label></fieldset><p><span>${localize("EffectiveValue")}:</span> <strong data-effective-target>${baseValue}</strong></p></div>`;
+  const content = `<div class="cmet-skill-roll-dialog"><p><strong>${skillLabel}</strong></p><p><span>${localize("BaseValue")}:</span> <strong>${baseValue}</strong></p><label>${localize("Modifier")}<input name="modifier" type="number" step="1" value="${readModifier(String(initialModifier))}" /></label><fieldset><legend>${localize("RollType")}</legend><label><input type="radio" name="rollMode" value="${SKILL_ROLL_MODES.NORMAL}" checked /> ${localize("Normal")}</label><label><input type="radio" name="rollMode" value="${SKILL_ROLL_MODES.ADVANTAGE}" /> ${localize("Advantage")}</label><label><input type="radio" name="rollMode" value="${SKILL_ROLL_MODES.DISADVANTAGE}" /> ${localize("Disadvantage")}</label></fieldset><p><span>${localize("EffectiveValue")}:</span> <strong data-effective-target>${calculateEffectiveTarget(baseValue, initialModifier).effectiveTarget}</strong></p></div>`;
 
   let submitted = false;
   let completionSettled = false;
@@ -47,7 +47,7 @@ export function openSkillRollDialog({ actor, skillKey, skillLabel, baseValue, be
       if (result?.degree) {
         submitted = true;
         try {
-          const message = await sendSkillRollToChat(result, { context });
+          const message = await sendSkillRollToChat(result, { context, actor });
           await onResult?.(result, message);
           await complete("completed", { result, message });
         } catch (error) {

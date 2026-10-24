@@ -15,6 +15,7 @@ let damageCards;
 let attackRolls;
 let chatId;
 let dialogWaits;
+let notifications;
 
 class DialogV2Mock {
   constructor(options) {
@@ -99,6 +100,7 @@ function setup({ attackResults = [50, 50], targetReserved = 0, targetX = 100, ma
   damageCards = [];
   attackRolls = [...attackResults];
   chatId = 0;
+  notifications = [];
 
   const main = makeWeapon({ id: "weapon-main", name: "Adaga principal", skill: "arcos", special: mainSpecial });
   const off = makeWeapon({ id: "weapon-off", name: "Adaga secundária", skill: "laminas", special: offSpecial });
@@ -216,14 +218,24 @@ function setup({ attackResults = [50, 50], targetReserved = 0, targetX = 100, ma
       return created;
     }
   };
-  globalThis.ui = { notifications: { warn() {}, info() {} } };
+  globalThis.ui = { notifications: { warn(message) { notifications.push(message); }, info() {} } };
   globalThis.Hooks = { on() {}, off() {}, callAll() {} };
-  return { actor, main, off, combat, attackerActions, targetActions, targetActor, targetToken, flags, get lastMoveOptions() { return lastMoveOptions; } };
+  return { actor, main, off, combat, attackerActions, targetActions, targetActor, targetToken, flags, notifications, get lastMoveOptions() { return lastMoveOptions; } };
 }
 
 function form() {
   return { elements: { modifier: { value: "0" }, rollMode: { value: "normal" } } };
 }
+
+test("ataque combinado fora de combate exige combate ativo antes de validar as armas", async () => {
+  const setupData = setup();
+  setupData.combat.started = false;
+  const result = await startCombinedWeaponAttack({ actor: setupData.actor });
+  assert.equal(result, undefined);
+  assert.deepEqual(setupData.notifications, ["CMET.CombatAttack.Notifications.CombatRequired"]);
+  assert.equal(setupData.attackerActions.current, 1);
+  assert.equal(dialogs.length, 0);
+});
 
 async function rollDialog(dialog) {
   const button = dialog.options.buttons.find(({ action }) => action === "roll");

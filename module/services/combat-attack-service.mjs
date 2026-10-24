@@ -1,7 +1,7 @@
 import { SKILL_LABELS, SYSTEM_ID } from "../config/constants.mjs";
 import { DAMAGE_TYPES } from "../config/weapon-config.mjs";
 import { CombatActionError, CombatActionService } from "./combat-action-service.mjs";
-import { findSkillDefinition, SKILL_ROLL_DEGREES, updateSkillRollMessage } from "./skill-roll-service.mjs";
+import { compareSkillRolls, findSkillDefinition, SKILL_ROLL_DEGREES, updateSkillRollMessage } from "./skill-roll-service.mjs";
 import { openSkillRollDialog } from "../dialogs/skill-roll-dialog.mjs";
 import { DamageRollService } from "./damage-roll-service.mjs";
 import { DamageReductionService } from "./damage-reduction-service.mjs";
@@ -11,6 +11,8 @@ import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, c
 import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach, isAttackerBehindDefender, getTargetPositionRelativeToAttacker, canApplyManeuverWeaponBonus } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
 import { isForcedPullMovement, processPullMovementRequest, recordPullMovementConfirmation, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
+import { getEffectiveWeaponCharacteristics, resolveEffectiveWeaponWielding, validateCombinedWeaponAttack } from "./weapon-wielding-service.mjs";
+import { applyConditionalAbilityDaEffects } from "./ability-da-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
   [SKILL_ROLL_DEGREES.NORMAL_SUCCESS]: 1,
@@ -179,13 +181,17 @@ function hasEmpunhedCutterWeapon(actor) {
   });
 }
 
+function getWeaponHand(actor, item) {
+  const hands = actor?.system?.hands ?? {};
+  if (hands.mainHand === item?.id) return "mainHand";
+  if (hands.offHand === item?.id) return "offHand";
+  return null;
+}
+
 function isEffectivelyWielded(actor, item) {
-  const hands = actor?.system?.hands;
-  if (!hands) return item?.system?.equipped === true;
-  if (item?.system?.characteristics?.duasMaos?.enabled === true || item?.system?.characteristics?.armaDeHaste?.enabled === true) {
-    return hands.mainHand === item.id && !hands.offHand;
-  }
-  return hands.mainHand === item.id || hands.offHand === item.id;
+  const hand = getWeaponHand(actor, item);
+  if (!hand) return item?.system?.equipped === true && !item?.system?.characteristics?.duasMaos?.enabled;
+  return getEffectiveWeaponCharacteristics(actor, item, hand).wielding.canWield;
 }
 
 function isEligiblePolearmWeapon(actor, item) {
@@ -215,16 +221,7 @@ async function chooseVersatileSelections(item) {
 
 
 export function compareAttackAndDefense(attack, defense) {
-  if (!attack?.success) return { winner: "defense", reason: "attackFailure" };
-  if (!defense) return { winner: "attack", reason: "noDefense" };
-  if (!defense.success) return { winner: "attack", reason: "defenseFailure" };
-  const attackRank = SUCCESS_RANK[attack.degree] ?? 0;
-  const defenseRank = SUCCESS_RANK[defense.degree] ?? 0;
-  if (attackRank > defenseRank) return { winner: "attack", reason: "degree" };
-  if (defenseRank > attackRank) return { winner: "defense", reason: "degree" };
-  if (attack.selectedRoll < defense.selectedRoll) return { winner: "attack", reason: "roll" };
-  if (defense.selectedRoll < attack.selectedRoll) return { winner: "defense", reason: "roll" };
-  return { winner: "defense", reason: "absoluteTie" };
+  return compareSkillRolls(attack, defense);
 }
 
 function outcomeKey(outcome) {
@@ -247,7 +244,15 @@ async function updateDefenseOutcome({ messageId, responsibleId, outcome }) {
   });
 }
 
-function openDefenseChoice({ defender, combatant, respond, allowBlock = true }) {
+function getDaDefenseModifier(defender, attacker, skillKey) {
+  if (skillKey !== "bloquear") return 0;
+  const modifiers = defender?.getFlag?.(game.system.id, "daModifiers") ?? [];
+  return modifiers
+    .filter((modifier) => modifier.skillKey === skillKey && modifier.targetId === attacker?.id)
+    .reduce((total, modifier) => total + (Number(modifier.amount) || 0), 0);
+}
+
+function openDefenseChoice({ defender, attacker, combatant, respond, allowBlock = true }) {
   const { DialogV2 } = foundry.applications.api;
   const localize = (key) => game.i18n.localize(`CMET.CombatAttack.${key}`);
   let answered = false;
@@ -275,7 +280,8 @@ function openDefenseChoice({ defender, combatant, respond, allowBlock = true }) 
           actor: defender,
           skillKey,
           skillLabel: SKILL_LABELS[skillKey],
-          baseValue,
+            baseValue,
+            initialModifier: getDaDefenseModifier(defender, attacker, skillKey),
           titleKey: "DefenseRoll",
           context: {
             type: "defense",
@@ -328,7 +334,7 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   const respond = (payload) => game.socket.emit(SOCKET_CHANNEL, { type: "combat-defense-response", requestId, requesterId: game.user.id, ...payload });
   let response;
   if (responsible.id === game.user.id) {
-    openDefenseChoice({ defender: targetActor, combatant: targetCombatant, allowBlock: !projectile || hasEmpunhedCutterWeapon(targetActor), respond: (payload) => { response = payload; } });
+    openDefenseChoice({ defender: targetActor, attacker, combatant: targetCombatant, allowBlock: !projectile || hasEmpunhedCutterWeapon(targetActor), respond: (payload) => { response = payload; } });
     response = await new Promise((resolve) => {
       const check = () => response ? resolve(response) : setTimeout(check, 50);
       check();
@@ -353,7 +359,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   if (attackMode === "golpeDeRetaguarda" && (disableCharacteristics || reaction || thrownAttack)) return fail("RearStrikeUnavailable");
   if (attackMode === "pull" && !isValidPullConfiguration(item)) return fail("InvalidPullSpaces");
   if (!disableCharacteristics && !canFire(item)) return fail("WeaponNotLoaded");
-  if (!disableCharacteristics && characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
+  if (!disableCharacteristics && !thrownAttack && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
   const attackerToken = providedAttackerToken ?? getAttackerToken(actor, combat);
   const attackerCombatant = providedAttackerCombatant ?? getCombatantForToken(combat, attackerToken);
   if (!attackerCombatant) return fail("AttackerNotInCombat");
@@ -362,6 +368,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   if (reaction && CombatActionService.getState(attackerCombatant).reserved < 1) return fail("ReservedActionInsufficient");
   const targetCombatant = getCombatantForToken(combat, targetToken);
   if (!targetCombatant) return fail("TargetNotInCombat");
+  await applyConditionalAbilityDaEffects({ actor, targetActor: targetCombatant.actor, context: { targetToken, originToken: attackerToken } });
   const selectedTargets = targetTokens ?? [targetToken];
   if (!disableCharacteristics && characteristicEnabled(item, "alcance")) {
     const maximum = Number(item.system.characteristics.alcance?.spaces);
@@ -562,15 +569,16 @@ function chooseCombinedAttackMode(item) {
 }
 
 export async function startCombinedWeaponAttack({ actor, attackMode = null }) {
-  if (attackMode === "golpeDeRetaguarda") return notify("RearStrikeUnavailable");
   const combat = game.combat;
+  if (!combat?.started) return notify("CombatRequired");
+  if (attackMode === "golpeDeRetaguarda") return notify("RearStrikeUnavailable");
   const hands = actor.system.hands ?? {};
   const main = actor.items.get(hands.mainHand);
   const off = actor.items.get(hands.offHand);
   const targetToken = getSingleTarget();
-  if (!combat?.started || !targetToken || !main || !off || main.id === off.id || main.type !== "arma" || off.type !== "arma"
-    || main.system.equipped !== true || off.system.equipped !== true
-    || main.system.characteristics?.umaMao?.enabled !== true || off.system.characteristics?.umaMao?.enabled !== true) return notify("InvalidTwoWeaponAttack");
+  const validation = validateCombinedWeaponAttack({ actor, main, off });
+  if (globalThis.CONFIG?.debug?.system && !validation.valid) console.debug("CMET | Ataque combinado rejeitado", { reasons: validation.reasons, main: validation.mainWielding, off: validation.offWielding });
+  if (!targetToken || !validation.valid) return notify("InvalidTwoWeaponAttack");
   if (!resolveAttackSkill(actor, main) || !resolveAttackSkill(actor, off)) return;
   const attackerToken = getAttackerToken(actor, combat);
   const combatant = getCombatantForToken(combat, attackerToken);
@@ -602,7 +610,7 @@ export async function startWeaponAttack({ actor, item, attackMode = "normal" }) 
   if (!resolveAttackSkill(actor, item)) return;
   if (attackMode === "pull" && !isValidPullConfiguration(item)) return notifyPullConfiguration(item);
   if (!canFire(item)) return notify("WeaponNotLoaded");
-  if (characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
+  if (!isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
   if (attackMode === "golpeDeRetaguarda") {
     const validation = validateRearStrikeTargets({ actor, item, attackerToken, combat, targetTokens: Array.from(game.user.targets ?? []) });
     if (!validation.valid) return notify(validation.reason);
@@ -617,7 +625,7 @@ export async function startWeaponAttack({ actor, item, attackMode = "normal" }) 
   }
   const targetTokens = attackMode === "pull"
     ? [targetToken]
-    : characteristicEnabled(item, "duasMaos") && !characteristicEnabled(item, "armaDeHaste")
+    : resolveEffectiveWeaponWielding({ actor, item, hand: getWeaponHand(actor, item) ?? "mainHand" }).usesTwoHands && !characteristicEnabled(item, "armaDeHaste")
     ? [targetToken, ...getLateralEnemies(targetToken)].filter((token, index, tokens) => tokens.findIndex((candidate) => (candidate.document?.id ?? candidate.id) === (token.document?.id ?? token.id)) === index)
     : [targetToken];
   return prepareWeaponAttack({ actor, item, targetToken, targetTokens, combat, attackMode });
