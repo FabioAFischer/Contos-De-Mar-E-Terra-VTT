@@ -203,6 +203,7 @@
         "Sequencial": "Sequential",
         "ArmaDeHaste": "Polearm",
         "PontoFraco": "Weak point",
+        "Apunhalhar": "Stab",
         "Executar": "Execute"
       },
       "Notifications": {
@@ -232,7 +233,7 @@
       "Arremessavel": "Throwable",
       "Puxar": "Pull",
       "Retaliar": "Retaliate",
-      "Punhal": "Dagger",
+      "Apunhalhar": "Stab",
       "Sequencial": "Sequential",
       "GolpeDeRetaguarda": "Rear Strike",
       "Recarregar": "Reload",

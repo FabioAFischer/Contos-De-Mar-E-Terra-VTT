@@ -8,7 +8,7 @@ import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
 import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
-import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach, isAttackerBehindDefender } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
 import { isForcedPullMovement, processPullMovementRequest, recordPullMovementConfirmation, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
 
@@ -345,6 +345,13 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   const defenderName = combatantDisplayName(targetCombatant, targetCombatant.actor);
   clearPendingAttack();
   const specialCharacteristicsDisabled = disableCharacteristics || attackMode === "pull";
+  const apunhalharEligible = new Map(selectedTargets.map((candidateToken) => [
+    candidateToken,
+    !specialCharacteristicsDisabled
+      && characteristicEnabled(item, "apunhalhar")
+      && Boolean(item.system.characteristics.apunhalhar.damageFormula?.trim())
+      && isAttackerBehindDefender(attackerToken, candidateToken)
+  ]));
   const versatileSelections = specialCharacteristicsDisabled ? {} : await chooseVersatileSelections(item);
   return openSkillRollDialog({
     actor,
@@ -424,10 +431,12 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
           ? measureTokenReachDistance(attackerToken, currentTargetToken)
           : null;
         const damageItem = disableCharacteristics ? { ...item, system: { ...item.system, characteristics: Object.fromEntries(Object.entries(item.system.characteristics ?? {}).map(([key, value]) => [key, { ...value, enabled: false }])) } } : item;
-        const distanceDamage = !specialCharacteristicsDisabled && characteristicEnabled(item, "alcance");
+        const apunhalharVariesByTarget = selectedTargets.length > 1
+          && selectedTargets.some((candidateToken) => apunhalharEligible.get(candidateToken) !== apunhalharEligible.get(targetToken));
+        const distanceDamage = (!specialCharacteristicsDisabled && characteristicEnabled(item, "alcance")) || apunhalharVariesByTarget;
         let damage = distanceDamage ? null : sharedDamage;
         if (!damage) {
-          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: specialCharacteristicsDisabled ? false : pointWeak && currentTargetToken === targetToken, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance });
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: specialCharacteristicsDisabled ? false : pointWeak && currentTargetToken === targetToken, apunhalhar: apunhalharEligible.get(currentTargetToken) === true, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance });
           if (selectedTargets.length > 1 && !distanceDamage) sharedDamage = damage;
         }
         if (!damage) continue;

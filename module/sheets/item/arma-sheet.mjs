@@ -46,7 +46,7 @@ export class ArmaSheet extends CmetTabbedItemSheet {
           label: game.i18n.localize(parameter.label),
           suffix: parameter.suffix ? game.i18n.localize(parameter.suffix) : "",
           value: system.characteristics[entry.key][parameter.key],
-          options: ["alcance", "sequencial"].includes(entry.key) && parameter.key === "damagePartIndex"
+          options: ["alcance", "apunhalhar", "sequencial"].includes(entry.key) && parameter.key === "damagePartIndex"
             ? damagePartOptions(entry.key)
             : parameter.options
         }))

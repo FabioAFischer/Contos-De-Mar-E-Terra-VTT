@@ -1,6 +1,7 @@
 const SYSTEM_ID = "contos-de-mar-e-terra";
 const MIGRATION_FLAG = "damageAndRangeMigrated";
 const POLEARM_MIGRATION_FLAG = "polearmReachMigrated";
+const APUNHALHAR_MIGRATION_FLAG = "apunhalharMigrated";
 
 function legacyDamageParts(source) {
   const current = source.system?.damage;
@@ -15,11 +16,27 @@ function legacyDamageParts(source) {
   return [{ formula: oldFormula.trim(), nature: magicalType ? "magical" : "physical", type }];
 }
 
-async function migrateWeapon(item) {
+export async function migrateWeapon(item) {
   if (item.type !== "arma") return;
 
   const source = item.toObject(true);
   const update = {};
+
+  if (!item.getFlag(SYSTEM_ID, APUNHALHAR_MIGRATION_FLAG)) {
+    const characteristics = {
+      ...(item._source?.system?.characteristics ?? {}),
+      ...(source.system?.characteristics ?? {})
+    };
+    const legacyStab = characteristics.punhal;
+    const currentStab = characteristics.apunhalhar;
+    if (legacyStab?.enabled === true && currentStab?.enabled !== true) {
+      update["system.characteristics.apunhalhar.enabled"] = true;
+      update["system.characteristics.apunhalhar.damageFormula"] = String(legacyStab.damageFormula ?? "1d8").trim() || "1d8";
+      update["system.characteristics.apunhalhar.damagePartIndex"] = Number.isInteger(Number(legacyStab.damagePartIndex)) ? Number(legacyStab.damagePartIndex) : 0;
+    }
+    if (legacyStab?.enabled === true) update["system.characteristics.punhal.enabled"] = false;
+    update[`flags.${SYSTEM_ID}.${APUNHALHAR_MIGRATION_FLAG}`] = true;
+  }
 
   if (!item.getFlag(SYSTEM_ID, MIGRATION_FLAG)) {
     const legacy = source.system?.range;

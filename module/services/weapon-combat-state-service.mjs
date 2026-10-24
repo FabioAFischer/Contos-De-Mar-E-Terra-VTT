@@ -94,6 +94,34 @@ function tokenPosition(token) {
   return { x: Number(document?.x ?? 0), y: Number(document?.y ?? 0), rotation: Number(document?.rotation ?? 0) };
 }
 
+function tokenCenter(token) {
+  const document = token?.document ?? token;
+  const gridSize = Number(globalThis.canvas?.grid?.size ?? 1);
+  const width = Number(document?.width);
+  const height = Number(document?.height);
+  const x = Number(document?.x);
+  const y = Number(document?.y);
+  if (![x, y, width, height, gridSize].every(Number.isFinite) || width <= 0 || height <= 0 || gridSize <= 0) return null;
+  return { x: x + (width * gridSize) / 2, y: y + (height * gridSize) / 2 };
+}
+
+export function isAttackerBehindDefender(attackerToken, defenderToken) {
+  const attacker = tokenCenter(attackerToken);
+  const defender = tokenCenter(defenderToken);
+  const rotation = Number((defenderToken?.document ?? defenderToken)?.rotation);
+  if (!attacker || !defender || !Number.isFinite(rotation)) return false;
+  const dx = attacker.x - defender.x;
+  const dy = attacker.y - defender.y;
+  const length = Math.hypot(dx, dy);
+  if (!(length > 0)) return false;
+  const radians = rotation * Math.PI / 180;
+  // Foundry v14: 0° faces south; positive rotation turns the facing direction west.
+  const frontX = -Math.sin(radians);
+  const frontY = Math.cos(radians);
+  const dotProduct = (dx / length) * frontX + (dy / length) * frontY;
+  return dotProduct <= -Math.cos(Math.PI / 4);
+}
+
 export function getTokenSide(defenderToken, attackerToken) {
   const defender = tokenPosition(defenderToken);
   const attacker = tokenPosition(attackerToken);
