@@ -205,6 +205,7 @@
         "Sequencial": "Sequencial",
         "ArmaDeHaste": "Arma de Haste",
         "PontoFraco": "Ponto fraco",
+        "Apunhalhar": "Apunhalhar",
         "Executar": "Executar"
       },
       "Notifications": {
@@ -234,7 +235,7 @@
       "Arremessavel": "Arremessável",
       "Puxar": "Puxar",
       "Retaliar": "Retaliar",
-      "Punhal": "Punhal",
+      "Apunhalhar": "Apunhalhar",
       "Sequencial": "Sequencial",
       "GolpeDeRetaguarda": "Golpe de retaguarda",
       "Recarregar": "Recarregar",

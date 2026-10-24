@@ -95,6 +95,19 @@ test("Alcance ignora vínculo inválido sem inventar natureza ou tipo", () => {
   assert.deepEqual(additionalDamageFormulas(item, { reachDistance: 3 }), []);
 });
 
+test("Apunhalhar aplica a fórmula e herda a parcela vinculada", () => {
+  const item = weapon({ apunhalhar: { enabled: true, damageFormula: "1d8", damagePartIndex: 1 } });
+  assert.deepEqual(additionalDamageFormulas(item, { apunhalhar: true }), [{
+    formula: "1d8",
+    nature: "magical",
+    type: "fogo",
+    criticalMax: true,
+    source: "apunhalhar",
+    sourcePartIndex: 1
+  }]);
+  assert.deepEqual(additionalDamageFormulas(item, { apunhalhar: false }), []);
+});
+
 test("Sequencial só aplica o bônus após acerto anterior e herda a parcela vinculada", () => {
   const item = weapon({ sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } });
   assert.deepEqual(additionalDamageFormulas(item, { sequentialCount: 0 }), []);

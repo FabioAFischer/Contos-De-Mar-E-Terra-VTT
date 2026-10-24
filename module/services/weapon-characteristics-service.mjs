@@ -54,7 +54,7 @@ export function multiplyDamageFormula(formula, multiplier) {
   return `(${String(formula).trim()})*${count}`;
 }
 
-export function additionalDamageFormulas(item, { critical = false, sequential = false, sequentialCount = null, pointWeak = false, polearm = false, reachDistance = null, versatileSelections = {} } = {}) {
+export function additionalDamageFormulas(item, { critical = false, sequential = false, sequentialCount = null, pointWeak = false, apunhalhar = false, polearm = false, reachDistance = null, versatileSelections = {} } = {}) {
   const characteristics = item?.system?.characteristics ?? {};
   const additions = [];
   const damageParts = getVersatileDamageParts(item, versatileSelections);
@@ -84,6 +84,7 @@ export function additionalDamageFormulas(item, { critical = false, sequential = 
     additions.push({ formula: scaledFormula, nature: linkedPart.nature, type: linkedPart.type, criticalMax: true, source: key, sourcePartIndex: linkedPart.sourcePartIndex });
   };
   add("pontoFraco", pointWeak);
+  add("apunhalhar", apunhalhar, { inheritLinkedPart: true });
   add("armaDeHaste", polearm);
   const alcance = characteristics.alcance;
   const distance = Number(reachDistance);

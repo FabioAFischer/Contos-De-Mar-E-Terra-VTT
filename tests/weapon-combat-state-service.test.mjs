@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { arePotentialAdversaries, clearWeaponCombatState, didCrossWeaponReach, getLateralEnemies, getSequentialBonusCount, getSequentialBonusState, getTokenSide, isLaterallyAdjacent, measureTokenDistanceAtPosition, recordImpactOutcome, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, clearWeaponCombatState, didCrossWeaponReach, getLateralEnemies, getSequentialBonusCount, getSequentialBonusState, getTokenSide, isAttackerBehindDefender, isLaterallyAdjacent, measureTokenDistanceAtPosition, recordImpactOutcome, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
 import { compareAttackAndDefense } from "../module/services/combat-attack-service.mjs";
 
 globalThis.canvas = { grid: { size: 100, measurePath: ([origin, target]) => ({ spaces: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) / 100, distance: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) }) } };
@@ -29,6 +29,14 @@ test("Ponto fraco calcula os lados pela orientação do defensor", () => {
   assert.equal(getTokenSide(defender, token(1, 0)), "frente");
   assert.equal(getTokenSide(defender, token(-1, 0)), "costas");
   assert.equal(getTokenSide(defender, token(0, -1)), "esquerda");
+});
+
+test("Apunhalhar usa centros e o setor traseiro de 90 graus", () => {
+  const defender = token(100, 100, 2, 2, 0);
+  assert.equal(isAttackerBehindDefender(token(100, -100), defender), true);
+  assert.equal(isAttackerBehindDefender(token(300, 100), defender), false);
+  assert.equal(isAttackerBehindDefender(token(100, 300), defender), false);
+  assert.equal(isAttackerBehindDefender(token(100, 100, 2, 2, 0), defender), false);
 });
 
 test("detecta saída e entrada do alcance, mas não movimento interno", () => {
