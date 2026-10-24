@@ -4,10 +4,12 @@ import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 const SOCKET_CHANNEL = `system.${SYSTEM_ID}`;
 const PULL_MOVEMENT_METHOD = "api";
 const PULL_MOVEMENT_TIMEOUT_MS = 35000;
+const DEBUG_PULL_MOVEMENT = true;
 const forcedPullTokenIds = new Set();
 const pendingPullRequests = new Map();
 const processedPullRequests = new Map();
 const processingPullRequests = new Set();
+const activePullMovements = new Map();
 
 function movementErrorDetails(error) {
   return {
@@ -22,6 +24,11 @@ function logMovementError(error, context = {}) {
     ...context,
     error
   });
+}
+
+function debugPullMovement(data) {
+  if (!DEBUG_PULL_MOVEMENT) return;
+  console.debug("CMET | Diagnóstico Puxar", data);
 }
 
 function targetActor(token) {
@@ -81,7 +88,7 @@ function currentPosition(document, fallback, movement = document?.movement) {
   // confirmed waypoint instead of the planned destination.
   if (persisted && passed && persisted.x === fallback.x && persisted.y === fallback.y
     && (passed.x !== fallback.x || passed.y !== fallback.y)) return passed;
-  return persisted ?? passed ?? fallback;
+  return persisted ?? passed ?? null;
 }
 
 async function waitForMovementConfirmation(document, previousMovement) {
@@ -292,6 +299,7 @@ export function calculatePullPath({ attackerToken, targetToken, spaces } = {}) {
     destination,
     requestedSpaces: maximum,
     positions,
+    plannedSpaces: Math.max(0, positions.length - 1),
     movedSpaces: Number.isFinite(measuredSpaces) ? Math.max(0, measuredSpaces) : Math.max(0, positions.length - 1),
     blocked,
     blockedReason
@@ -302,12 +310,30 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
   const path = calculatePullPath({ attackerToken, targetToken, spaces });
   const document = tokenDocument(targetToken);
   if (path.positions.length < 2) {
-    return {
+    const result = {
       ...path,
       moved: false,
       executed: true,
+      confirmed: true,
+      confirmedDestination: path.origin,
       failureReason: "noSpace"
     };
+    debugPullMovement({
+      phase: "movement-result",
+      tokenId: tokenId(targetToken),
+      origin: path.origin,
+      plannedDestination: path.destination,
+      confirmedDestination: path.origin,
+      requestedSpaces: path.requestedSpaces,
+      plannedSpaces: path.plannedSpaces,
+      movedSpaces: 0,
+      moved: false,
+      blocked: path.blocked,
+      blockedReason: path.blockedReason,
+      failureReason: result.failureReason,
+      completed: true
+    });
+    return result;
   }
 
   const permission = currentUserCanMoveTarget(targetToken);
@@ -339,26 +365,49 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
   const id = tokenId(targetToken);
   forcedPullTokenIds.add(id);
   const previousMovement = document.movement;
+  const pendingMovement = { origin: path.origin, movement: null };
+  activePullMovements.set(id, pendingMovement);
   try {
     const completed = await document.move(path.positions.slice(1), {
       method: PULL_MOVEMENT_METHOD,
       broadcast: true,
       showRuler: false
     });
-    const movement = await waitForMovementConfirmation(document, previousMovement);
-    const current = currentPosition(document, path.origin, movement);
+    const movement = pendingMovement.movement
+      ?? await waitForMovementConfirmation(document, previousMovement);
+    const confirmedPosition = currentPosition(document, path.origin, movement);
+    const current = confirmedPosition ?? path.origin;
     const moved = current.x !== path.origin.x || current.y !== path.origin.y;
     const interrupted = completed === false;
-    return {
+    const result = {
       ...path,
       moved,
+      confirmed: Boolean(confirmedPosition),
+      confirmedDestination: confirmedPosition,
       executed: !interrupted,
       movedSpaces: moved ? measureSpaces(document, path.origin, current) : 0,
       blockedReason: interrupted && !path.blockedReason ? "movementStopped" : path.blockedReason,
-      failureReason: interrupted ? "movementStopped" : path.blocked ? "noSpace" : null
+      failureReason: interrupted ? "movementStopped" : moved ? null : "confirmation"
     };
+    debugPullMovement({
+      phase: "movement-result",
+      tokenId: id,
+      origin: path.origin,
+      plannedDestination: path.destination,
+      confirmedDestination: confirmedPosition,
+      requestedSpaces: path.requestedSpaces,
+      plannedSpaces: path.plannedSpaces,
+      movedSpaces: result.movedSpaces,
+      moved: result.moved,
+      blocked: result.blocked,
+      blockedReason: result.blockedReason,
+      failureReason: result.failureReason,
+      completed
+    });
+    return result;
   } catch (error) {
-    const current = currentPosition(document, path.origin, null);
+    const confirmedPosition = currentPosition(document, path.origin, null);
+    const current = confirmedPosition ?? path.origin;
     const details = movementErrorDetails(error);
     logMovementError(error, {
       tokenId: id,
@@ -367,9 +416,11 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
       origin: path.origin,
       destination: path.destination
     });
-    return {
+    const result = {
       ...path,
       moved: current.x !== path.origin.x || current.y !== path.origin.y,
+      confirmed: Boolean(confirmedPosition),
+      confirmedDestination: confirmedPosition,
       executed: false,
       movedSpaces: current.x !== path.origin.x || current.y !== path.origin.y
         ? measureSpaces(document, path.origin, current)
@@ -378,7 +429,24 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
       failureReason: "apiError",
       ...details
     };
+    debugPullMovement({
+      phase: "movement-result",
+      tokenId: id,
+      origin: path.origin,
+      plannedDestination: path.destination,
+      confirmedDestination: confirmedPosition,
+      requestedSpaces: path.requestedSpaces,
+      plannedSpaces: path.plannedSpaces,
+      movedSpaces: result.movedSpaces,
+      moved: result.moved,
+      blocked: result.blocked,
+      blockedReason: result.blockedReason,
+      failureReason: result.failureReason,
+      completed: false
+    });
+    return result;
   } finally {
+    activePullMovements.delete(id);
     forcedPullTokenIds.delete(id);
   }
 }
@@ -388,6 +456,24 @@ export function isForcedPullMovement(token, movement) {
   if (id && forcedPullTokenIds.has(id)) return true;
   const methods = [movement?.method, movement?.type, movement?.mode].map((value) => String(value ?? "").toLowerCase());
   return methods.includes("forced") || methods.includes("forcedmovement") || movement?.forced === true || movement?.forcedMovement === true;
+}
+
+export function recordPullMovementConfirmation(tokenDocument, movement) {
+  const id = tokenId(tokenDocument);
+  const pending = id && activePullMovements.get(id);
+  if (!pending || !movement) return false;
+  const movementOrigin = point(movement.origin);
+  if (movementOrigin && (movementOrigin.x !== pending.origin.x || movementOrigin.y !== pending.origin.y)) return false;
+  pending.movement = movement;
+  debugPullMovement({
+    phase: "moveToken-confirmation",
+    tokenId: id,
+    origin: movement.origin,
+    confirmedDestination: movement.passed?.waypoints?.at?.(-1),
+    movementId: movement.id,
+    method: movement.method
+  });
+  return true;
 }
 
 function emitPullResponse(message, result) {
@@ -430,6 +516,7 @@ export async function processPullMovementRequest(message) {
       : await executePullMovement({ attackerToken, targetToken, spaces: message.spaces });
     processedPullRequests.set(message.requestId, result);
     setTimeout(() => processedPullRequests.delete(message.requestId), PULL_MOVEMENT_TIMEOUT_MS)?.unref?.();
+    debugPullMovement({ phase: "socket-response-sent", requestId: message.requestId, result });
     emitPullResponse(message, result);
     return result;
   } finally {
@@ -443,6 +530,7 @@ export function resolvePullMovementResponse(message) {
   if (!pending) return;
   pendingPullRequests.delete(message.requestId);
   clearTimeout(pending.timeoutId);
+  debugPullMovement({ phase: "socket-response-received", requestId: message.requestId, result: message.result });
   pending.resolve(message.result ?? { moved: false, executed: false, blockedReason: "unknown" });
 }
 
@@ -463,6 +551,13 @@ export async function requestPullMovement({ attackerToken, targetToken, spaces, 
     }, timeoutMs);
     timeoutId?.unref?.();
     pendingPullRequests.set(requestId, { resolve, timeoutId });
+    debugPullMovement({
+      phase: "socket-request-sent",
+      requestId,
+      targetTokenId: tokenId(targetToken),
+      authorityId: authority.id,
+      requestedSpaces: spaces
+    });
     game.socket.emit(SOCKET_CHANNEL, {
       type: "combat-pull-movement-request",
       targetUserId: authority.id,
@@ -478,4 +573,4 @@ export async function requestPullMovement({ attackerToken, targetToken, spaces, 
   return result;
 }
 
-export const WeaponPullService = Object.freeze({ calculatePullPath, executePullMovement, requestPullMovement, processPullMovementRequest, resolvePullMovementResponse, isForcedPullMovement });
+export const WeaponPullService = Object.freeze({ calculatePullPath, executePullMovement, requestPullMovement, processPullMovementRequest, resolvePullMovementResponse, isForcedPullMovement, recordPullMovementConfirmation });

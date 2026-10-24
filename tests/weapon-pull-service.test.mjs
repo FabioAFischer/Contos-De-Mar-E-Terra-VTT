@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { calculatePullPath, executePullMovement, isForcedPullMovement, requestPullMovement } from "../module/services/weapon-pull-service.mjs";
+import { calculatePullPath, executePullMovement, isForcedPullMovement, recordPullMovementConfirmation, requestPullMovement, resolvePullMovementResponse } from "../module/services/weapon-pull-service.mjs";
 
 function makeScene() {
   globalThis.game = undefined;
@@ -115,6 +115,30 @@ test("aguarda a confirmação da movimentação antes de medir a posição final
   assert.equal(result.destination.x, 200);
 });
 
+test("usa o movimento processado pelo hook quando o TokenDocument ainda está na origem", async () => {
+  makeScene();
+  const attacker = makeToken("attacker", 0, 0);
+  const target = makeToken("target", 500, 0);
+  target.document.move = async (waypoints, options) => {
+    assert.equal(options.method, "api");
+    assert.equal(recordPullMovementConfirmation(target.document, {
+      id: "movement-1",
+      method: "api",
+      origin: { x: 500, y: 0 },
+      passed: { waypoints: [{ x: 500, y: 0 }, { x: 300, y: 0 }] }
+    }), true);
+    assert.equal(waypoints.at(-1).x, 300);
+    return true;
+  };
+  canvas.tokens.placeables = [attacker, target];
+
+  const result = await executePullMovement({ attackerToken: attacker, targetToken: target, spaces: 2 });
+
+  assert.equal(result.moved, true);
+  assert.equal(result.movedSpaces, 2);
+  assert.deepEqual(result.confirmedDestination, { x: 300, y: 0 });
+});
+
 test("classifica erro real da API sem tratá-lo como falha de permissão", async () => {
   makeScene();
   const attacker = makeToken("attacker", 0, 0);
@@ -141,6 +165,24 @@ test("classifica erro real da API sem tratá-lo como falha de permissão", async
   assert.equal(result.errorName, "Error");
   assert.equal(result.errorMessage, apiError.message);
   assert.equal(isForcedPullMovement(target, {}), false);
+});
+
+test("classifica confirmação ausente sem inventar um deslocamento", async () => {
+  makeScene();
+  const attacker = makeToken("attacker", 0, 0);
+  const target = makeToken("target", 400, 0);
+  target.document.move = async (_waypoints, options) => {
+    assert.equal(options.method, "api");
+    return true;
+  };
+  canvas.tokens.placeables = [attacker, target];
+
+  const result = await executePullMovement({ attackerToken: attacker, targetToken: target, spaces: 2 });
+
+  assert.equal(result.moved, false);
+  assert.equal(result.movedSpaces, 0);
+  assert.equal(result.failureReason, "confirmation");
+  assert.notEqual(result.failureReason, "noSpace");
 });
 
 test("diferencia movimento interrompido e preserva deslocamento parcial", async () => {
@@ -186,7 +228,8 @@ test("mede um único espaço efetivamente percorrido antes de um obstáculo", as
   assert.equal(result.moved, true);
   assert.equal(result.movedSpaces, 1);
   assert.equal(result.blocked, true);
-  assert.equal(result.failureReason, "noSpace");
+  assert.equal(result.failureReason, null);
+  assert.equal(result.plannedSpaces, 1);
 });
 
 test("classifica ausência de espaço livre sem chamar a API de movimento", async () => {
@@ -290,4 +333,52 @@ test("retorna timeout quando a autoridade remota não responde", async () => {
   assert.equal(result.failureReason, "timeout");
   assert.equal(result.blockedReason, "timeout");
   assert.equal(emitted[0].targetUserId, remoteUser.id);
+});
+
+test("preserva movedSpaces ao receber o resultado pelo socket", async () => {
+  makeScene();
+  const localUser = { id: "local", active: true, isGM: false };
+  const remoteUser = { id: "remote", active: true, isGM: false };
+  const actor = {
+    testUserPermission(candidate, permission) {
+      return candidate.id === remoteUser.id && permission === "OWNER";
+    }
+  };
+  globalThis.game = {
+    user: localUser,
+    users: [localUser, remoteUser],
+    socket: {
+      emit: (_channel, message) => {
+        resolvePullMovementResponse({
+          requesterId: localUser.id,
+          requestId: message.requestId,
+          result: {
+            moved: true,
+            movedSpaces: 2,
+            requestedSpaces: 3,
+            plannedSpaces: 2,
+            blocked: true,
+            failureReason: null
+          }
+        });
+      }
+    }
+  };
+  globalThis.foundry = { utils: { randomID: () => "pull-request-response" } };
+  const attacker = makeToken("attacker", 0, 0);
+  const target = makeToken("target", 400, 0);
+  target.actor = actor;
+  target.document.actor = actor;
+  canvas.tokens.placeables = [attacker, target];
+
+  const result = await requestPullMovement({
+    attackerToken: attacker,
+    targetToken: target,
+    spaces: 3,
+    combatId: "combat-1"
+  });
+
+  assert.equal(result.moved, true);
+  assert.equal(result.movedSpaces, 2);
+  assert.equal(result.failureReason, null);
 });

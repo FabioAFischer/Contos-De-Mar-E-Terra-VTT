@@ -10,7 +10,7 @@ import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
 import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
-import { isForcedPullMovement, processPullMovementRequest, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
+import { isForcedPullMovement, processPullMovementRequest, recordPullMovementConfirmation, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
   [SKILL_ROLL_DEGREES.NORMAL_SUCCESS]: 1,
@@ -793,6 +793,7 @@ function shouldProcessPolearmMovement(tokenDocument, user) {
 export async function handlePolearmMovement(tokenDocument, movement, _operation, user = null) {
   // Foundry v14 supplies movement.origin/destination/waypoints and the requesting user here.
   // Movement classification must come from this API object, not legacy operation flags.
+  recordPullMovementConfirmation(tokenDocument, movement);
   const combat = game.combat;
   if (!combat?.started) {
     debugPolearm("Movimento ignorado: combate inativo", { tokenId: tokenDocument?.id });

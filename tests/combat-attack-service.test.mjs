@@ -511,6 +511,24 @@ test("Puxar informa deslocamento parcial quando um obstáculo interrompe a traje
   assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 1);
 });
 
+test("Puxar informa ausência de espaço somente quando nenhum avanço é possível", async () => {
+  const setupData = setup({
+    targetX: 100,
+    attackResults: [50],
+    mainSpecial: { puxar: { enabled: true, spaces: 3 } }
+  });
+
+  startWeaponAttack({ actor: setupData.actor, item: setupData.main, attackMode: "pull" });
+  await Promise.resolve();
+  await rollDialog(dialogs[0]);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const pullMessage = Array.from(game.messages.values()).at(-1);
+  assert.match(pullMessage.content, /PullResultBlocked/);
+  assert.doesNotMatch(pullMessage.content, /PullResultMoved|PullResultPartial/);
+  assert.equal(damageCards.length, 0);
+});
+
 test("Puxar inválido impede somente o modo Puxar", async () => {
   const setupData = setup({ mainSpecial: { puxar: { enabled: true, spaces: 0 } } });
   startWeaponAttack({ actor: setupData.actor, item: setupData.main, attackMode: "pull" });
