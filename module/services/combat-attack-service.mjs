@@ -10,7 +10,7 @@ import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
 import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
-import { isForcedPullMovement, processPullMovementRequest, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
+import { isForcedPullMovement, processPullMovementRequest, recordPullMovementConfirmation, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
   [SKILL_ROLL_DEGREES.NORMAL_SUCCESS]: 1,
@@ -71,20 +71,13 @@ function escapeChatText(value) {
 }
 
 async function sendPullOutcomeToChat({ actor, attackerName, defenderName, weaponName, attack, outcome = null, movement = null }) {
+  if (!attack?.success || outcome?.winner !== "attack") return null;
+
+  const movedSpaces = Number(movement?.movedSpaces) || 0;
+  if (movedSpaces > 0) return null;
+
   let key;
-  let movedSpaces = Number(movement?.movedSpaces) || 0;
-  const requestedSpaces = Number(movement?.requestedSpaces);
-  const movedMaximum = movedSpaces > 0
-    && Number.isFinite(requestedSpaces)
-    && movedSpaces >= requestedSpaces
-    && !movement?.blocked
-    && !["apiError", "permission", "timeout", "movementStopped"].includes(movement?.failureReason);
-  if (!attack?.success) key = "PullResultMiss";
-  else if (outcome?.winner !== "attack") key = "PullResultDefended";
-  else if (movedSpaces > 0) key = movedMaximum
-    ? (movedSpaces === 1 ? "PullResultMovedSingular" : "PullResultMovedPlural")
-    : (movedSpaces === 1 ? "PullResultPartialSingular" : "PullResultPartialPlural");
-  else if (movement?.failureReason === "noSpace" || movement?.blocked) key = "PullResultBlocked";
+  if (movement?.failureReason === "noSpace") key = "PullResultBlocked";
   else key = "PullResultMovementFailed";
   const content = game.i18n.format(`CMET.CombatAttack.${key}`, {
     attackerName: escapeChatText(attackerName),
@@ -793,6 +786,7 @@ function shouldProcessPolearmMovement(tokenDocument, user) {
 export async function handlePolearmMovement(tokenDocument, movement, _operation, user = null) {
   // Foundry v14 supplies movement.origin/destination/waypoints and the requesting user here.
   // Movement classification must come from this API object, not legacy operation flags.
+  recordPullMovementConfirmation(tokenDocument, movement);
   const combat = game.combat;
   if (!combat?.started) {
     debugPolearm("Movimento ignorado: combate inativo", { tokenId: tokenDocument?.id });
