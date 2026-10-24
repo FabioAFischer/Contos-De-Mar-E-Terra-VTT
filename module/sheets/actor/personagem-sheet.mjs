@@ -54,6 +54,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
           return `${natureLabel} / ${typeEntry ? game.i18n.localize(typeEntry.label) : type}`;
         }).join(", ");
         const range = system.characteristics.alcance;
+        const pull = system.characteristics.puxar;
         return {
           id: item.id,
           name: item.name,
@@ -65,6 +66,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
           detailLabel: [damageTypesLabel, range.enabled ? `${game.i18n.localize("CMET.WeaponCharacteristics.Alcance")} ${range.spaces}` : ""].filter(Boolean).join(" • "),
           canRoll: hasCombatSkill,
           canAttack: hasCombatSkill,
+          canPull: hasCombatSkill && pull?.enabled === true,
           loaded: system.loaded !== false,
           thrown: system.thrown === true,
           canReload: system.characteristics.recarregar?.enabled === true && system.loaded === false,
@@ -283,12 +285,13 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       return openSkillRollDialog({ actor: this.actor, skillKey, skillLabel: action.dataset.skillLabel, baseValue });
     }
     const item = action.dataset.itemId ? this.actor.items.get(action.dataset.itemId) : null;
-    if (["attackItem", "throwItem", "reloadItem", "recoverItem", "open-item", "delete-item"].includes(action.dataset.action) && !item) {
+    if (["attackItem", "pullItem", "throwItem", "reloadItem", "recoverItem", "open-item", "delete-item"].includes(action.dataset.action) && !item) {
       ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ItemUnavailable"));
       return;
     }
     if (action.dataset.action === "rollItemSkill" && item) return rollItemSkill({ actor: this.actor, item });
     if (action.dataset.action === "attackItem" && item) return startWeaponAttack({ actor: this.actor, item });
+    if (action.dataset.action === "pullItem" && item) return startWeaponAttack({ actor: this.actor, item, attackMode: "pull" });
     if (action.dataset.action === "throwItem" && item) return startThrownWeaponAttack({ actor: this.actor, item });
     if (action.dataset.action === "combinedAttack") return startCombinedWeaponAttack({ actor: this.actor });
     if (action.dataset.action === "reloadItem" && item) return this.#reloadWeapon(item);

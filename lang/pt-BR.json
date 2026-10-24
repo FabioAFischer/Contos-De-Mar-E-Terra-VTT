@@ -76,6 +76,18 @@
       "React": "Reagir",
       "Ignore": "Ignorar",
       "ChooseDamageType": "Escolha o tipo de dano deste componente",
+      "CombinedModeTitle": "Escolha o ataque combinado",
+      "CombinedModePrompt": "Como deseja realizar o primeiro ataque?",
+      "CombinedModeNormal": "Ataque normal",
+      "CombinedModePull": "Puxar",
+      "PullResultMiss": "{attackerName} tentou usar Puxar com {weaponName} contra {defenderName}, mas errou.",
+      "PullResultDefended": "{defenderName} defendeu o ataque de Puxar de {attackerName}.",
+      "PullResultMovementFailed": "{attackerName} acertou Puxar com {weaponName}, mas o deslocamento de {defenderName} não pôde ser executado.",
+      "PullResultBlocked": "{attackerName} acertou Puxar com {weaponName}, mas não havia espaço livre para deslocar {defenderName}.",
+      "PullResultMovedSingular": "{attackerName} puxou {defenderName} {movedSpaces} espaço em sua direção usando {weaponName}.",
+      "PullResultMovedPlural": "{attackerName} puxou {defenderName} {movedSpaces} espaços em sua direção usando {weaponName}.",
+      "PullResultPartialSingular": "{attackerName} puxou {defenderName} {movedSpaces} espaço usando {weaponName}, mas um obstáculo interrompeu o deslocamento.",
+      "PullResultPartialPlural": "{attackerName} puxou {defenderName} {movedSpaces} espaços usando {weaponName}, mas um obstáculo interrompeu o deslocamento.",
       "AbsoluteTie": "Empate favorece a defesa",
       "Notifications": {
         "CombatRequired": "É necessário um combate ativo.",
@@ -97,6 +109,7 @@
         "AttackUnavailable": "Não foi possível iniciar o ataque. Verifique o combate, o turno, o alvo e a configuração da arma.",
         "InvalidTwoWeaponAttack": "É necessário empunhar duas armas de uma mão válidas.",
         "WeaponNotLoaded": "A arma precisa ser recarregada antes de atacar.",
+        "InvalidPullSpaces": "A característica Puxar exige uma quantidade positiva de espaços configurada.",
         "ReloadOnlyOnTurn": "A recarga só pode ser feita no turno ativo."
       }
     },
@@ -235,7 +248,7 @@
         "Configuration": "Configuração",
         "Description": "Descrição"
       },
-      "Actions": { "Reload": "Recarregar", "Recover": "Recuperar", "Throw": "Arremessar", "CombinedAttack": "Atacar com as duas armas" },
+      "Actions": { "Reload": "Recarregar", "Recover": "Recuperar", "Throw": "Arremessar", "Pull": "Puxar", "CombinedAttack": "Atacar com as duas armas" },
       "Fields": {
         "Quality": "Qualidade",
         "CombatSkill": "Perícia de Combate",
@@ -251,6 +264,7 @@
         "AddDamage": "+ Adicionar dano",
         "NoDamageParts": "Nenhuma parcela de dano.",
         "RangeMax": "Espaços de alcance",
+        "PullSpaces": "Espaços puxados",
         "Spaces": "espaços",
         "Description": "Descrição",
         "AvailableDamageTypes": "Tipos disponíveis (Versátil)",
