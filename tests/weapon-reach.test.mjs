@@ -130,6 +130,34 @@ test("Golpe de Retaguarda reutiliza a rolagem base e compõe bônus por alvo", a
   assert.equal(second.totalRawDamage, 1);
 });
 
+test("Arma de Manobra participa do dano e do máximo crítico sem alterar o dano base", async () => {
+  globalThis.Roll = class MockRoll {
+    constructor(formula) {
+      this.formula = formula;
+      this.total = formula === "1d8" ? 2 : 3;
+    }
+
+    async evaluate() { return this; }
+    clone() { return new MockRoll(this.formula); }
+    evaluateSync({ maximize }) {
+      this.total = maximize ? (this.formula === "1d8" ? 8 : 10) : this.total;
+      return this;
+    }
+  };
+  const item = {
+    name: "Florete",
+    system: {
+      damage: [{ formula: "1d8", nature: "physical", type: "perfurante" }],
+      characteristics: { armaDeManobra: { enabled: true, damageFormula: "1d10", damagePartIndex: 0 } }
+    }
+  };
+  const result = await rollWeaponDamage(item, { critical: true, maneuverWeapon: true });
+  assert.deepEqual(result.components.map(({ source, formula, total, maximumDamage }) => ({ source, formula, total, maximumDamage })), [
+    { source: "base", formula: "1d8", total: 10, maximumDamage: 8 },
+    { source: "armaDeManobra", formula: "1d10", total: 13, maximumDamage: 10 }
+  ]);
+});
+
 test("Sequencial progressivo mantém o máximo crítico da fórmula atual", async () => {
   globalThis.Roll = class MockRoll {
     constructor(formula) {

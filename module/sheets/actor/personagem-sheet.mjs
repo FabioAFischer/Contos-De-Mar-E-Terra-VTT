@@ -7,18 +7,12 @@ import { findSkillDefinition } from "../../services/skill-roll-service.mjs";
 import { resolveItemRollSkill, rollItemSkill } from "../../services/item-roll-service.mjs";
 import { openSkillRollDialog } from "../../dialogs/skill-roll-dialog.mjs";
 import { startWeaponAttack, startThrownWeaponAttack, startCombinedWeaponAttack } from "../../services/combat-attack-service.mjs";
-import { CombatActionService } from "../../services/combat-action-service.mjs";
 import { canRecover } from "../../services/weapon-characteristics-service.mjs";
+import { recoverWeapon, reloadWeapon } from "../../services/item-action-service.mjs";
 import { calculateConditionMovement } from "../../services/combat-condition-service.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
-
-function getActorTokenForSheet(actor, combat) {
-  return globalThis.canvas?.tokens?.controlled?.find((token) => token.actor?.id === actor.id)
-    ?? combat?.combatants.find((combatant) => combatant.actor?.id === actor.id)?.token?.object
-    ?? null;
-}
 
 export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   constructor(...args) {
@@ -170,6 +164,15 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       });
     }, { signal: this._renderListeners.signal });
     this.element.addEventListener("change", (event) => this.#onChange(event), { signal: this._renderListeners.signal });
+    this.element.addEventListener("dragstart", (event) => {
+      const dragTarget = event.target.closest("[data-item-drag]");
+      if (!dragTarget || !this.element.contains(dragTarget)) return;
+      const itemId = dragTarget.closest("[data-item-id]")?.dataset.itemId;
+      const item = this.actor.items.get(itemId);
+      if (!item?.toDragData || !event.dataTransfer) return;
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData("text/plain", JSON.stringify(item.toDragData()));
+    }, { signal: this._renderListeners.signal });
     this.#restoreUiState();
   }
 
@@ -309,26 +312,10 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   }
 
   async #reloadWeapon(item) {
-    if (item.type !== ITEM_TYPES.ARMA || item.system.characteristics.recarregar?.enabled !== true) return;
-    const combat = game.combat;
-    if (combat?.started) {
-      const token = getActorTokenForSheet(this.actor, combat);
-      const combatant = token && combat.combatants.find((entry) => entry.tokenId === (token.document?.id ?? token.id));
-      if (!combatant || combat.combatant?.id !== combatant.id) return ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ReloadOnlyOnTurn"));
-      try { await CombatActionService.spendAction(combatant); } catch { return ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ActionInsufficient")); }
-    }
-    await item.update({ "system.loaded": true });
+    return reloadWeapon({ actor: this.actor, item });
   }
 
   async #recoverWeapon(item) {
-    if (!canRecover(item)) return;
-    const combat = game.combat;
-    if (combat?.started) {
-      const token = getActorTokenForSheet(this.actor, combat);
-      const combatant = token && combat.combatants.find((entry) => entry.tokenId === (token.document?.id ?? token.id));
-      if (!combatant || combat.combatant?.id !== combatant.id) return ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ReloadOnlyOnTurn"));
-      try { await CombatActionService.spendAction(combatant); } catch { return ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.ActionInsufficient")); }
-    }
-    await item.update({ "system.thrown": false });
+    return recoverWeapon({ actor: this.actor, item });
   }
 }

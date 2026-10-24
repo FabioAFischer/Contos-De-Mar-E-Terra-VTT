@@ -37,6 +37,24 @@
       "Faults": "Defeitos"
     },
     "EmbeddedItems": "Itens do personagem",
+    "Hotbar": {
+      "ChooseAction": "Escolha uma ação para {item}",
+      "Actions": {
+        "Attack": "Ataque normal",
+        "Pull": "Puxar",
+        "RearStrike": "Golpe de retaguarda",
+        "Throw": "Arremessar",
+        "SkillTest": "Teste de perícia",
+        "Reload": "Recarregar",
+        "Recover": "Recuperar",
+        "Cancel": "Cancelar"
+      },
+      "Notifications": {
+        "ItemUnavailable": "O item deste atalho não está mais disponível ou não pode ser utilizado por você.",
+        "NoActionAvailable": "Este item não possui nenhuma ação executável.",
+        "CreationFailed": "Não foi possível criar ou atribuir o atalho. Verifique se você pode criar macros e se a hotbar não está bloqueada."
+      }
+    },
     "Combat": {
       "ActionsAvailable": "Ações disponíveis",
       "ActionsReserved": "Ações reservadas",
@@ -211,6 +229,7 @@
         "ArmaDeHaste": "Arma de Haste",
         "PontoFraco": "Ponto fraco",
         "Apunhalhar": "Apunhalhar",
+        "ArmaDeManobra": "Arma de manobra",
         "Executar": "Executar"
       },
       "Notifications": {

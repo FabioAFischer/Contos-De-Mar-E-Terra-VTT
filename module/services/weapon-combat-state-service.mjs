@@ -1,6 +1,7 @@
 import { SYSTEM_ID } from "../config/constants.mjs";
 
 const FLAG = "weaponCombat";
+const POINT_WEAK_GEOMETRY_VERSION = 2;
 const stateMutationQueues = new WeakMap();
 
 function namespace() {
@@ -142,32 +143,55 @@ export function getTargetPositionRelativeToAttacker(attackerToken, targetToken) 
 }
 
 export function getTokenSide(defenderToken, attackerToken) {
-  const defender = tokenPosition(defenderToken);
-  const attacker = tokenPosition(attackerToken);
+  const defender = tokenCenter(defenderToken);
+  const attacker = tokenCenter(attackerToken);
+  const rotation = Number((defenderToken?.document ?? defenderToken)?.rotation);
+  if (!defender || !attacker || !Number.isFinite(rotation)) return null;
   const dx = attacker.x - defender.x;
   const dy = attacker.y - defender.y;
-  const angle = (Math.atan2(dy, dx) * 180 / Math.PI - defender.rotation + 360) % 360;
-  if (angle >= 315 || angle < 45) return "frente";
-  if (angle >= 45 && angle < 135) return "direita";
-  if (angle >= 135 && angle < 225) return "costas";
+  const length = Math.hypot(dx, dy);
+  if (!(length > 0)) return null;
+  const radians = rotation * Math.PI / 180;
+  // Foundry v14: 0° faces south; positive rotation turns the facing direction west.
+  const frontX = -Math.sin(radians);
+  const frontY = Math.cos(radians);
+  const rightX = Math.cos(radians);
+  const rightY = -Math.sin(radians);
+  const frontDot = (dx / length) * frontX + (dy / length) * frontY;
+  const rightDot = (dx / length) * rightX + (dy / length) * rightY;
+  const threshold = Math.cos(Math.PI / 4);
+  if (frontDot >= threshold) return "frente";
+  if (rightDot >= threshold) return "direita";
+  if (frontDot <= -threshold) return "costas";
   return "esquerda";
 }
 
 export function pointWeakBonusState(combat, actor, item, attackerToken, defenderToken) {
   if (item?.system?.characteristics?.pontoFraco?.enabled !== true) return false;
   const previous = readWeaponCombatState(combat).pointWeak?.[attackerKey(actor)]?.[targetKey(defenderToken)];
-  if (!previous || previous.weaponId !== item.id) return false;
+  if (!previous || previous.weaponId !== item.id || previous.geometryVersion !== POINT_WEAK_GEOMETRY_VERSION) return false;
   const currentPosition = tokenPosition(attackerToken);
+  if (![currentPosition.x, currentPosition.y].every(Number.isFinite)) return false;
+  const currentSide = getTokenSide(defenderToken, attackerToken);
+  if (!currentSide || !previous.side) return false;
   const moved = currentPosition.x !== previous.x || currentPosition.y !== previous.y;
-  const defenderRotation = tokenPosition(defenderToken).rotation;
-  return moved && defenderRotation === previous.defenderRotation && previous.side !== getTokenSide(defenderToken, attackerToken);
+  return moved && previous.side !== currentSide;
 }
 
 export async function recordPointWeakAttack(combat, actor, item, attackerToken, defenderToken) {
   return enqueueWeaponCombatStateMutation(combat, (state) => {
     const actorState = state.pointWeak[attackerKey(actor)] ?? {};
     const position = tokenPosition(attackerToken);
-    actorState[targetKey(defenderToken)] = { weaponId: item.id, side: getTokenSide(defenderToken, attackerToken), x: position.x, y: position.y, defenderRotation: tokenPosition(defenderToken).rotation };
+    const side = getTokenSide(defenderToken, attackerToken);
+    if (![position.x, position.y].every(Number.isFinite) || !side) return;
+    actorState[targetKey(defenderToken)] = {
+      weaponId: item.id,
+      side,
+      x: position.x,
+      y: position.y,
+      defenderRotation: tokenPosition(defenderToken).rotation,
+      geometryVersion: POINT_WEAK_GEOMETRY_VERSION
+    };
     state.pointWeak[attackerKey(actor)] = actorState;
   });
 }
@@ -331,6 +355,32 @@ export function isAtMaximumWeaponRange(item, originToken, targetToken) {
   return Number.isFinite(maximum) && maximum > 0 && Math.abs(measureTokenDistance(originToken, targetToken) - maximum) < 0.001;
 }
 
+function getActorItem(actor, id) {
+  if (typeof actor?.items?.get === "function") return actor.items.get(id);
+  if (Array.isArray(actor?.items)) return actor.items.find((item) => item?.id === id);
+  return null;
+}
+
+export function getEffectivelyWieldedWeapons(actor) {
+  const hands = actor?.system?.hands;
+  if (!hands || typeof hands !== "object") return [];
+  const handIds = [hands.mainHand, hands.offHand];
+  if (handIds.some((id) => id !== "" && typeof id !== "string")) return [];
+  const uniqueIds = [...new Set(handIds.filter(Boolean))];
+  const handItems = uniqueIds.map((id) => getActorItem(actor, id));
+  if (handItems.some((item) => !item)) return [];
+  const weapons = handItems.filter((item) => item.type === "arma");
+  if (weapons.some((item) => item.system?.equipped !== true)) return [];
+  return weapons;
+}
+
+export function canApplyManeuverWeaponBonus(actor, item) {
+  if (!item?.id || item.type !== "arma" || item.system?.characteristics?.armaDeManobra?.enabled !== true) return false;
+  if (!String(item.system?.characteristics?.armaDeManobra?.damageFormula ?? "").trim()) return false;
+  const wieldedWeapons = getEffectivelyWieldedWeapons(actor);
+  return wieldedWeapons.length === 1 && wieldedWeapons[0]?.id === item.id;
+}
+
 export async function clearWeaponCombatState(combat) {
   return enqueueWeaponCombatStateMutation(combat, (state) => {
     const empty = emptyWeaponCombatState();
@@ -349,4 +399,4 @@ export async function clearWeaponCombatState(combat) {
   });
 }
 
-export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusCount, getSequentialBonusState, recordSequentialOutcome, getTokenSide, isAttackerBehindDefender, getTargetPositionRelativeToAttacker, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, clearWeaponCombatState });
+export const WeaponCombatStateService = Object.freeze({ emptyWeaponCombatState, readWeaponCombatState, writeWeaponCombatState, getSequentialBonusCount, getSequentialBonusState, recordSequentialOutcome, getTokenSide, isAttackerBehindDefender, getTargetPositionRelativeToAttacker, pointWeakBonusState, recordPointWeakAttack, impactSequenceBonusState, recordImpactOutcome, isLaterallyAdjacent, arePotentialAdversaries, getLateralEnemies, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistanceAtPosition, measureTokenReachDistance, didCrossWeaponReach, isAtMaximumWeaponRange, getEffectivelyWieldedWeapons, canApplyManeuverWeaponBonus, clearWeaponCombatState });

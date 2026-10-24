@@ -11,6 +11,7 @@ const DAMAGE_SOURCE_LABELS = Object.freeze({
   armaDeHaste: "CMET.Damage.Sources.ArmaDeHaste",
   pontoFraco: "CMET.Damage.Sources.PontoFraco",
   apunhalhar: "CMET.Damage.Sources.Apunhalhar",
+  armaDeManobra: "CMET.Damage.Sources.ArmaDeManobra",
   executar: "CMET.Damage.Sources.Executar"
 });
 
@@ -97,8 +98,8 @@ function emptyFormula(item) {
   ui.notifications.warn(game.i18n.format("CMET.Damage.Notifications.EmptyFormula", { weapon: item?.name ?? "" }));
 }
 
-export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, sequentialCount = null, pointWeak = false, apunhalhar = false, polearm = false, reachDistance = null, baseComponents = null } = {}) {
-  const parts = additionalDamageFormulas(item, { critical, sequential, sequentialCount, pointWeak, apunhalhar, polearm, reachDistance, versatileSelections });
+export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, sequentialCount = null, pointWeak = false, apunhalhar = false, maneuverWeapon = false, polearm = false, reachDistance = null, baseComponents = null } = {}) {
+  const parts = additionalDamageFormulas(item, { critical, sequential, sequentialCount, pointWeak, apunhalhar, maneuverWeapon, polearm, reachDistance, versatileSelections });
   const baseParts = normalizeDamageParts({ damage: getVersatileDamageParts(item, versatileSelections) });
   const base = baseComponents ?? (baseParts.length ? await evaluateDamageParts(item, baseParts, critical) : []);
   if (base === null) return null;

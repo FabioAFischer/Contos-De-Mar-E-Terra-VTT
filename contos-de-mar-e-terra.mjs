@@ -5,6 +5,7 @@ import { registerCombatInitiative } from "./module/combat-initiative.mjs";
 import { registerCombatHooks } from "./module/cmet-combat-tracker.mjs";
 import { registerCombatAttackHooks, registerCombatAttackSocket } from "./module/services/combat-attack-service.mjs";
 import { registerDamageApplicationSocket } from "./module/services/damage-application-service.mjs";
+import { registerItemHotbarApi, registerItemHotbarHook } from "./module/services/item-hotbar-service.mjs";
 
 Hooks.once("init", () => {
   registerDataModels();
@@ -14,6 +15,8 @@ Hooks.once("init", () => {
   registerCombatAttackSocket();
   registerDamageApplicationSocket();
   registerCombatAttackHooks();
+  registerItemHotbarApi();
+  registerItemHotbarHook();
   CONFIG.contosDeMarETerra = {
     systemId: "contos-de-mar-e-terra"
   };
