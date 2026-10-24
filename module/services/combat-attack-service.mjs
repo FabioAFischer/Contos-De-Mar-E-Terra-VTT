@@ -10,6 +10,7 @@ import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
 import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
+import { isForcedPullMovement, processPullMovementRequest, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
   [SKILL_ROLL_DEGREES.NORMAL_SUCCESS]: 1,
@@ -56,15 +57,51 @@ function notifyInfo(key) {
   ui.notifications.info(game.i18n.localize(`CMET.CombatAttack.${key}`));
 }
 
+function isValidPullConfiguration(item) {
+  const spaces = Number(item?.system?.characteristics?.puxar?.spaces);
+  return characteristicEnabled(item, "puxar") && Number.isInteger(spaces) && spaces > 0;
+}
+
+function notifyPullConfiguration(item) {
+  return notify("InvalidPullSpaces", { weapon: item?.name ?? "" });
+}
+
+function escapeChatText(value) {
+  return foundry.utils.escapeHTML?.(String(value ?? "")) ?? String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+}
+
+async function sendPullOutcomeToChat({ actor, attackerName, defenderName, weaponName, attack, outcome = null, movement = null }) {
+  let key;
+  let movedSpaces = Number(movement?.movedSpaces) || 0;
+  if (!attack?.success) key = "PullResultMiss";
+  else if (outcome?.winner !== "attack") key = "PullResultDefended";
+  else if (!movement?.executed) key = "PullResultMovementFailed";
+  else if (movedSpaces > 0) key = movement.blocked
+    ? (movedSpaces === 1 ? "PullResultPartialSingular" : "PullResultPartialPlural")
+    : (movedSpaces === 1 ? "PullResultMovedSingular" : "PullResultMovedPlural");
+  else key = "PullResultBlocked";
+  const content = game.i18n.format(`CMET.CombatAttack.${key}`, {
+    attackerName: escapeChatText(attackerName),
+    defenderName: escapeChatText(defenderName),
+    weaponName: escapeChatText(weaponName),
+    movedSpaces
+  });
+  return ChatMessage.create({
+    speaker: ChatMessage.getSpeaker({ actor }),
+    content: `<p class="cmet-pull-result">${content}</p>`
+  });
+}
+
 function clearPendingAttack() {
   pendingAttack = null;
 }
 
-function queuePendingAttack(actor, item, combat) {
+function queuePendingAttack(actor, item, combat, attackMode = "normal") {
   pendingAttack = {
     actorId: actor.id,
     itemId: item.id,
-    combatId: combat.id
+    combatId: combat.id,
+    attackMode
   };
   notifyInfo("SelectTargetToContinue");
 }
@@ -268,12 +305,13 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   };
 }
 
-async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, actionGate = null, disableCharacteristics = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
+async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, attackMode = "normal", actionGate = null, disableCharacteristics = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
   const fail = (key, data = {}) => {
     const result = notify(key, data);
     onComplete?.({ status: "failed" });
     return result;
   };
+  if (attackMode === "pull" && !isValidPullConfiguration(item)) return fail("InvalidPullSpaces");
   if (!disableCharacteristics && !canFire(item)) return fail("WeaponNotLoaded");
   if (!disableCharacteristics && characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
   const attackerToken = providedAttackerToken ?? getAttackerToken(actor, combat);
@@ -307,7 +345,8 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   const attackerName = combatantDisplayName(attackerCombatant, actor);
   const defenderName = combatantDisplayName(targetCombatant, targetCombatant.actor);
   clearPendingAttack();
-  const versatileSelections = disableCharacteristics ? {} : await chooseVersatileSelections(item);
+  const specialCharacteristicsDisabled = disableCharacteristics || attackMode === "pull";
+  const versatileSelections = specialCharacteristicsDisabled ? {} : await chooseVersatileSelections(item);
   return openSkillRollDialog({
     actor,
     skillKey: skill.skillKey,
@@ -335,9 +374,9 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
     },
     onResult: async (rawAttack, attackMessage) => {
       const sequentialCount = ignoreSequentialState ? 0 : getSequentialBonusCount(combat, actor, item);
-      const pointWeak = disableCharacteristics ? false : pointWeakBonusState(combat, actor, item, attackerToken, targetToken);
-      const impactSequence = disableCharacteristics ? false : impactSequenceBonusState(combat, actor, item, targetToken);
-      const attack = disableCharacteristics ? rawAttack : applyRetaliar(rawAttack, item);
+      const pointWeak = specialCharacteristicsDisabled ? false : pointWeakBonusState(combat, actor, item, attackerToken, targetToken);
+      const impactSequence = specialCharacteristicsDisabled ? false : impactSequenceBonusState(combat, actor, item, targetToken);
+      const attack = specialCharacteristicsDisabled ? rawAttack : applyRetaliar(rawAttack, item);
       if (!disableCharacteristics && shouldUnloadAfterShot(item)) await item.update({ "system.loaded": false });
       if (thrownAttack) await item.update({ "system.thrown": true });
       if (!attack.success) {
@@ -347,6 +386,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, targetToken);
         }
         await updateSkillRollMessage(attackMessage, "AttackMiss");
+        if (attackMode === "pull") await sendPullOutcomeToChat({ actor, attackerName, defenderName, weaponName: item.name, attack });
         return;
       }
       let anyHit = false;
@@ -362,16 +402,22 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         else await updateSkillRollMessage(attackMessage, outcomeKey(finalOutcome));
         const effectiveHit = finalOutcome.winner === "attack";
         if (!effectiveHit) {
-          if (!disableCharacteristics) {
+          if (!specialCharacteristicsDisabled) {
             await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: false });
             if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
           }
+          if (attackMode === "pull") await sendPullOutcomeToChat({ actor, attackerName, defenderName: combatantDisplayName(currentTargetCombatant, currentTargetCombatant.actor), weaponName: item.name, attack, outcome: finalOutcome });
           continue;
         }
         anyHit = true;
-        if (!disableCharacteristics) {
+        if (!specialCharacteristicsDisabled) {
           await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: true });
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
+        }
+        if (attackMode === "pull") {
+          const movement = await requestPullMovement({ attackerToken, targetToken: currentTargetToken, spaces: item.system.characteristics.puxar.spaces, combatId: combat.id });
+          await sendPullOutcomeToChat({ actor, attackerName, defenderName: combatantDisplayName(currentTargetCombatant, currentTargetCombatant.actor), weaponName: item.name, attack, outcome: finalOutcome, movement });
+          continue;
         }
         const critical = attack.degree === SKILL_ROLL_DEGREES.CRITICAL_SUCCESS;
         const polearm = !reaction && characteristicEnabled(item, "armaDeHaste") && isAtMaximumWeaponRange(item, attackerToken, currentTargetToken);
@@ -379,10 +425,10 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
           ? measureTokenReachDistance(attackerToken, currentTargetToken)
           : null;
         const damageItem = disableCharacteristics ? { ...item, system: { ...item.system, characteristics: Object.fromEntries(Object.entries(item.system.characteristics ?? {}).map(([key, value]) => [key, { ...value, enabled: false }])) } } : item;
-        const distanceDamage = !disableCharacteristics && characteristicEnabled(item, "alcance");
+        const distanceDamage = !specialCharacteristicsDisabled && characteristicEnabled(item, "alcance");
         let damage = distanceDamage ? null : sharedDamage;
         if (!damage) {
-          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: disableCharacteristics ? false : pointWeak && currentTargetToken === targetToken, polearm: disableCharacteristics ? false : polearm, reachDistance });
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: specialCharacteristicsDisabled ? false : pointWeak && currentTargetToken === targetToken, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance });
           if (selectedTargets.length > 1 && !distanceDamage) sharedDamage = damage;
         }
         if (!damage) continue;
@@ -394,7 +440,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       // sequence outcome for the attack, never one outcome per target.
       if (!ignoreSequentialState) await recordSequentialOutcome(combat, actor, item, { effectiveHit: anyHit });
       if (!anyHit && selectedTargets.length > 1) await updateSkillRollMessage(attackMessage, "AttackDefended");
-      if (!disableCharacteristics && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || impactSequence)) {
+      if (!specialCharacteristicsDisabled && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || impactSequence)) {
         const authority = getActorUpdateAuthority(targetCombatant.actor);
         if (authority?.id === game.user.id) await applyDazedCondition(targetCombatant.actor, combat);
         else if (authority) game.socket.emit(SOCKET_CHANNEL, { type: "combat-condition-apply", targetUserId: authority.id, actorId: targetCombatant.actor.id, combatId: combat.id });
@@ -422,7 +468,20 @@ export async function startThrownWeaponAttack({ actor, item }) {
   return prepareWeaponAttack({ actor, item, targetToken, combat, thrownAttack: true });
 }
 
-export async function startCombinedWeaponAttack({ actor }) {
+function chooseCombinedAttackMode(item) {
+  if (!isValidPullConfiguration(item)) return "normal";
+  const { DialogV2 } = foundry.applications.api;
+  return DialogV2.wait({
+    window: { title: game.i18n.localize("CMET.CombatAttack.CombinedModeTitle") },
+    content: `<p>${game.i18n.localize("CMET.CombatAttack.CombinedModePrompt")}</p>`,
+    buttons: [
+      { action: "normal", label: game.i18n.localize("CMET.CombatAttack.CombinedModeNormal"), type: "button", callback: () => "normal" },
+      { action: "pull", label: game.i18n.localize("CMET.CombatAttack.CombinedModePull"), type: "button", callback: () => "pull" }
+    ]
+  });
+}
+
+export async function startCombinedWeaponAttack({ actor, attackMode = null }) {
   const combat = game.combat;
   const hands = actor.system.hands ?? {};
   const main = actor.items.get(hands.mainHand);
@@ -436,17 +495,21 @@ export async function startCombinedWeaponAttack({ actor }) {
   const combatant = getCombatantForToken(combat, attackerToken);
   if (!combatant || combat.combatant?.id !== combatant.id) return notify("NotActiveTurn");
   if (CombatActionService.getState(combatant).current < 1) return notify("ActionInsufficient");
+  const modeChoice = attackMode ?? chooseCombinedAttackMode(main);
+  const selectedAttackMode = modeChoice instanceof Promise ? await modeChoice : modeChoice;
+  if (!selectedAttackMode) return { status: "cancelled" };
+  if (selectedAttackMode === "pull" && !isValidPullConfiguration(main)) return notifyPullConfiguration(main);
   const actionGate = { spent: false };
   const waitForAttack = (item, options = {}) => new Promise((resolve) => {
     prepareWeaponAttack({ actor, item, targetToken, combat, actionGate, ...options, onComplete: resolve })
       .catch((error) => resolve({ status: "failed", error }));
   });
-  const firstResult = await waitForAttack(main);
+  const firstResult = await waitForAttack(main, { attackMode: selectedAttackMode });
   if (firstResult?.status !== "completed") return firstResult;
   return waitForAttack(off, { disableCharacteristics: true, ignoreSequentialState: true });
 }
 
-export async function startWeaponAttack({ actor, item }) {
+export async function startWeaponAttack({ actor, item, attackMode = "normal" }) {
   clearPendingAttack();
   const combat = game.combat;
   if (!combat?.started) return notify("CombatRequired");
@@ -456,19 +519,22 @@ export async function startWeaponAttack({ actor, item }) {
   if (combat.combatant?.id !== attackerCombatant.id) return notify("NotActiveTurn");
   if (CombatActionService.getState(attackerCombatant).current < 1) return notify("ActionInsufficient");
   if (!resolveAttackSkill(actor, item)) return;
+  if (attackMode === "pull" && !isValidPullConfiguration(item)) return notifyPullConfiguration(item);
   if (!canFire(item)) return notify("WeaponNotLoaded");
   if (characteristicEnabled(item, "armaDeHaste") && !isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
   const targetCount = Array.from(game.user.targets ?? []).length;
   if (targetCount > 1) return notify("SelectOnlyOneTarget");
   const targetToken = getSingleTarget();
   if (!targetToken) {
-    queuePendingAttack(actor, item, combat);
+    queuePendingAttack(actor, item, combat, attackMode);
     return;
   }
-  const targetTokens = characteristicEnabled(item, "duasMaos") && !characteristicEnabled(item, "armaDeHaste")
+  const targetTokens = attackMode === "pull"
+    ? [targetToken]
+    : characteristicEnabled(item, "duasMaos") && !characteristicEnabled(item, "armaDeHaste")
     ? [targetToken, ...getLateralEnemies(targetToken)].filter((token, index, tokens) => tokens.findIndex((candidate) => (candidate.document?.id ?? candidate.id) === (token.document?.id ?? token.id)) === index)
     : [targetToken];
-  return prepareWeaponAttack({ actor, item, targetToken, targetTokens, combat });
+  return prepareWeaponAttack({ actor, item, targetToken, targetTokens, combat, attackMode });
 }
 
 async function continuePendingAttack(targetToken = null) {
@@ -488,7 +554,7 @@ async function continuePendingAttack(targetToken = null) {
     clearPendingAttack();
     return notify("AttackNoLongerValid");
   }
-  return prepareWeaponAttack({ actor, item, targetToken: candidateTarget, combat });
+  return prepareWeaponAttack({ actor, item, targetToken: candidateTarget, combat, attackMode: current.attackMode ?? "normal" });
 }
 
 export async function handleTargetToken(user, token, targeted) {
@@ -542,7 +608,8 @@ function movementMethod(movement) {
     .filter(Boolean);
 }
 
-function isVoluntaryMovement(movement) {
+function isVoluntaryMovement(movement, token = null) {
+  if (isForcedPullMovement(token, movement)) return false;
   const methods = movementMethod(movement);
   const forced = movementHasFlag(movement, ["forced", "isForced", "forcedMovement"])
     || methods.some((method) => method === "forced" || method === "forcedmovement");
@@ -729,7 +796,7 @@ export async function handlePolearmMovement(tokenDocument, movement, _operation,
     debugPolearm("Movimento ignorado: dados ausentes", { tokenId: tokenDocument?.id });
     return;
   }
-  if (!isVoluntaryMovement(movement)) {
+  if (!isVoluntaryMovement(movement, tokenDocument)) {
     debugPolearm("Movimento ignorado: forçado ou teleporte", { tokenId: tokenDocument?.id, movementId: movement.id });
     return;
   }
@@ -829,6 +896,14 @@ export async function handlePolearmMovement(tokenDocument, movement, _operation,
 
 export function registerCombatAttackSocket() {
   game.socket.on(SOCKET_CHANNEL, async (message) => {
+    if (message?.type === "combat-pull-movement-response") {
+      resolvePullMovementResponse(message);
+      return;
+    }
+    if (message?.type === "combat-pull-movement-request") {
+      await processPullMovementRequest(message);
+      return;
+    }
     if (message?.type === "combat-condition-apply" && message.targetUserId === game.user.id) {
       const actor = game.actors.get(message.actorId);
       if (actor && game.combat?.id === message.combatId) await applyDazedCondition(actor, game.combat);

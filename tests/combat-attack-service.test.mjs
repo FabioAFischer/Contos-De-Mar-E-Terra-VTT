@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { startCombinedWeaponAttack } from "../module/services/combat-attack-service.mjs";
+import { startCombinedWeaponAttack, startWeaponAttack } from "../module/services/combat-attack-service.mjs";
 
 class Collection extends Map {
   [Symbol.iterator]() { return this.values(); }
@@ -13,6 +13,7 @@ let skillCards;
 let damageCards;
 let attackRolls;
 let chatId;
+let dialogWaits;
 
 class DialogV2Mock {
   constructor(options) {
@@ -21,6 +22,12 @@ class DialogV2Mock {
     this.element = { querySelector: () => null };
     this.renderCount = 0;
     dialogs.push(this);
+  }
+
+  static wait(options) {
+    return new Promise((resolve) => {
+      dialogWaits.push({ options, resolve });
+    });
   }
 
   addEventListener(type, callback) {
@@ -84,8 +91,9 @@ function makeWeapon({ id, name, skill, damage = "1", special = {} }) {
   };
 }
 
-function setup({ attackResults = [50, 50], targetReserved = 0, mainSpecial = {}, offSpecial = {} } = {}) {
+function setup({ attackResults = [50, 50], targetReserved = 0, targetX = 100, mainSpecial = {}, offSpecial = {} } = {}) {
   dialogs = [];
+  dialogWaits = [];
   skillCards = [];
   damageCards = [];
   attackRolls = [...attackResults];
@@ -120,8 +128,23 @@ function setup({ attackResults = [50, 50], targetReserved = 0, mainSpecial = {},
       this.system.resources.vida.value = data["system.resources.vida.value"];
     }
   };
-  const actorToken = { id: "token-attacker", actor, document: { id: "token-attacker", x: 0, y: 0 } };
-  const targetToken = { id: "token-target", actor: targetActor, document: { id: "token-target", x: 100, y: 0 } };
+  const actorToken = { id: "token-attacker", actor, document: { id: "token-attacker", x: 0, y: 0, width: 1, height: 1, parent: { id: "scene-1" } } };
+  let lastMoveOptions = null;
+  const targetDocument = { id: "token-target", x: targetX, y: 0, width: 1, height: 1, parent: { id: "scene-1" } };
+  const targetToken = {
+    id: "token-target",
+    actor: targetActor,
+    document: targetDocument,
+    checkCollision: () => false,
+    constrainMovementPath: (waypoints) => [waypoints, false]
+  };
+  targetDocument.move = async (waypoints, options) => {
+    lastMoveOptions = options;
+    const destination = waypoints.at(-1);
+    targetDocument.x = destination.x;
+    targetDocument.y = destination.y;
+    return true;
+  };
   const attackerActions = { current: 1, reserved: 0, turnKey: null };
   const targetActions = { current: 1 - targetReserved, reserved: targetReserved, turnKey: null };
   const attackerCombatant = {
@@ -166,7 +189,8 @@ function setup({ attackResults = [50, 50], targetReserved = 0, mainSpecial = {},
     socket: { emit() {}, on() {} }
   };
   globalThis.canvas = {
-    tokens: { controlled: [actorToken], get: (id) => ({ [actorToken.id]: actorToken, [targetToken.id]: targetToken }[id]) },
+    scene: { id: "scene-1", dimensions: { rect: { left: 0, top: 0, right: 1000, bottom: 1000 } } },
+    tokens: { controlled: [actorToken], placeables: [actorToken, targetToken], get: (id) => ({ [actorToken.id]: actorToken, [targetToken.id]: targetToken }[id]) },
     grid: { size: 100 }
   };
   globalThis.foundry = {
@@ -193,7 +217,7 @@ function setup({ attackResults = [50, 50], targetReserved = 0, mainSpecial = {},
   };
   globalThis.ui = { notifications: { warn() {}, info() {} } };
   globalThis.Hooks = { on() {}, off() {}, callAll() {} };
-  return { actor, main, off, combat, attackerActions, targetActions, targetToken, flags };
+  return { actor, main, off, combat, attackerActions, targetActions, targetActor, targetToken, flags, get lastMoveOptions() { return lastMoveOptions; } };
 }
 
 function form() {
@@ -431,4 +455,88 @@ test("crítico da principal inclui o bônus de Sequencial", async () => {
   assert.deepEqual(damageCards[0].groups[0].components.map(({ source }) => source), ["base", "sequencial"]);
   assert.equal(damageCards[0].groups[0].components.every(({ critical }) => critical === true), true);
   assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 2);
+});
+
+test("Puxar usa ataque e defesa normais, move sem dano e registra Sequencial", async () => {
+  const setupData = setup({
+    targetX: 500,
+    attackResults: [50],
+    mainSpecial: {
+      puxar: { enabled: true, spaces: 2 },
+      sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 },
+      alcance: { enabled: true, spaces: 6, damageFormula: "1d6", damagePartIndex: 0 }
+    }
+  });
+  setupData.flags.weaponCombat = { sequences: { [setupData.actor.id]: { weaponId: setupData.main.id, streak: 1 } } };
+
+  startWeaponAttack({ actor: setupData.actor, item: setupData.main, attackMode: "pull" });
+  await Promise.resolve();
+  assert.equal(dialogs.length, 1);
+  await rollDialog(dialogs[0]);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(setupData.targetToken.document.x, 300);
+  assert.equal(setupData.lastMoveOptions.method, "forced");
+  assert.equal(setupData.targetActor.system.resources.vida.value, 20);
+  assert.equal(damageCards.length, 0);
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 2);
+});
+
+test("Puxar inválido impede somente o modo Puxar", async () => {
+  const setupData = setup({ mainSpecial: { puxar: { enabled: true, spaces: 0 } } });
+  startWeaponAttack({ actor: setupData.actor, item: setupData.main, attackMode: "pull" });
+  await Promise.resolve();
+  assert.equal(dialogs.length, 0);
+  assert.equal(setupData.attackerActions.current, 1);
+
+  startWeaponAttack({ actor: setupData.actor, item: setupData.main });
+  await Promise.resolve();
+  assert.equal(dialogs.length, 1);
+});
+
+test("defesa bem-sucedida impede o deslocamento de Puxar e zera Sequencial", async () => {
+  const setupData = setup({
+    targetX: 500,
+    targetReserved: 1,
+    attackResults: [50, 1],
+    mainSpecial: { puxar: { enabled: true, spaces: 2 }, sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } }
+  });
+  setupData.flags.weaponCombat = { sequences: { [setupData.actor.id]: { weaponId: setupData.main.id, streak: 4 } } };
+
+  startWeaponAttack({ actor: setupData.actor, item: setupData.main, attackMode: "pull" });
+  await Promise.resolve();
+  const attackRoll = rollDialog(dialogs[0]);
+  await new Promise((resolve) => setImmediate(resolve));
+  await dialogs[1].options.submit("dodge");
+  await rollDialog(dialogs[2]);
+  await attackRoll;
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(setupData.lastMoveOptions, null);
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 0);
+});
+
+test("ataque combinado permite Puxar na principal e mantém ataque normal na secundária", async () => {
+  const setupData = setup({
+    targetX: 500,
+    attackResults: [50, 50],
+    mainSpecial: { puxar: { enabled: true, spaces: 2 }, sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } }
+  });
+  const combined = startCombinedWeaponAttack({ actor: setupData.actor });
+  await Promise.resolve();
+  assert.equal(dialogWaits.length, 1);
+  dialogWaits[0].resolve("pull");
+  await Promise.resolve();
+  assert.equal(dialogs.length, 1);
+  await rollDialog(dialogs[0]);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(dialogs.length, 2);
+  await rollDialog(dialogs[1]);
+  const result = await combined;
+
+  assert.equal(result.status, "completed");
+  assert.equal(setupData.attackerActions.current, 0);
+  assert.equal(setupData.targetToken.document.x, 300);
+  assert.equal(damageCards.length, 1);
+  assert.equal(setupData.flags.weaponCombat.sequences[setupData.actor.id].streak, 1);
 });

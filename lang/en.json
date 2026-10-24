@@ -74,6 +74,18 @@
       "React": "React",
       "Ignore": "Ignore",
       "ChooseDamageType": "Choose the damage type for this component",
+      "CombinedModeTitle": "Choose combined attack",
+      "CombinedModePrompt": "How should the first attack be made?",
+      "CombinedModeNormal": "Normal attack",
+      "CombinedModePull": "Pull",
+      "PullResultMiss": "{attackerName} tried to use Pull with {weaponName} against {defenderName}, but missed.",
+      "PullResultDefended": "{defenderName} defended against {attackerName}'s Pull attack.",
+      "PullResultMovementFailed": "{attackerName} hit Pull with {weaponName}, but {defenderName}'s movement could not be executed.",
+      "PullResultBlocked": "{attackerName} hit Pull with {weaponName}, but there was no free space to move {defenderName}.",
+      "PullResultMovedSingular": "{attackerName} pulled {defenderName} {movedSpaces} space toward them using {weaponName}.",
+      "PullResultMovedPlural": "{attackerName} pulled {defenderName} {movedSpaces} spaces toward them using {weaponName}.",
+      "PullResultPartialSingular": "{attackerName} pulled {defenderName} {movedSpaces} space using {weaponName}, but an obstacle stopped the movement.",
+      "PullResultPartialPlural": "{attackerName} pulled {defenderName} {movedSpaces} spaces using {weaponName}, but an obstacle stopped the movement.",
       "AbsoluteTie": "A tie favors the defense",
       "Notifications": {
         "CombatRequired": "An active combat is required.",
@@ -95,6 +107,7 @@
         "AttackUnavailable": "The attack could not be started. Check the combat, turn, target, and weapon configuration.",
         "InvalidTwoWeaponAttack": "You must wield two valid one-handed weapons.",
         "WeaponNotLoaded": "The weapon must be reloaded before attacking.",
+        "InvalidPullSpaces": "The Pull characteristic requires a positive configured space value.",
         "ReloadOnlyOnTurn": "Reloading is only possible during the active turn."
       }
     },
@@ -245,12 +258,13 @@
         "AddDamage": "+ Add damage",
         "NoDamageParts": "No damage parts.",
         "RangeMax": "Range spaces",
+        "PullSpaces": "Pull spaces",
         "Spaces": "spaces",
         "Description": "Description",
         "AvailableDamageTypes": "Available types (Versatile)",
         "ThrowRange": "Throw range"
       },
-      "Actions": { "Reload": "Reload", "Recover": "Recover", "Throw": "Throw", "CombinedAttack": "Attack with both weapons" },
+      "Actions": { "Reload": "Reload", "Recover": "Recover", "Throw": "Throw", "Pull": "Pull", "CombinedAttack": "Attack with both weapons" },
       "Sections": { "Damage": "Damage", "Characteristics": "Characteristics" }
     },
     "Armor": {
