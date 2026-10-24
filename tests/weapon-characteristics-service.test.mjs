@@ -108,6 +108,31 @@ test("Apunhalhar aplica a fórmula e herda a parcela vinculada", () => {
   assert.deepEqual(additionalDamageFormulas(item, { apunhalhar: false }), []);
 });
 
+test("Arma de Manobra aplica a fórmula e herda a parcela vinculada", () => {
+  const item = weapon({ armaDeManobra: { enabled: true, damageFormula: "1d10", damagePartIndex: 0 } });
+  assert.deepEqual(additionalDamageFormulas(item, { maneuverWeapon: true }), [{
+    formula: "1d10",
+    nature: "physical",
+    type: "cortante",
+    criticalMax: true,
+    source: "armaDeManobra",
+    sourcePartIndex: 0
+  }]);
+  assert.deepEqual(additionalDamageFormulas(item, { maneuverWeapon: false }), []);
+});
+
+test("Arma de Manobra preserva a tipagem mágica e a seleção Versátil", () => {
+  const item = weapon({ armaDeManobra: { enabled: true, damageFormula: "2d6", damagePartIndex: 1 } });
+  assert.deepEqual(additionalDamageFormulas(item, { maneuverWeapon: true, versatileSelections: { 1: "raio" } }), [{
+    formula: "2d6",
+    nature: "magical",
+    type: "raio",
+    criticalMax: true,
+    source: "armaDeManobra",
+    sourcePartIndex: 1
+  }]);
+});
+
 test("Sequencial só aplica o bônus após acerto anterior e herda a parcela vinculada", () => {
   const item = weapon({ sequencial: { enabled: true, damageFormula: "+1", damagePartIndex: 0 } });
   assert.deepEqual(additionalDamageFormulas(item, { sequentialCount: 0 }), []);

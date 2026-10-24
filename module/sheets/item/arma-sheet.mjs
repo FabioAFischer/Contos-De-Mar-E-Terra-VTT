@@ -46,7 +46,7 @@ export class ArmaSheet extends CmetTabbedItemSheet {
           label: game.i18n.localize(parameter.label),
           suffix: parameter.suffix ? game.i18n.localize(parameter.suffix) : "",
           value: system.characteristics[entry.key][parameter.key],
-          options: ["alcance", "apunhalhar", "sequencial"].includes(entry.key) && parameter.key === "damagePartIndex"
+          options: ["alcance", "apunhalhar", "armaDeManobra", "sequencial"].includes(entry.key) && parameter.key === "damagePartIndex"
             ? damagePartOptions(entry.key)
             : parameter.options
         }))
@@ -79,7 +79,7 @@ export class ArmaSheet extends CmetTabbedItemSheet {
       if (button.dataset.damageAction === "remove") {
         if (!Number.isInteger(index) || index < 0 || index >= damage.length) return;
         damage.splice(index, 1);
-        for (const characteristicKey of ["alcance", "sequencial"]) {
+        for (const characteristicKey of ["alcance", "apunhalhar", "armaDeManobra", "sequencial"]) {
           const linkedIndex = Number(this.element.querySelector(`[name="system.characteristics.${characteristicKey}.damagePartIndex"]`)?.value);
           if (!Number.isInteger(linkedIndex)) continue;
           const nextIndex = damage.length === 0 ? 0 : index < linkedIndex ? linkedIndex - 1 : Math.min(linkedIndex, damage.length - 1);

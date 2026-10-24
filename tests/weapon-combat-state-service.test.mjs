@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { arePotentialAdversaries, clearWeaponCombatState, didCrossWeaponReach, getLateralEnemies, getSequentialBonusCount, getSequentialBonusState, getTargetPositionRelativeToAttacker, getTokenSide, impactSequenceBonusState, isAttackerBehindDefender, isLaterallyAdjacent, measureTokenDistanceAtPosition, recordImpactOutcome, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, canApplyManeuverWeaponBonus, clearWeaponCombatState, didCrossWeaponReach, getEffectivelyWieldedWeapons, getLateralEnemies, getSequentialBonusCount, getSequentialBonusState, getTargetPositionRelativeToAttacker, getTokenSide, impactSequenceBonusState, isAttackerBehindDefender, isLaterallyAdjacent, measureTokenDistanceAtPosition, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome } from "../module/services/weapon-combat-state-service.mjs";
 import { compareAttackAndDefense } from "../module/services/combat-attack-service.mjs";
 
 globalThis.canvas = { grid: { size: 100, measurePath: ([origin, target]) => ({ spaces: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) / 100, distance: Math.max(Math.abs(origin.x - target.x), Math.abs(origin.y - target.y)) }) } };
@@ -26,9 +26,14 @@ test("disposição igual não impede identificar um adversário lateral potencia
 
 test("Ponto fraco calcula os lados pela orientação do defensor", () => {
   const defender = token(0, 0, 1, 1, 0);
-  assert.equal(getTokenSide(defender, token(1, 0)), "frente");
-  assert.equal(getTokenSide(defender, token(-1, 0)), "costas");
-  assert.equal(getTokenSide(defender, token(0, -1)), "esquerda");
+  assert.equal(getTokenSide(defender, token(0, 1)), "frente");
+  assert.equal(getTokenSide(defender, token(0, -1)), "costas");
+  assert.equal(getTokenSide(defender, token(1, 0)), "direita");
+  assert.equal(getTokenSide(defender, token(-1, 0)), "esquerda");
+  assert.equal(getTokenSide({ document: { ...defender.document, rotation: 90 } }, token(-1, 0)), "frente");
+  assert.equal(getTokenSide({ document: { ...defender.document, rotation: 180 } }, token(0, -1)), "frente");
+  assert.equal(getTokenSide({ document: { ...defender.document, rotation: 270 } }, token(1, 0)), "frente");
+  assert.equal(getTokenSide(defender, token(0, 0, 1, 1)), null);
 });
 
 test("Apunhalhar usa centros e o setor traseiro de 90 graus", () => {
@@ -37,6 +42,79 @@ test("Apunhalhar usa centros e o setor traseiro de 90 graus", () => {
   assert.equal(isAttackerBehindDefender(token(300, 100), defender), false);
   assert.equal(isAttackerBehindDefender(token(100, 300), defender), false);
   assert.equal(isAttackerBehindDefender(token(100, 100, 2, 2, 0), defender), false);
+});
+
+const wieldedActor = ({ mainHand = "", offHand = "", items = [] } = {}) => ({
+  id: "actor",
+  system: { hands: { mainHand, offHand } },
+  items: { get: (id) => items.find((item) => item.id === id) }
+});
+
+const maneuverWeapon = (id, equipped = true) => ({
+  id,
+  type: "arma",
+  system: { equipped, characteristics: { armaDeManobra: { enabled: true, damageFormula: "1d10" } } }
+});
+
+test("Arma de Manobra conta somente a arma efetivamente empunhada", () => {
+  const rapier = maneuverWeapon("rapier");
+  const dagger = maneuverWeapon("dagger");
+  assert.deepEqual(getEffectivelyWieldedWeapons(wieldedActor({ mainHand: "rapier", items: [rapier, dagger] })), [rapier]);
+  assert.equal(canApplyManeuverWeaponBonus(wieldedActor({ mainHand: "rapier", items: [rapier, dagger] }), rapier), true);
+  assert.equal(canApplyManeuverWeaponBonus(wieldedActor({ mainHand: "rapier", offHand: "dagger", items: [rapier, dagger] }), rapier), false);
+  assert.equal(canApplyManeuverWeaponBonus(wieldedActor({ mainHand: "rapier", items: [rapier, dagger] }), dagger), false);
+});
+
+test("Escudo e item guardado não desabilitam Arma de Manobra", () => {
+  const rapier = maneuverWeapon("rapier");
+  const shield = { id: "shield", type: "armadura", system: { equipped: true } };
+  const storedDagger = maneuverWeapon("dagger");
+  const actor = wieldedActor({ mainHand: "rapier", offHand: "shield", items: [rapier, shield, storedDagger] });
+  assert.deepEqual(getEffectivelyWieldedWeapons(actor), [rapier]);
+  assert.equal(canApplyManeuverWeaponBonus(actor, rapier), true);
+});
+
+test("Arma de Manobra não concede bônus com arma desmarcada, mão inválida ou configuração ausente", () => {
+  const rapier = maneuverWeapon("rapier", false);
+  const actor = wieldedActor({ mainHand: "rapier", items: [rapier] });
+  assert.equal(canApplyManeuverWeaponBonus(actor, rapier), false);
+  assert.equal(canApplyManeuverWeaponBonus(wieldedActor({ mainHand: "missing", items: [rapier] }), rapier), false);
+  assert.equal(canApplyManeuverWeaponBonus({ items: [rapier] }, rapier), false);
+});
+
+test("A mesma arma em ambas as mãos é contada uma única vez", () => {
+  const rapier = maneuverWeapon("rapier");
+  const actor = wieldedActor({ mainHand: "rapier", offHand: "rapier", items: [rapier] });
+  assert.deepEqual(getEffectivelyWieldedWeapons(actor), [rapier]);
+  assert.equal(canApplyManeuverWeaponBonus(actor, rapier), true);
+});
+
+test("Ponto Fraco só ativa após mudar de setor, não apenas por rotação do defensor", async () => {
+  const combat = combatWithState();
+  const actor = { id: "attacker" };
+  const item = { id: "rapier", system: { characteristics: { pontoFraco: { enabled: true, damageFormula: "1d8" } } } };
+  const defender = token(100, 100, 2, 2, 0);
+  const firstPosition = token(100, 300, 1, 1, 0);
+  await recordPointWeakAttack(combat, actor, item, firstPosition, defender);
+  assert.equal(pointWeakBonusState(combat, actor, item, token(100, 400), defender), false);
+  assert.equal(pointWeakBonusState(combat, actor, item, token(300, 100), defender), true);
+  const rotatedDefender = { document: { ...defender.document, rotation: 90 } };
+  assert.equal(pointWeakBonusState(combat, actor, item, firstPosition, rotatedDefender), false);
+  assert.equal(pointWeakBonusState(combat, actor, item, token(300, 100), rotatedDefender), true);
+});
+
+test("Ponto Fraco mantém histórico isolado por alvo e arma e invalida estado geométrico legado", async () => {
+  const combat = combatWithState({ pointWeak: { attacker: { enemyA: { weaponId: "old", side: "frente", x: 0, y: 0 } } } });
+  const actor = { id: "attacker" };
+  const item = { id: "rapier", system: { characteristics: { pontoFraco: { enabled: true, damageFormula: "1d8" } } } };
+  const defenderA = token(100, 100, 1, 1, 0);
+  const defenderB = token(400, 100, 1, 1, 0);
+  const initial = token(100, 300, 1, 1, 0);
+  await recordPointWeakAttack(combat, actor, item, initial, defenderA);
+  await recordPointWeakAttack(combat, actor, item, initial, defenderB);
+  assert.equal(pointWeakBonusState(combat, actor, item, token(300, 100), defenderA), true);
+  assert.equal(pointWeakBonusState(combat, actor, item, token(600, 100), defenderB), true);
+  assert.equal(pointWeakBonusState(combat, actor, { ...item, id: "different" }, token(300, 100), defenderA), false);
 });
 
 test("Golpe de Retaguarda classifica os setores pela rotação do atacante", () => {

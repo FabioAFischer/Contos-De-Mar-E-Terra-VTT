@@ -35,6 +35,24 @@
       "Faults": "Flaws"
     },
     "EmbeddedItems": "Character items",
+    "Hotbar": {
+      "ChooseAction": "Choose an action for {item}",
+      "Actions": {
+        "Attack": "Normal attack",
+        "Pull": "Pull",
+        "RearStrike": "Rear strike",
+        "Throw": "Throw",
+        "SkillTest": "Skill test",
+        "Reload": "Reload",
+        "Recover": "Recover",
+        "Cancel": "Cancel"
+      },
+      "Notifications": {
+        "ItemUnavailable": "The item for this shortcut is no longer available or cannot be used by you.",
+        "NoActionAvailable": "This item has no executable action.",
+        "CreationFailed": "The shortcut could not be created or assigned. Check macro permissions and whether the hotbar is locked."
+      }
+    },
     "Combat": {
       "ActionsAvailable": "Available actions",
       "ActionsReserved": "Reserved actions",
@@ -209,6 +227,7 @@
         "ArmaDeHaste": "Polearm",
         "PontoFraco": "Weak point",
         "Apunhalhar": "Stab",
+        "ArmaDeManobra": "Maneuver Weapon",
         "Executar": "Execute"
       },
       "Notifications": {

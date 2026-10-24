@@ -8,7 +8,7 @@ import { DamageReductionService } from "./damage-reduction-service.mjs";
 import { DamageApplicationService } from "./damage-application-service.mjs";
 import { getActorUpdateAuthority } from "./combat-authority-service.mjs";
 import { applyRetaliar, canFire, characteristicEnabled, shouldUnloadAfterShot, canThrow } from "./weapon-characteristics-service.mjs";
-import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach, isAttackerBehindDefender, getTargetPositionRelativeToAttacker } from "./weapon-combat-state-service.mjs";
+import { arePotentialAdversaries, getLateralEnemies, getSequentialBonusCount, pointWeakBonusState, recordImpactOutcome, recordPointWeakAttack, recordSequentialOutcome, impactSequenceBonusState, isAtMaximumWeaponRange, measureTokenDistanceAtPosition, measureTokenDistance, measureTokenReachDistance, didCrossWeaponReach, isAttackerBehindDefender, getTargetPositionRelativeToAttacker, canApplyManeuverWeaponBonus } from "./weapon-combat-state-service.mjs";
 import { applyDazedCondition } from "./combat-condition-service.mjs";
 import { isForcedPullMovement, processPullMovementRequest, recordPullMovementConfirmation, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
 
@@ -344,7 +344,7 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   };
 }
 
-async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, attackMode = "normal", actionGate = null, disableCharacteristics = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
+async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, attackMode = "normal", combinedAttack = false, actionGate = null, disableCharacteristics = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
   const fail = (key, data = {}) => {
     const result = notify(key, data);
     onComplete?.({ status: "failed" });
@@ -386,6 +386,10 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   const defenderName = combatantDisplayName(targetCombatant, targetCombatant.actor);
   clearPendingAttack();
   const specialCharacteristicsDisabled = disableCharacteristics || attackMode === "pull";
+  const maneuverWeapon = !specialCharacteristicsDisabled
+    && !thrownAttack
+    && !combinedAttack
+    && canApplyManeuverWeaponBonus(actor, item);
   const apunhalharEligible = new Map(selectedTargets.map((candidateToken) => [
     candidateToken,
     !specialCharacteristicsDisabled
@@ -487,7 +491,9 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         const rearStrike = attackMode === "golpeDeRetaguarda";
         const apunhalharVariesByTarget = selectedTargets.length > 1
           && selectedTargets.some((candidateToken) => apunhalharEligible.get(candidateToken) !== apunhalharEligible.get(targetToken));
-        const distanceDamage = (!specialCharacteristicsDisabled && characteristicEnabled(item, "alcance")) || apunhalharVariesByTarget;
+        const pointWeakVariesByTarget = selectedTargets.length > 1
+          && selectedTargets.some((candidateToken) => pointWeakByTarget.get(candidateToken) !== pointWeakByTarget.get(targetToken));
+        const distanceDamage = (!specialCharacteristicsDisabled && characteristicEnabled(item, "alcance")) || apunhalharVariesByTarget || pointWeakVariesByTarget;
         let damage = distanceDamage || rearStrike ? null : sharedDamage;
         if (!damage) {
           let baseComponents = null;
@@ -498,7 +504,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
             }
             baseComponents = sharedBaseDamage;
           }
-          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: pointWeakByTarget.get(currentTargetToken) === true, apunhalhar: apunhalharEligible.get(currentTargetToken) === true, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance, baseComponents });
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: pointWeakByTarget.get(currentTargetToken) === true, apunhalhar: apunhalharEligible.get(currentTargetToken) === true, maneuverWeapon, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance, baseComponents });
           if (selectedTargets.length > 1 && !distanceDamage && !rearStrike) sharedDamage = damage;
         }
         if (!damage) continue;
@@ -576,7 +582,7 @@ export async function startCombinedWeaponAttack({ actor, attackMode = null }) {
   if (selectedAttackMode === "pull" && !isValidPullConfiguration(main)) return notifyPullConfiguration(main);
   const actionGate = { spent: false };
   const waitForAttack = (item, options = {}) => new Promise((resolve) => {
-    prepareWeaponAttack({ actor, item, targetToken, combat, actionGate, ...options, onComplete: resolve })
+    prepareWeaponAttack({ actor, item, targetToken, combat, actionGate, combinedAttack: true, ...options, onComplete: resolve })
       .catch((error) => resolve({ status: "failed", error }));
   });
   const firstResult = await waitForAttack(main, { attackMode: selectedAttackMode });
