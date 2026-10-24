@@ -121,12 +121,16 @@ test("usa o movimento processado pelo hook quando o TokenDocument ainda está na
   const target = makeToken("target", 500, 0);
   target.document.move = async (waypoints, options) => {
     assert.equal(options.method, "api");
-    assert.equal(recordPullMovementConfirmation(target.document, {
-      id: "movement-1",
-      method: "api",
+    const movement = {
+      id: options.id,
+      method: options.method,
       origin: { x: 500, y: 0 },
-      passed: { waypoints: [{ x: 500, y: 0 }, { x: 300, y: 0 }] }
-    }), true);
+      destination: { x: 300, y: 0 },
+      passed: { waypoints: [{ x: 500, y: 0 }, { x: 300, y: 0 }] },
+      finished: Promise.resolve(true)
+    };
+    assert.equal(recordPullMovementConfirmation(target.document, movement), true);
+    assert.equal(recordPullMovementConfirmation(target.document, movement), true, "callbacks duplicados devem ser idempotentes");
     assert.equal(waypoints.at(-1).x, 300);
     return true;
   };
@@ -205,6 +209,33 @@ test("diferencia movimento interrompido e preserva deslocamento parcial", async 
   assert.equal(result.movedSpaces, 1);
   assert.equal(result.failureReason, "movementStopped");
   assert.equal(result.blockedReason, "movementStopped");
+});
+
+test("usa os waypoints percorridos quando a movimentação é interrompida antes de atualizar o documento", async () => {
+  makeScene();
+  const attacker = makeToken("attacker", 0, 0);
+  const target = makeToken("target", 400, 0);
+  target.document.move = async (_waypoints, options) => {
+    const movement = {
+      id: options.id,
+      origin: { x: 400, y: 0 },
+      destination: { x: 200, y: 0 },
+      passed: { waypoints: [{ x: 400, y: 0 }, { x: 300, y: 0 }] },
+      finished: Promise.resolve(false)
+    };
+    assert.equal(recordPullMovementConfirmation(target.document, movement), true);
+    target.document.x = 200;
+    return true;
+  };
+  canvas.tokens.placeables = [attacker, target];
+
+  const result = await executePullMovement({ attackerToken: attacker, targetToken: target, spaces: 2 });
+
+  assert.equal(result.executed, false);
+  assert.equal(result.moved, true);
+  assert.equal(result.movedSpaces, 1);
+  assert.deepEqual(result.confirmedDestination, { x: 300, y: 0 });
+  assert.equal(result.failureReason, "movementStopped");
 });
 
 test("mede um único espaço efetivamente percorrido antes de um obstáculo", async () => {
@@ -357,6 +388,8 @@ test("preserva movedSpaces ao receber o resultado pelo socket", async () => {
             movedSpaces: 2,
             requestedSpaces: 3,
             plannedSpaces: 2,
+            confirmedDestination: { x: 200, y: 0 },
+            completed: true,
             blocked: true,
             failureReason: null
           }
@@ -380,5 +413,7 @@ test("preserva movedSpaces ao receber o resultado pelo socket", async () => {
 
   assert.equal(result.moved, true);
   assert.equal(result.movedSpaces, 2);
+  assert.deepEqual(result.confirmedDestination, { x: 200, y: 0 });
+  assert.equal(result.completed, true);
   assert.equal(result.failureReason, null);
 });
