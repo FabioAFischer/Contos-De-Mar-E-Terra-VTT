@@ -404,8 +404,7 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
     const completed = await document.move(path.positions.slice(1), {
       method: PULL_MOVEMENT_METHOD,
       broadcast: true,
-      showRuler: false,
-      id: movementId
+      showRuler: false
     });
     const confirmation = pendingMovement.movement
       ? await waitForMovementResult(pendingMovement.movement)
@@ -424,7 +423,8 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
       executed: !interrupted,
       completed: movementCompleted,
       movedSpaces: moved ? measureSpaces(document, path.origin, current) : 0,
-      movementId: movement?.id ?? pendingMovement.movementId ?? pendingMovement.operationId,
+      movementId: movement?.id ?? pendingMovement.movementId ?? null,
+      operationId: pendingMovement.operationId,
       blockedReason: interrupted && !path.blockedReason ? "movementStopped" : path.blockedReason,
       failureReason: interrupted ? "movementStopped" : moved ? null : "confirmation"
     };
@@ -443,6 +443,7 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
       failureReason: result.failureReason,
       completed: movementCompleted,
       movementId: result.movementId,
+      operationId: result.operationId,
       passedWaypoints: passedWaypoints(movement),
       documentPosition: point({ x: document?.x, y: document?.y })
     });
@@ -469,7 +470,8 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
       movedSpaces: current.x !== path.origin.x || current.y !== path.origin.y
         ? measureSpaces(document, path.origin, current)
         : 0,
-      movementId: pendingMovement.movementId ?? pendingMovement.operationId,
+      movementId: pendingMovement.movementId ?? null,
+      operationId: pendingMovement.operationId,
       blockedReason: "apiError",
       failureReason: "apiError",
       ...details
@@ -488,7 +490,8 @@ export async function executePullMovement({ attackerToken, targetToken, spaces }
       blockedReason: result.blockedReason,
       failureReason: result.failureReason,
       completed: false,
-      movementId,
+      movementId: result.movementId,
+      operationId: result.operationId,
       passedWaypoints: [],
       documentPosition: point({ x: document?.x, y: document?.y })
     });
@@ -513,6 +516,7 @@ export function recordPullMovementConfirmation(tokenDocument, movement) {
   if (pending.movementId && movement.id && movement.id !== pending.movementId) return false;
   const movementOrigin = point(movement.origin);
   if (movementOrigin && (movementOrigin.x !== pending.origin.x || movementOrigin.y !== pending.origin.y)) return false;
+  if (pending.movement && movement.id && movement.id === pending.movementId) return true;
   if (movement.id) pending.movementId = movement.id;
   pending.movement = movement;
   const waypoints = passedWaypoints(movement);

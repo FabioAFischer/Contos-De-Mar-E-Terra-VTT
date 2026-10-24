@@ -71,6 +71,7 @@ test("executa movimento pela API v14 e mantém a marcação de Puxar durante o m
     movementOptions = options;
     assert.equal(options.method, "api", "métodos fora da API v14 não podem ser usados por Puxar");
     assert.equal(options.broadcast, true);
+    assert.equal(Object.hasOwn(options, "id"), false, "o Foundry deve gerar o ID nativo do movimento");
     forcedDuringMove = isForcedPullMovement(target, { method: options.method });
     const destination = waypoints.at(-1);
     target.document.x = destination.x;
@@ -121,8 +122,9 @@ test("usa o movimento processado pelo hook quando o TokenDocument ainda está na
   const target = makeToken("target", 500, 0);
   target.document.move = async (waypoints, options) => {
     assert.equal(options.method, "api");
+    assert.equal(Object.hasOwn(options, "id"), false);
     const movement = {
-      id: options.id,
+      id: "foundry-movement-1",
       method: options.method,
       origin: { x: 500, y: 0 },
       destination: { x: 300, y: 0 },
@@ -141,6 +143,7 @@ test("usa o movimento processado pelo hook quando o TokenDocument ainda está na
   assert.equal(result.moved, true);
   assert.equal(result.movedSpaces, 2);
   assert.deepEqual(result.confirmedDestination, { x: 300, y: 0 });
+  assert.equal(result.movementId, "foundry-movement-1");
 });
 
 test("classifica erro real da API sem tratá-lo como falha de permissão", async () => {
@@ -216,8 +219,9 @@ test("usa os waypoints percorridos quando a movimentação é interrompida antes
   const attacker = makeToken("attacker", 0, 0);
   const target = makeToken("target", 400, 0);
   target.document.move = async (_waypoints, options) => {
+    assert.equal(Object.hasOwn(options, "id"), false);
     const movement = {
-      id: options.id,
+      id: "foundry-movement-partial",
       origin: { x: 400, y: 0 },
       destination: { x: 200, y: 0 },
       passed: { waypoints: [{ x: 400, y: 0 }, { x: 300, y: 0 }] },
