@@ -8,6 +8,7 @@
       "armadura": "Armadura",
       "equipamento": "Equipamento",
       "habilidade": "Habilidade",
+      "habilidadeDa": "Habilidade DA",
       "magia": "Magia"
     }
   },
@@ -160,6 +161,7 @@
     "ItemTypes": {
       "equipamento": "Equipamento",
       "habilidade": "Habilidade",
+      "habilidadeDa": "Habilidade DA",
       "magia": "Magia",
       "arma": "Arma",
       "armadura": "Armadura"
@@ -274,6 +276,7 @@
         "Description": "Descrição"
       },
       "Actions": { "Reload": "Recarregar", "Recover": "Recuperar", "Throw": "Arremessar", "Pull": "Puxar", "RearStrike": "Golpe de Retaguarda", "CombinedAttack": "Atacar com as duas armas" },
+      "Grip": { "Title": "Empunhadura", "OneHand": "Uma mão", "TwoHands": "Duas mãos", "OneHandEmpunhadura": "Uma mão (Empunhadura do Mais Forte)", "QualityReduced": "qualidade efetiva reduzida em um nível" },
       "Fields": {
         "Quality": "Qualidade",
         "CombatSkill": "Perícia de Combate",
@@ -366,6 +369,37 @@
       "Categories": { "Origem": "Origem", "Corpo": "Corpo", "Armamento": "Armamento", "Mistico": "Místico", "Social": "Social", "Religiao": "Religião", "Tatica": "Tática", "Cosmico": "Cósmico" },
       "Fields": { "Category": "Categoria", "NoCategory": "Nenhuma categoria", "RollSkill": "Perícia para rolagem", "NoRollSkill": "Nenhuma", "Path": "Caminho / Trilha", "Cost": "Custo", "Points": "pontos", "Requirements": "Requisitos", "None": "Nenhum", "Description": "Descrição", "Effect": "Efeito", "Upgrade": "Aprimoramento" }
     },
+    "AbilityDa": {
+      "Title": "Deuses Adormecidos — DA",
+      "Empty": "Nenhuma habilidade DA adicionada.",
+      "EmptyEffects": "Nenhum subefeito configurado.",
+      "Sections": { "General": "Identificação" },
+      "Fields": { "ActivationType": "Tipo principal", "Origin": "Origem", "NoOrigin": "Sem origem", "Category": "Categoria temática", "AssociatedCharacter": "Personagem associado", "CharacterPlaceholder": "Opcional", "Effects": "Subefeitos", "Enabled": "Habilitado", "Trigger": "Gatilho", "TriggerPhase": "Momento do disparo", "OncePolicy": "Frequência", "Summary": "Resumo", "Description": "Descrição narrativa", "Functioning": "Funcionamento", "GmNotes": "Observações do mestre", "ManualResolution": "Resolução manual", "Notes": "Observações", "SkillKey": "Chave da perícia" },
+      "Tabs": { "General": "Geral", "Effects": "Efeitos", "Summary": "Resumo", "Mechanics": "Mecânica", "Narrative": "Narrativa", "Advanced": "Avançado" },
+      "Activation": { "Passive": "Passiva", "Active": "Ativa", "Reactive": "Reativa" },
+      "Triggers": { "Manual": "Manual", "AttackDeclared": "Ataque declarado", "AttackHit": "Ataque acertou", "AttackMiss": "Ataque errou", "DamageReceived": "Dano recebido", "ResourceChanged": "Recurso alterado", "TurnStart": "Início do turno", "TurnEnd": "Fim do turno", "CombatEnd": "Fim do combate" },
+      "Costs": { "Title": "Custos", "Actions": "Ações", "ReservedActions": "Ações reservadas", "Health": "Vida", "Mana": "Mana", "Sanity": "Sanidade", "CustomResource": "Recurso customizado", "OnActivation": "Na ativação", "OnSuccess": "Após sucesso", "OnEvent": "Após evento" },
+      "Tests": { "Title": "Testes", "Manual": "Sem teste / manual", "Skill": "Teste de perícia", "Opposed": "Teste oposto", "Resistance": "Teste de resistência" },
+      "Conditions": { "Title": "Condições" },
+      "EmptyConditions": "Nenhuma condição configurada.",
+      "Operations": { "Title": "Operações", "Resource": "Alterar recurso", "WeaponGrip": "Modificador de empunhadura", "SkillModifier": "Modificador de perícia", "ArmorBonus": "Bônus de armadura", "SizeIncrease": "Aumento de tamanho", "Damage": "Dano", "Heal": "Cura", "ConditionAdd": "Adicionar condição", "ConditionRemove": "Remover condição", "Manual": "Operação manual", "Instructions": "Instruções", "Formula": "Fórmula", "Amount": "Valor", "Characteristic": "Característica", "Stages": "Estágios", "Condition": "Condição", "Skill": "Perícia" },
+      "Branches": { "Title": "Ramificações", "Name": "Nome da opção", "Manual": "Seleção manual", "Exclusive": "Escolha exclusiva", "Multiple": "Escolha múltipla", "Sequence": "Sequência" },
+      "Duration": { "Title": "Duração", "Instant": "Instantânea", "Turns": "Turnos", "Rounds": "Rodadas", "Combat": "Fim do combate", "Permanent": "Permanente", "Condition": "Até condição", "Amount": "Quantidade", "Reference": "Condição de encerramento" },
+      "Limits": { "Title": "Limites de utilização", "None": "Sem limite", "Turn": "Por turno", "Combat": "Por combate", "Day": "Por dia", "Maximum": "Máximo" },
+      "Once": { "Always": "Sempre", "Attack": "Uma vez por ataque", "Target": "Uma vez por alvo", "Event": "Uma vez por evento" },
+      "Targets": { "Self": "Próprio", "Ally": "Aliado", "Enemy": "Inimigo", "Any": "Qualquer", "Manual": "Seleção manual", "Relation": "Relação", "Count": "Quantidade", "Range": "Alcance", "RequiresSelection": "Exige seleção" },
+      "Actions": { "Create": "+ Nova habilidade DA", "AddEffect": "+ Adicionar subefeito", "AddCost": "+ Adicionar custo", "AddTest": "+ Adicionar teste", "AddCondition": "+ Adicionar condição", "AddOperation": "+ Adicionar operação", "AddBranch": "+ Adicionar ramificação", "MoveUp": "Mover para cima", "MoveDown": "Mover para baixo", "Duplicate": "Duplicar", "NoSummary": "Sem resumo", "UntitledEffect": "Subefeito sem nome", "Activate": "Ativar", "Deactivate": "Desativar", "Confirm": "Confirmar", "DeleteEffect": "Excluir subefeito", "ConfirmDelete": "Excluir este subefeito?", "View": "Visualizar", "Edit": "Editar" },
+      "Editor": { "Activation": "Ativação", "Requirements": "Requisitos", "CostsTests": "Custos e testes", "Targets": "Alvos", "Operations": "Operações", "Persistence": "Persistência", "Branches": "Ramificações" },
+      "Summary": { "Effects": "Efeitos", "Cost": "Custo", "Duration": "Duração", "Automation": "Automação", "Automatic": "automático(s)", "Manual": "manual(is)", "NoCost": "Nenhum", "NoTests": "Nenhum teste", "NoOperations": "Nenhuma operação", "NoDescription": "Sem descrição narrativa.", "None": "Nenhum" },
+      "Status": { "Active": "Ativo", "Inactive": "Inativo" },
+      "ConditionFields": { "TargetLevel": "Nível do alvo", "TargetSize": "Tamanho do alvo", "ActorLevel": "Nível do usuário", "ActorSize": "Tamanho do usuário", "Logic": "Agrupamento lógico", "Or": "OU" },
+      "Operators": { "Equals": "Igual a", "NotEquals": "Diferente de", "GreaterThan": "Maior que", "GreaterThanOrEqual": "Maior ou igual a", "LessThan": "Menor que", "LessThanOrEqual": "Menor ou igual a" },
+      "OperationSummary": { "Armor": "Carapaça", "Size": "Tamanho", "Heal": "Recuperar Vida", "Resource": "Recurso", "ConditionAdd": "Aplicar", "ConditionRemove": "Remover", "SkillModifier": "Modificar perícia", "Damage": "Dano", "WeaponGrip": "Empunhadura", "Manual": "Resolução manual" },
+      "Advanced": { "ReadOnly": "Dados técnicos em modo somente leitura. Edite-os apenas pelos campos da aba Mecânica." },
+      "Resources": { "Title": "Recursos DA", "Add": "+ Adicionar recurso", "New": "Novo recurso", "Name": "Nome", "Current": "Atual", "Maximum": "Máximo" },
+      "Chat": { "Activated": "Efeito ativado.", "Deactivated": "Efeito desativado.", "ManualEffects": "Algumas operações exigem resolução manual.", "TargetReview": "Revise os alvos elegíveis antes de continuar:", "NoTargets": "Nenhum adversário elegível foi encontrado." },
+      "Notifications": { "EffectUnavailable": "Esse efeito DA não está disponível.", "PassiveManual": "Efeitos passivos são mantidos como referência e não possuem botão de ativação.", "InsufficientCost": "Custo ou recurso insuficiente.", "InsufficientActions": "Não há ações suficientes para {ability}. Necessário: {amount}. Disponível: {available}.", "InsufficientReservedActions": "Não há ações reservadas suficientes para {ability}. Necessário: {amount}. Disponível: {available}.", "NotActiveTurn": "Não é o turno do personagem para ativar {ability}.", "MissingCombatant": "O personagem não possui um combatente válido neste combate.", "InsufficientResource": "Recurso insuficiente para {ability}. Necessário: {amount}. Disponível: {available}.", "MissingResource": "O recurso exigido por {ability} não foi encontrado.", "InvalidCost": "O custo de {ability} está configurado incorretamente.", "NoPermission": "Você não possui permissão para editar esta habilidade." }
+    },
     "Navigation": {
       "Label": "Seções da ficha",
       "Attributes": "Atributos",
@@ -376,7 +410,10 @@
     },
     "Notifications": {
       "SkillPoolExceeded": "Não existem pontos suficientes para essa distribuição.",
-      "DuplicateHandWeapon": "A mesma arma não pode ocupar as duas mãos."
+      "DuplicateHandWeapon": "A mesma arma não pode ocupar as duas mãos.",
+      "EmpunhaduraUnavailable": "Empunhadura do Mais Forte não está disponível para este personagem.",
+      "WeaponRequiresFreeHand": "Esta arma exige uma mão livre para ser empunhada.",
+      "WeaponRequiresMainHand": "Uma arma de duas mãos precisa ocupar a mão principal."
     },
     "Validation": {
       "OverPool": "Distribuição acima do pool disponível. Reduza alguma perícia antes de continuar."
@@ -413,6 +450,7 @@
       "Item": "Ficha de item",
       "Arma": "Ficha de Arma",
       "Armadura": "Ficha de Armadura",
+      "HabilidadeDa": "Ficha de Habilidade DA",
       "Magia": "Ficha de Magia",
       "Personagem": "Ficha de Personagem",
       "Spells": "Magias"

@@ -3,6 +3,7 @@ import { startThrownWeaponAttack, startWeaponAttack } from "./combat-attack-serv
 import { resolveItemRollSkill, rollItemSkill } from "./item-roll-service.mjs";
 import { recoverWeapon, reloadWeapon } from "./item-action-service.mjs";
 import { canFire, canRecover, canThrow, characteristicEnabled } from "./weapon-characteristics-service.mjs";
+import { activateAbilityDaEffect, getAbilityDaActions } from "./ability-da-service.mjs";
 
 const SYSTEM_ID = "contos-de-mar-e-terra";
 const HOTBAR_FLAG = "itemHotbar";
@@ -48,27 +49,28 @@ export function getItemHotbarActions(item) {
   if ([ITEM_TYPES.MAGIA, ITEM_TYPES.HABILIDADE].includes(item?.type) && resolveItemRollSkill(item)) {
     return [{ key: "skill", label: "CMET.Hotbar.Actions.SkillTest" }];
   }
+  if (item?.type === ITEM_TYPES.HABILIDADE_DA) return getAbilityDaActions(item);
   return [];
 }
 
-export function createItemHotbarCommand({ actorUuid, itemUuid, action = "menu" } = {}) {
-  const payload = JSON.stringify({ actorUuid: String(actorUuid ?? ""), itemUuid: String(itemUuid ?? ""), action: String(action) });
+export function createItemHotbarCommand({ actorUuid, itemUuid, action = "menu", effectId = null } = {}) {
+  const payload = JSON.stringify({ actorUuid: String(actorUuid ?? ""), itemUuid: String(itemUuid ?? ""), action: String(action), ...(effectId ? { effectId: String(effectId) } : {}) });
   return `game.system.api?.executeItemHotbarAction?.(${payload});`;
 }
 
-function findExistingMacro(itemUuid) {
+function findExistingMacro(itemUuid, effectId = null) {
   return game.macros?.contents?.find((macro) => {
     const metadata = macro.getFlag?.(SYSTEM_ID, HOTBAR_FLAG);
-    return metadata?.itemUuid === itemUuid;
+    return metadata?.itemUuid === itemUuid && (metadata?.effectId ?? null) === effectId;
   }) ?? null;
 }
 
-async function getOrCreateMacro(item, actor) {
+async function getOrCreateMacro(item, actor, effectId = null) {
   if (!getItemHotbarAction(item) || !item?.uuid || !actor?.uuid) return null;
   const action = "menu";
-  const command = createItemHotbarCommand({ actorUuid: actor.uuid, itemUuid: item.uuid, action });
-  const flags = { [SYSTEM_ID]: { [HOTBAR_FLAG]: { actorUuid: actor.uuid, itemUuid: item.uuid, action } } };
-  const existing = findExistingMacro(item.uuid);
+  const command = createItemHotbarCommand({ actorUuid: actor.uuid, itemUuid: item.uuid, action, effectId });
+  const flags = { [SYSTEM_ID]: { [HOTBAR_FLAG]: { actorUuid: actor.uuid, itemUuid: item.uuid, action, ...(effectId ? { effectId } : {}) } } };
+  const existing = findExistingMacro(item.uuid, effectId);
   if (existing) {
     await existing.update({ command, [`flags.${SYSTEM_ID}.${HOTBAR_FLAG}`]: flags[SYSTEM_ID][HOTBAR_FLAG] });
     return existing;
@@ -91,7 +93,7 @@ export async function handleItemHotbarDrop(_hotbar, data, slot) {
     notify("ItemUnavailable");
     return true;
   }
-  const macro = await getOrCreateMacro(item, actor);
+  const macro = await getOrCreateMacro(item, actor, data.effectId ?? null);
   if (!macro) return false;
   if (!macro.id || !(game.macros?.get?.(macro.id) ?? macro)) throw new Error("CMET | Macro não foi persistida na coleção de macros.");
   await game.user.assignHotbarMacro(macro, slot);
@@ -100,6 +102,7 @@ export async function handleItemHotbarDrop(_hotbar, data, slot) {
 }
 
 export async function executeItemAction({ actor, item, action } = {}) {
+  if (action?.startsWith?.("da:")) return activateAbilityDaEffect({ actor, item, effectId: action.slice(3) });
   if (action === "attack") return startWeaponAttack({ actor, item });
   if (action === "pull") return startWeaponAttack({ actor, item, attackMode: "pull" });
   if (action === "golpeDeRetaguarda") return startWeaponAttack({ actor, item, attackMode: "golpeDeRetaguarda" });
@@ -111,7 +114,8 @@ export async function executeItemAction({ actor, item, action } = {}) {
   return null;
 }
 
-export async function openItemActionMenu({ actor, item } = {}) {
+export async function openItemActionMenu({ actor, item, effectId = null } = {}) {
+  if (item?.type === ITEM_TYPES.HABILIDADE_DA && effectId) return executeItemAction({ actor, item, action: `da:${effectId}` });
   const actions = getItemHotbarActions(item);
   if (!actions.length) {
     notify("NoActionAvailable");
@@ -136,14 +140,14 @@ export async function openItemActionMenu({ actor, item } = {}) {
   return executeItemAction({ actor, item, action });
 }
 
-export async function executeItemHotbarAction({ actorUuid, itemUuid, action = null } = {}) {
+export async function executeItemHotbarAction({ actorUuid, itemUuid, action = null, effectId = null } = {}) {
   const item = await fromUuid(itemUuid);
   const actor = await fromUuid(actorUuid);
   if (!item || !actor || !SUPPORTED_ITEM_TYPES.has(item.type) || !actorOwnsItem(actor, item)) {
     notify("ItemUnavailable");
     return null;
   }
-  return openItemActionMenu({ actor, item });
+  return openItemActionMenu({ actor, item, effectId });
 }
 
 export function registerItemHotbarApi() {

@@ -30,6 +30,16 @@
       "path": "lang/en.json"
     }
   ],
+  "packs": [
+    {
+      "name": "habilidades-da",
+      "label": "Habilidades — Deuses Adormecidos",
+      "system": "contos-de-mar-e-terra",
+      "path": "packs/habilidades-da.db",
+      "type": "Item",
+      "private": false
+    }
+  ],
   "documentTypes": {
     "Actor": {
       "personagem": {}
@@ -37,6 +47,7 @@
     "Item": {
       "equipamento": {},
       "habilidade": {},
+      "habilidadeDa": {},
       "magia": {},
       "arma": {},
       "armadura": {}
