@@ -33,7 +33,7 @@ const expectedNames = [
   ,"Armar Guarda"
 ];
 
-function readSourceItems() {
+export function readSourceItems() {
   const lines = readFileSync(sourcePath, "utf8")
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -61,7 +61,7 @@ function readSourceItems() {
   return items;
 }
 
-async function generate() {
+export async function generateHabilidadesDaPack() {
   const items = readSourceItems();
   try {
     await stat(outputPath);
@@ -89,7 +89,9 @@ async function generate() {
   console.log(`Compêndio gerado: ${items.length} Items em ${outputPath}`);
 }
 
-generate().catch((error) => {
-  console.error(error.message);
-  process.exitCode = 1;
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  generateHabilidadesDaPack().catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}
