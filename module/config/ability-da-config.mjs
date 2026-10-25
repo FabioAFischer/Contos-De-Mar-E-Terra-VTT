@@ -41,6 +41,10 @@ export const DA_OPERATION_TYPES = Object.freeze([
   { key: "conditionRemove", label: "CMET.AbilityDa.Operations.ConditionRemove" },
   { key: "armorBonus", label: "CMET.AbilityDa.Operations.ArmorBonus" },
   { key: "sizeIncrease", label: "CMET.AbilityDa.Operations.SizeIncrease" },
+  { key: "marcoChildOfHel", label: "CMET.AbilityDa.Marco.ChildOfHel" },
+  { key: "marcoManifestation", label: "CMET.AbilityDa.Marco.ManifestationOfHel" },
+  { key: "marcoProfaneConversion", label: "CMET.AbilityDa.Marco.ProfaneConversion" },
+  { key: "marcoLastSpark", label: "CMET.AbilityDa.Marco.LastSpark" },
   { key: "manual", label: "CMET.AbilityDa.Operations.Manual" }
 ]);
 
