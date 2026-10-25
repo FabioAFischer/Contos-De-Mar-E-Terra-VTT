@@ -5,6 +5,7 @@ import { ABILITY_CATEGORIES } from "../../config/ability-config.mjs";
 import { calculateCharacterDerivedData, calculateSkillTotals, validateSkillChange } from "../../services/character-calculations.mjs";
 import { findSkillDefinition } from "../../services/skill-roll-service.mjs";
 import { resolveItemRollSkill, rollItemSkill } from "../../services/item-roll-service.mjs";
+import { getDraummaModifierSources, getDraummaSkillModifier } from "../../services/ability-da-draumma-service.mjs";
 import { openSkillRollDialog } from "../../dialogs/skill-roll-dialog.mjs";
 import { startWeaponAttack, startThrownWeaponAttack, startCombinedWeaponAttack } from "../../services/combat-attack-service.mjs";
 import { canRecover } from "../../services/weapon-characteristics-service.mjs";
@@ -115,9 +116,11 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
           id: item.id,
           name: item.name,
           img: item.img,
+          itemType: item.type,
+          isDa: false,
           firstMeta: meta.join(" • "),
           secondMeta: "",
-          detailLabel: `${game.i18n.localize("CMET.Ability.Fields.Requirements")}: ${item.system.requirements || game.i18n.localize("CMET.Ability.Fields.None")}`,
+          detailLabel: [`${game.i18n.localize("CMET.Ability.Fields.Requirements")}: ${item.system.requirements || game.i18n.localize("CMET.Ability.Fields.None")}`, item.system.description].filter(Boolean).join(" • "),
           sideLabel: "",
           canRoll: Boolean(roll),
           rollSkillKey: roll?.skillKey ?? "",
@@ -128,9 +131,11 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         id: item.id,
         name: item.name,
         img: item.img,
+        itemType: item.type,
+        isDa: true,
         firstMeta: item.system.origin || game.i18n.localize("CMET.AbilityDa.Fields.NoOrigin"),
         secondMeta: game.i18n.localize(`CMET.AbilityDa.Activation.${item.system.activationType === "ativa" ? "Active" : item.system.activationType === "reativa" ? "Reactive" : "Passive"}`),
-        detailLabel: item.system.category || "",
+        detailLabel: [item.system.category, item.system.description].filter(Boolean).join(" • "),
         effects: getAbilityDaEffects(item).map((effect) => ({ id: effect.id, name: effect.name || game.i18n.localize("CMET.AbilityDa.Actions.UntitledEffect"), activationType: effect.activationType, active: effect.active === true, canActivate: effect.enabled !== false && (["ativa", "reativa"].includes(effect.activationType) || effect.activationType === "passiva") }))
       })),
       magias: items.filter((item) => item.type === ITEM_TYPES.MAGIA).map((item) => {
@@ -170,7 +175,8 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const mainHandGripOptions = mainWeapon?.system?.characteristics?.duasMaos?.enabled === true
       ? getWeaponGripOptions(this.actor, mainWeapon, "mainHand").map((entry) => ({ ...entry, label: game.i18n.localize(entry.label), selected: entry.key === hands.mainHandGrip }))
       : [];
-    return { ...context, actor: this.actor, attributes, derived, resources, customResources, weaponOptions, hands, mainHandGripOptions, ...groupedItems };
+    const { habilidadesDa, ...itemsWithoutSeparateDaList } = groupedItems;
+    return { ...context, actor: this.actor, attributes, derived, resources, customResources, weaponOptions, hands, mainHandGripOptions, ...itemsWithoutSeparateDaList, habilidades: [...groupedItems.habilidades, ...habilidadesDa] };
   }
 
   _onRender(context, options) {
@@ -339,7 +345,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         ui.notifications.warn(game.i18n.localize("CMET.Rolling.InvalidSkill"));
         return;
       }
-      return openSkillRollDialog({ actor: this.actor, skillKey, skillLabel: action.dataset.skillLabel, baseValue });
+      return openSkillRollDialog({ actor: this.actor, skillKey, skillLabel: action.dataset.skillLabel, baseValue, initialModifier: getDraummaSkillModifier(this.actor, skillKey), context: { modifierSources: getDraummaModifierSources(this.actor, skillKey) } });
     }
     const item = action.dataset.itemId ? this.actor.items.get(action.dataset.itemId) : null;
     if (["attackItem", "pullItem", "rearStrikeItem", "throwItem", "reloadItem", "recoverItem", "open-item", "delete-item"].includes(action.dataset.action) && !item) {
@@ -368,6 +374,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       const [created] = await this.actor.createEmbeddedDocuments("Item", [{ name: game.i18n.localize(`CMET.ItemTypes.${type}`), type }]);
       return created.sheet.render(true);
     }
+    if (action.dataset.action === "create-ability") return this.#createAbility();
     if (action.dataset.action === "create-custom-resource") {
       const custom = foundry.utils.deepClone(this.actor.system.resources.custom ?? []);
       custom.push({ id: foundry.utils.randomID(), name: game.i18n.localize("CMET.AbilityDa.Resources.New"), current: 0, initial: 0, max: 0, resetRule: "manual", description: "", enabled: true });
@@ -386,5 +393,21 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
   async #recoverWeapon(item) {
     return recoverWeapon({ actor: this.actor, item });
+  }
+
+  async #createAbility() {
+    const { DialogV2 } = foundry.applications.api;
+    const type = await DialogV2.wait({
+      window: { title: game.i18n.localize("CMET.Ability.Create") },
+      content: `<p>${game.i18n.localize("CMET.Ability.CreateChoice")}</p>`,
+      buttons: [
+        { action: ITEM_TYPES.HABILIDADE, label: game.i18n.localize("CMET.Ability.CreateCommon"), type: "button", callback: () => ITEM_TYPES.HABILIDADE },
+        { action: ITEM_TYPES.HABILIDADE_DA, label: game.i18n.localize("CMET.Ability.CreateDa"), type: "button", callback: () => ITEM_TYPES.HABILIDADE_DA },
+        { action: "cancel", label: game.i18n.localize("CMET.Hotbar.Actions.Cancel"), type: "button", callback: () => null }
+      ]
+    });
+    if (![ITEM_TYPES.HABILIDADE, ITEM_TYPES.HABILIDADE_DA].includes(type)) return null;
+    const [created] = await this.actor.createEmbeddedDocuments("Item", [{ name: game.i18n.localize(`CMET.ItemTypes.${type}`), type }]);
+    return created.sheet.render(true);
   }
 }

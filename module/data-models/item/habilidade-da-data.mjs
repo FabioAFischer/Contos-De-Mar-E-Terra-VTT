@@ -7,7 +7,7 @@ const id = () => new StringField({ initial: () => foundry.utils.randomID(), blan
 const createCondition = () => new SchemaField({ key: text(), operator: text("equals"), value: text() });
 const createCost = () => new SchemaField({ id: id(), type: text("actions"), amount: new NumberField({ initial: 0, min: 0, integer: true }), resourceId: text(), timing: text("activation"), allowInsufficient: new BooleanField({ initial: false }), description: text() });
 const createRoll = () => new SchemaField({ id: id(), type: text("skill"), skillKey: text(), difficulty: new NumberField({ initial: 0, integer: true }), targetSkillKey: text(), resultMode: text("success") });
-const createOperation = () => new SchemaField({ id: id(), type: text("manual"), amount: new NumberField({ initial: 0, integer: true }), formula: text(), skillKey: text(), resourceId: text(), conditionKey: text(), durationId: text(), description: text(), manual: new BooleanField({ initial: false }) });
+const createOperation = () => new SchemaField({ id: id(), type: text("manual"), amount: new NumberField({ initial: 0, integer: true }), formula: text(), skillKey: text(), resourceId: text(), conditionKey: text(), durationId: text(), spellCost: new NumberField({ initial: 0, min: 0, integer: true }), description: text(), manual: new BooleanField({ initial: false }) });
 const createBranch = () => new SchemaField({ id: id(), name: text(), selection: text("manual"), exclusive: new BooleanField({ initial: true }), effectIds: new ArrayField(text(), { initial: [] }), condition: text() });
 const createEffect = () => new SchemaField({
   id: id(), name: text(), activationType: text("passiva"), enabled: new BooleanField({ initial: true }), active: new BooleanField({ initial: false }), summary: text(),

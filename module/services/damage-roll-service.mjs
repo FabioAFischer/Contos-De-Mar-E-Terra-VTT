@@ -12,7 +12,8 @@ const DAMAGE_SOURCE_LABELS = Object.freeze({
   pontoFraco: "CMET.Damage.Sources.PontoFraco",
   apunhalhar: "CMET.Damage.Sources.Apunhalhar",
   armaDeManobra: "CMET.Damage.Sources.ArmaDeManobra",
-  executar: "CMET.Damage.Sources.Executar"
+  executar: "CMET.Damage.Sources.Executar",
+  punhosAbrasivos: "CMET.Damage.Sources.PunhosAbrasivos"
 });
 
 export function normalizeDamageParts(source) {
@@ -98,7 +99,7 @@ function emptyFormula(item) {
   ui.notifications.warn(game.i18n.format("CMET.Damage.Notifications.EmptyFormula", { weapon: item?.name ?? "" }));
 }
 
-export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, sequentialCount = null, pointWeak = false, apunhalhar = false, maneuverWeapon = false, polearm = false, reachDistance = null, baseComponents = null } = {}) {
+export async function rollWeaponDamage(item, { attacker = null, target = null, critical = false, versatileSelections = {}, sequential = false, sequentialCount = null, pointWeak = false, apunhalhar = false, maneuverWeapon = false, polearm = false, reachDistance = null, baseComponents = null, extraDamageFormulas = [] } = {}) {
   const parts = additionalDamageFormulas(item, { critical, sequential, sequentialCount, pointWeak, apunhalhar, maneuverWeapon, polearm, reachDistance, versatileSelections });
   const baseParts = normalizeDamageParts({ damage: getVersatileDamageParts(item, versatileSelections) });
   const base = baseComponents ?? (baseParts.length ? await evaluateDamageParts(item, baseParts, critical) : []);
@@ -107,7 +108,8 @@ export async function rollWeaponDamage(item, { attacker = null, target = null, c
     missingDamage(item);
     return null;
   }
-  const additional = await evaluateDamageParts(item, parts, critical);
+  const extra = extraDamageFormulas.map((entry) => ({ formula: entry.formula, nature: entry.nature ?? "physical", type: entry.type ?? "impacto", source: entry.source ?? "manual", criticalMax: entry.criticalMax !== false }));
+  const additional = await evaluateDamageParts(item, [...parts, ...extra], critical);
   if (!additional) return null;
   const components = [...base, ...additional];
   const groups = groupDamageComponents(components);

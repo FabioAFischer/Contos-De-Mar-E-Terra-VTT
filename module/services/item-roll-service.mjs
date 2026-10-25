@@ -1,6 +1,7 @@
 import { ITEM_TYPES, SKILL_LABELS } from "../config/constants.mjs";
 import { findSkillDefinition } from "./skill-roll-service.mjs";
 import { openSkillRollDialog } from "../dialogs/skill-roll-dialog.mjs";
+import { getDraummaModifierSources, getDraummaSkillModifier } from "./ability-da-draumma-service.mjs";
 
 function getItemSkillKey(item) {
   if (!item?.system) return "";
@@ -35,5 +36,5 @@ export function rollItemSkill({ actor, item } = {}) {
     ui.notifications.warn(game.i18n.localize("CMET.Rolling.InvalidItemSkill"));
     return null;
   }
-  return openSkillRollDialog({ actor, skillKey: resolved.skillKey, skillLabel: resolved.skillLabel, baseValue });
+  return openSkillRollDialog({ actor, skillKey: resolved.skillKey, skillLabel: resolved.skillLabel, baseValue, initialModifier: getDraummaSkillModifier(actor, resolved.skillKey), context: { modifierSources: getDraummaModifierSources(actor, resolved.skillKey) } });
 }
