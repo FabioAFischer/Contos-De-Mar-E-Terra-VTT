@@ -29,7 +29,7 @@
   color: var(--cmet-text);
 }
 
-.application.cmet-actor-sheet > form {
+.application.cmet-actor-sheet {
   background: var(--cmet-bg);
   color: var(--cmet-text);
 }
@@ -153,7 +153,7 @@
 }
 
 /* Estrutura existente, agora escopada à Application real. */
-.application.cmet-actor-sheet > form {
+.application.cmet-actor-sheet {
   display: flex;
   flex-direction: column;
   height: 100%;

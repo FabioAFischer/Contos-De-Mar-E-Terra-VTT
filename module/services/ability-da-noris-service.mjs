@@ -5,7 +5,7 @@ import { arePotentialAdversaries, measureTokenReachDistance } from "./weapon-com
 const SYSTEM_ID = "contos-de-mar-e-terra";
 export const NORIS_STATE_FLAG = "norisDa";
 export const NORIS_FRENZY_ID = "noris-frenesi";
-const NORIS_FRENZY_MAX = 50;
+export const NORIS_FRENZY_MAX = 50;
 const NORIS_ABILITY_NAMES = new Set([
   "Frenesi do Lutador", "Punhos Abrasivos", "Chutes em Meia Lua",
   "Plumagem de um Pugilista", "Peso Pesado", "Armar Guarda"

@@ -62,6 +62,11 @@ export const DA_OPERATION_TYPES = Object.freeze([
   { key: "manual", label: "CMET.AbilityDa.Operations.Manual" }
 ]);
 
+/** The editor and executor must use the same operation registry. */
+export const DA_EXECUTABLE_OPERATION_TYPES = Object.freeze(new Set(
+  DA_OPERATION_TYPES.map(({ key }) => key).filter((key) => key !== "manual")
+));
+
 export const DA_TARGET_RELATIONS = Object.freeze([
   { key: "self", label: "CMET.AbilityDa.Targets.Self" },
   { key: "ally", label: "CMET.AbilityDa.Targets.Ally" },
