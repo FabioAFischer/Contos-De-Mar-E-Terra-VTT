@@ -220,6 +220,14 @@
 .application.cmet-actor-sheet .cmet-biography { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .application.cmet-actor-sheet .cmet-biography label { display: flex; flex-direction: column; gap: 4px; color: var(--cmet-text-muted); font-size: .8rem; }
 .application.cmet-actor-sheet .cmet-biography textarea { min-height: 120px; padding: 6px; resize: vertical; }
+.application.cmet-actor-sheet .cmet-hands-config { display: flex; flex-direction: column; gap: 12px; padding: 12px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 6px; }
+.application.cmet-actor-sheet .cmet-hands-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.application.cmet-actor-sheet .cmet-hand-panel { display: flex; flex-direction: column; gap: 7px; min-width: 0; padding: 10px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 5px; }
+.application.cmet-actor-sheet .cmet-hand-panel h2 { margin: 0; color: var(--cmet-text); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+.application.cmet-actor-sheet .cmet-hand-panel label { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: var(--cmet-text-muted); font-size: .75rem; }
+.application.cmet-actor-sheet .cmet-hand-panel select { width: 100%; min-width: 0; min-height: 30px; color: var(--cmet-text); background: var(--cmet-surface-raised); border: 1px solid var(--cmet-border); border-radius: 3px; }
+.application.cmet-actor-sheet .cmet-hands-actions { display: flex; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--cmet-border-soft); }
+.application.cmet-actor-sheet .cmet-hands-actions button { max-width: 100%; padding: 6px 10px; color: var(--cmet-text); background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border); border-radius: 4px; cursor: pointer; }
 .application.cmet-actor-sheet .cmet-items__empty { color: var(--cmet-text-muted); font-style: italic; }
 .application.cmet-actor-sheet .cmet-item-section { margin-bottom: 14px; }
 .application.cmet-actor-sheet .cmet-item-list-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 2px 7px; }
@@ -297,6 +305,9 @@
   .application.cmet-actor-sheet .cmet-resource:nth-child(5) { border-right: 0; }
   .application.cmet-actor-sheet .cmet-attributes-grid, .application.cmet-actor-sheet .cmet-biography { grid-template-columns: 1fr; }
   .application.cmet-actor-sheet .cmet-tabs button { padding-inline: 3px; font-size: .7rem; }
+  .application.cmet-actor-sheet .cmet-hands-grid { grid-template-columns: 1fr; }
+  .application.cmet-actor-sheet .cmet-hands-actions { justify-content: stretch; }
+  .application.cmet-actor-sheet .cmet-hands-actions button { width: 100%; }
 }
 
 .application.cmet-configured-item-sheet {

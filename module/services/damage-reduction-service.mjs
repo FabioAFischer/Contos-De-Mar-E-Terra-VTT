@@ -1,5 +1,6 @@
 import { ARMOR_REDUCTION_RULES } from "../config/armor-config.mjs";
 import { DAMAGE_TYPES } from "../config/weapon-config.mjs";
+import { getNorisState, isNorisActor } from "./ability-da-noris-service.mjs";
 
 const ELEMENTAL_TYPES = new Set(["fogo", "frio", "raio"]);
 
@@ -66,6 +67,17 @@ export function collectReductionSources(actor) {
     const rule = ARMOR_REDUCTION_RULES[key];
     if (!rule) continue;
     sources.push({ sourceItemId: entry.item || type, sourceItemName: "Habilidade DA", key, label: rule.label, channel: rule.channel, target: rule.target, amount: safeAmount(entry.amount) });
+  }
+  if (isNorisActor(actor)) {
+    const noris = getNorisState(actor);
+    const absorption = 3 + (noris.active?.absorption ? 3 : 0);
+    sources.push({ sourceItemId: "noris-plumagem", sourceItemName: "Plumagem de um Pugilista", key: "absorcao", label: "CMET.Armor.Characteristics.Absorcao", channel: "type", target: "impacto", amount: absorption });
+    const protection = noris.active?.armorProtection;
+    if (protection?.key && ARMOR_REDUCTION_RULES[protection.key]) {
+      const rule = ARMOR_REDUCTION_RULES[protection.key];
+      const target = protection.key === "revestimento" ? protection.element : rule.target;
+      if (target) sources.push({ sourceItemId: "noris-plumagem", sourceItemName: "Plumagem de um Pugilista", key: protection.key, label: rule.label, channel: rule.channel, target, amount: 3 });
+    }
   }
   return sources;
 }

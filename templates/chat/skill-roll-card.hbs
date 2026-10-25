@@ -5,6 +5,7 @@
     <summary class="cmet-roll-skill">{{skillLabel}}</summary>
     <div class="cmet-roll-breakdown">
       <div><span>{{localize "CMET.Rolling.BaseValue"}}</span><strong>{{baseValue}}</strong></div>
+      {{#each modifierSources}}<div class="cmet-roll-modifier-source"><span>{{source}}</span><strong>{{formula}}{{#if dice.length}} → [{{#each dice}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}]{{/if}} = +{{amount}}</strong></div>{{/each}}
       <div><span>{{localize "CMET.Rolling.Modifier"}}</span><strong>{{modifier}}</strong></div>
       <div><span>{{localize "CMET.Rolling.EffectiveValue"}}</span><strong>{{effectiveTarget}}</strong></div>
     </div>

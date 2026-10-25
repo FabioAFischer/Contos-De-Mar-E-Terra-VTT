@@ -10,8 +10,8 @@ import { applyNamedCondition, clearNamedCondition } from "./combat-condition-ser
 import { measureTokenDistance } from "./weapon-combat-state-service.mjs";
 import { arePotentialAdversaries } from "./weapon-combat-state-service.mjs";
 import { activateChildOfHel, activateLastSpark, activateManifestation, activateProfaneConversion, registerMarcoDeathChoice } from "./ability-da-marco-service.mjs";
-import { ensureNorisFrenzyResource, executeNorisOperation, isNorisOperation } from "./ability-da-noris-service.mjs";
-import { DA_EXECUTABLE_OPERATION_TYPES } from "../config/ability-da-config.mjs";
+import { activateDraummaAce, activateDraummaManaSiphon, activateDraummaTrick } from "./ability-da-draumma-service.mjs";
+import { activateNorisAbility } from "./ability-da-noris-service.mjs";
 
 function clone(value) { return foundry.utils.deepClone(value); }
 
@@ -38,24 +38,18 @@ export function getAbilityDaEffect(item, effectId) {
 
 export function getAbilityDaActions(item) {
   return getAbilityDaEffects(item).flatMap((effect) => {
-    const norisAttack = effect.operations?.find((operation) => ["norisFistsAttack", "norisHalfMoonAttack"].includes(operation.type));
-    if (norisAttack) return [{ key: `noris:${norisAttack.type}:${effect.id}`, effectId: effect.id, operationType: norisAttack.type, label: effect.name || item.name, activationType: "ativa" }];
+    const operation = effect.operations?.find((entry) => ["norisFistsAttack", "norisHalfMoonAttack"].includes(entry.type));
+    if (operation) return [{ key: `noris:${operation.type}:${effect.id}`, effectId: effect.id, operationType: operation.type, label: effect.name || item.name, activationType: "ativa" }];
     if (!["ativa", "reativa"].includes(effect.activationType)) return [];
-    return [{ key: `da:${effect.id}`, effectId: effect.id,
-    label: effect.name || item.name,
-    activationType: effect.activationType
-    }];
+    return [{ key: `da:${effect.id}`, effectId: effect.id, label: effect.name || item.name, activationType: effect.activationType }];
   });
 }
 
-export async function activateNorisAbility({ actor, item, effectId, operationType, context = {} } = {}) {
+export async function activateNorisAbilityAction({ actor, item, effectId, operationType, context = {} } = {}) {
   const effect = getAbilityDaEffect(item, effectId);
-  if (!effect) return null;
-  if (["norisFistsAttack", "norisHalfMoonAttack"].includes(operationType)) {
-    const { startNorisUnarmedAttack } = await import("./combat-attack-service.mjs");
-    return startNorisUnarmedAttack({ actor, style: operationType === "norisFistsAttack" ? "fists" : "halfMoon", context });
-  }
-  return activateAbilityDaEffect({ actor, item, effectId, context });
+  const operation = effect?.operations?.find((entry) => entry.type === operationType);
+  if (!effect || !operation) return null;
+  return activateNorisAbility({ actor, item, effect, operation, context });
 }
 
 function notify(key, data = {}) {
@@ -296,7 +290,6 @@ async function confirmTargetReview(item, targets) {
 
 async function evaluateOperation(operation, targetActor, { actor, effect, item, rollResult, targetToken, token } = {}) {
   if (operation.manual) return null;
-  if (isNorisOperation(operation.type)) return executeNorisOperation(operation, { actor: targetActor, effect, item, rollResult, targetToken, token });
   if (operation.type === "conditionAdd") {
     const conditionKey = operation.conditionKey;
     return conditionKey ? applyNamedCondition(targetActor, conditionKey, { source: effect.id, sourceItem: item.uuid, targetId: targetActor.id, manual: true }) : null;
@@ -350,6 +343,64 @@ async function activateMarcoOperation(actor, item, effect, operation, context) {
   if (operation.type === "marcoProfaneConversion") return activateProfaneConversion(actor, effect.costs?.find((cost) => cost.timing === "activation") ?? { type: "actions", amount: 1, timing: "activation" });
   if (operation.type === "marcoLastSpark") return activateLastSpark(actor, item, effect, context);
   return null;
+}
+
+function resolveDraummaTarget(actor, effect, context = {}) {
+  if (context.targetActor) return { actor: context.targetActor, token: context.targetToken ?? null };
+  const selected = context.targets ?? [...(globalThis.game?.user?.targets ?? [])];
+  const candidate = [...selected][0] ?? null;
+  const targetActor = candidate?.actor ?? candidate?.document?.actor ?? (candidate?.system ? candidate : null);
+  return targetActor && targetActor !== actor ? { actor: targetActor, token: candidate?.actor ? candidate : null } : { actor: null, token: null };
+}
+
+async function announceDraummaResult(actor, item, result) {
+  if (!result?.valid || !globalThis.ChatMessage?.create) return;
+  if (result.skillKey && result.roll?.toMessage && globalThis.foundry?.applications?.handlebars?.renderTemplate) {
+    const content = await foundry.applications.handlebars.renderTemplate(
+      "systems/contos-de-mar-e-terra/templates/chat/ability-da-bonus-roll-card.hbs",
+      {
+        actorName: actor?.name ?? "",
+        itemName: item?.name ?? "",
+        skillLabel: SKILL_LABELS[result.skillKey] ?? result.skillKey,
+        dice: result.modifier?.dice ?? [],
+        amount: Number(result.amount) || 0,
+        duration: game.i18n.localize("CMET.AbilityDa.Summary.Duration")
+      }
+    );
+    await publishNativeRoll(result.roll, actor, content);
+    return;
+  }
+  const skill = result.skillKey ? `Perícia copiada: ${SKILL_LABELS[result.skillKey] ?? result.skillKey}.` : "";
+  const amount = Number.isFinite(Number(result.amount)) ? ` Bônus: +${result.amount}.` : "";
+  await ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor }), content: `<article class="cmet-chat-card cmet-ability-da-card"><header><strong>${foundry.utils.escapeHTML(item.name)}</strong></header><p>Ativada. ${skill}${amount} Duração: até o fim do combate.</p></article>` });
+}
+
+function notifyDraummaFailure(result) {
+  if (result?.valid !== false || !globalThis.ui?.notifications?.warn) return;
+  const messages = {
+    missingTarget: "Selecione um inimigo válido para Truque de Mestre.",
+    targetDidNotHit: "O inimigo selecionado não acertou um ataque neste turno.",
+    requiresSkillSelection: "Escolha qual perícia do inimigo deseja copiar.",
+    insufficientActions: "Não há ações suficientes para ativar Truque de Mestre.",
+    invalidSkill: "A perícia do ataque não é válida para ser copiada."
+  };
+  ui.notifications.warn(messages[result.reason] ?? `Não foi possível ativar a habilidade (${result.reason ?? "motivo desconhecido"}).`);
+}
+
+async function activateDraummaOperation(actor, item, effect, operation, context) {
+  const target = resolveDraummaTarget(actor, effect, context);
+  const operationContext = { ...context, targetActor: context.targetActor ?? target.actor, targetToken: context.targetToken ?? target.token };
+  let result;
+  if (operation.type === "draummaAce") result = await activateDraummaAce({ actor, spell: operationContext.spell, rollD6: operationContext.rollD6 });
+  else if (operation.type === "draummaManaSiphon") result = await activateDraummaManaSiphon({ actor, targetActor: operationContext.targetActor, actorToken: operationContext.originToken, targetToken: operationContext.targetToken, combat: operationContext.combat ?? game.combat, rollFortitude: operationContext.rollFortitude, rollD6: operationContext.rollD6 });
+  else if (operation.type === "draummaMasterTrick") result = operationContext.targetActor
+    ? await activateDraummaTrick({ actor, targetActor: operationContext.targetActor, combat: operationContext.combat ?? game.combat, selectedSkillKey: operationContext.selectedSkillKey, roll2d6: operationContext.roll2d6 })
+    : { valid: false, reason: "missingTarget" };
+  else if (operation.type === "draummaMagicRedistribution") result = operationContext.resolveMagicRedistribution?.({ actor, effect, item }) ?? { valid: false, reason: "missingMagicContext" };
+  else return null;
+  notifyDraummaFailure(result);
+  await announceDraummaResult(actor, item, result);
+  return result;
 }
 
 export async function applyConditionalAbilityDaEffects({ actor, targetActor, context = {} } = {}) {
@@ -433,11 +484,12 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
     return null;
   }
   if (!(await confirmActivation(item, effect))) return null;
-  if ((effect.costs ?? []).some((cost) => cost.type === "custom" && cost.resourceId === "noris-frenesi")) {
-    await ensureNorisFrenzyResource(actor);
-  }
   const marcoOperation = effect.operations?.find((operation) => ["marcoChildOfHel", "marcoManifestation", "marcoProfaneConversion", "marcoLastSpark"].includes(operation.type));
   if (marcoOperation) return activateMarcoOperation(actor, item, effect, marcoOperation, context);
+  const draummaOperation = effect.operations?.find((operation) => ["draummaAce", "draummaMagicRedistribution", "draummaManaSiphon", "draummaMasterTrick"].includes(operation.type));
+  if (draummaOperation) return activateDraummaOperation(actor, item, effect, draummaOperation, context);
+  const norisOperation = effect.operations?.find((operation) => operation.type?.startsWith("noris"));
+  if (norisOperation) return activateNorisAbility({ actor, item, effect, operation: norisOperation, context });
   const activationCosts = (effect.costs ?? []).filter((cost) => cost.timing === "activation");
   const successCosts = (effect.costs ?? []).filter((cost) => cost.timing === "success");
   for (const cost of activationCosts) {
@@ -447,7 +499,7 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
   let rollResult = null;
   const applied = [];
   let nativeRollPublished = false;
-  const unsupported = (effect.operations ?? []).filter((operation) => operation.manual || !DA_EXECUTABLE_OPERATION_TYPES.has(operation.type));
+  const unsupported = (effect.operations ?? []).filter((operation) => operation.manual || !["resource", "heal", "conditionAdd", "conditionRemove", "skillModifier", "weaponGrip", "armorBonus", "sizeIncrease", "damage"].includes(operation.type));
   const targets = resolveTargets(actor, effect, context);
   if (effect.targets?.relation === "enemy" && effect.rolls?.some((roll) => roll.type === "resistance")) {
     if (!(await confirmTargetReview(item, targets))) return { effect, applied, unsupported, cancelled: true };
@@ -527,4 +579,4 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
   return { effect, rollResult, applied, unsupported };
 }
 
-export const AbilityDaService = Object.freeze({ ensureAbilityDaEffectIds, getAbilityDaEffects, getAbilityDaEffect, getAbilityDaActions, activateAbilityDaEffect, activateNorisAbility, toggleAbilityDaEffect, applyConditionalAbilityDaEffects, registerAbilityDaSocket, migrateVictoryEffect, migrateAbilityDaCopies });
+export const AbilityDaService = Object.freeze({ ensureAbilityDaEffectIds, getAbilityDaEffects, getAbilityDaEffect, getAbilityDaActions, activateAbilityDaEffect, activateNorisAbilityAction, toggleAbilityDaEffect, applyConditionalAbilityDaEffects, registerAbilityDaSocket, migrateVictoryEffect, migrateAbilityDaCopies });

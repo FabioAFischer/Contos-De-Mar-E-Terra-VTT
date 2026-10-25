@@ -143,8 +143,8 @@
       "Level": "Level",
       "Experience": "Experience",
       "Gyllen": "Gyllen",
-      "Frenzy": "Frenzy",
       "Movement": "Movement",
+      "Frenzy": "Frenzy",
       "Actions": "Actions",
       "Pool": "Total pool",
       "Distributed": "Distributed",
@@ -231,7 +231,8 @@
         "PontoFraco": "Weak point",
         "Apunhalhar": "Stab",
         "ArmaDeManobra": "Maneuver Weapon",
-        "Executar": "Execute"
+        "Executar": "Execute",
+        "PunhosAbrasivos": "Abrasive Fists"
       },
       "Notifications": {
         "InvalidFormula": "Weapon \"{weapon}\" has an invalid damage formula: {formula}.",
@@ -353,6 +354,9 @@
     },
     "Ability": {
       "Create": "+ New Ability",
+      "CreateChoice": "Choose the ability type:",
+      "CreateCommon": "Common ability",
+      "CreateDa": "DA ability",
       "Empty": "No abilities added.",
       "Categories": { "Origem": "Origin", "Corpo": "Body", "Armamento": "Armament", "Mistico": "Mystic", "Social": "Social", "Religiao": "Religion", "Tatica": "Tactics", "Cosmico": "Cosmic" },
       "Fields": { "Category": "Category", "NoCategory": "No category", "RollSkill": "Skill for roll", "NoRollSkill": "None", "Path": "Path", "Cost": "Cost", "Points": "points", "Requirements": "Requirements", "None": "None", "Description": "Description", "Effect": "Effect", "Upgrade": "Upgrade" }
@@ -372,7 +376,8 @@
       "EmptyConditions": "No conditions configured.",
       "Operations": { "Title": "Operations", "Resource": "Change resource", "WeaponGrip": "Weapon grip modifier", "SkillModifier": "Skill modifier", "ArmorBonus": "Armor bonus", "SizeIncrease": "Size increase", "Damage": "Damage", "Heal": "Heal", "ConditionAdd": "Add condition", "ConditionRemove": "Remove condition", "Manual": "Manual operation", "Instructions": "Instructions", "Formula": "Formula", "Amount": "Amount", "Characteristic": "Characteristic", "Stages": "Stages", "Condition": "Condition", "Skill": "Skill" },
       "Marco": { "ChildOfHel": "Child of Hel", "ManifestationOfHel": "Manifestation of Hel", "ProfaneConversion": "Profane Conversion", "LastSpark": "Last Spark", "LifeSacrifice": "Life sacrificed", "CorpseSkin": "Corpse Skin", "RevitalizeLife": "Revitalize — Health", "RevitalizeMana": "Revitalize — Mana", "DeathChoicePrompt": "Confirm a valid creature death and choose one benefit.", "MagicImpactDamage": "Magical impact damage" },
-      "Noris": { "Frenzy": "Frenzy", "FistsAttack": "Unarmed fists", "FistsAmplification": "Amplify Abrasive Fists", "HalfMoonAttack": "Half Moon Kicks", "HalfMoonAmplification": "Extend range", "Absorption": "Natural Absorption", "AbsorptionAmplification": "Reinforce Absorption", "ArmorProtection": "Additional protection", "HeavyWeight": "Heavy Weight", "Guard": "Arm Guard", "FistsAttackAction": "Attack with two fists", "HalfMoonAttackAction": "Execute Half Moon Kicks" },
+      "Draumma": { "Ace": "Ace up the Sleeve", "MagicRedistribution": "Magic Redistribution", "ManaSiphon": "Mana Siphon", "MasterTrick": "Master Trick" },
+      "Noris": { "Frenzy": "Frenzy", "AbrasiveFists": "Abrasive Fists", "HalfMoonKicks": "Half-Moon Kicks", "PugilistFeather": "Pugilist's Feather", "HeavyWeight": "Heavyweight", "Guard": "Fighter's Guard", "FistsAttackAction": "Attack with two fists", "HalfMoonAttackAction": "Execute Half-Moon Kicks" },
       "Branches": { "Title": "Branches", "Name": "Option name", "Manual": "Manual selection", "Exclusive": "Exclusive choice", "Multiple": "Multiple choice", "Sequence": "Sequence" },
       "Duration": { "Title": "Duration", "Instant": "Instant", "Turns": "Turns", "Rounds": "Rounds", "Combat": "End of combat", "Permanent": "Permanent", "Condition": "Until condition", "Amount": "Amount", "Reference": "End condition" },
       "Limits": { "Title": "Usage limits", "None": "No limit", "Turn": "Per turn", "Combat": "Per combat", "Day": "Per day", "Maximum": "Maximum" },
@@ -387,7 +392,7 @@
       "OperationSummary": { "Armor": "Carapace", "Size": "Size", "Heal": "Recover Health", "Resource": "Resource", "ConditionAdd": "Apply", "ConditionRemove": "Remove", "SkillModifier": "Modify skill", "Damage": "Damage", "WeaponGrip": "Weapon grip", "Manual": "Manual resolution" },
       "Advanced": { "ReadOnly": "Technical data is read-only. Edit it through the Mechanics tab." },
       "Resources": { "Title": "DA resources", "Add": "+ Add resource", "New": "New resource", "Name": "Name", "Current": "Current", "Maximum": "Maximum" },
-      "Chat": { "Activated": "Effect activated.", "Deactivated": "Effect deactivated.", "ManualEffects": "Some operations require manual resolution.", "TargetReview": "Review eligible targets before continuing:", "NoTargets": "No eligible adversary was found." },
+      "Chat": { "Activated": "Effect activated.", "Deactivated": "Effect deactivated.", "ManualEffects": "Some operations require manual resolution.", "TargetReview": "Review eligible targets before continuing:", "NoTargets": "No eligible adversary was found.", "CopiedSkill": "Copied skill", "BonusRoll": "Bonus roll", "BonusTotal": "Total bonus", "EndOfCombat": "Until the end of combat" },
       "Notifications": { "EffectUnavailable": "That DA effect is unavailable.", "PassiveManual": "Passive effects remain as reference and have no activation button.", "InsufficientCost": "Insufficient cost or resource.", "InsufficientActions": "There are not enough actions for {ability}. Required: {amount}. Available: {available}.", "InsufficientReservedActions": "There are not enough reserved actions for {ability}. Required: {amount}. Available: {available}.", "NotActiveTurn": "It is not the character's turn to activate {ability}.", "MissingCombatant": "The character has no valid combatant in this combat.", "InsufficientResource": "Insufficient resource for {ability}. Required: {amount}. Available: {available}.", "MissingResource": "The resource required by {ability} was not found.", "InvalidCost": "The cost of {ability} is configured incorrectly.", "NoPermission": "You do not have permission to edit this ability." }
     },
     "Navigation": {
@@ -398,7 +403,7 @@
       "Spells": "Spells",
       "Biography": "Biography"
     },
-    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution.", "DuplicateHandWeapon": "The same weapon cannot occupy both hands.", "EmpunhaduraUnavailable": "Empunhadura do Mais Forte is not available for this character.", "WeaponRequiresFreeHand": "This weapon requires a free hand to wield.", "WeaponRequiresMainHand": "A two-handed weapon must occupy the main hand.", "UpdateFailed": "The change could not be saved." },
+    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution.", "DuplicateHandWeapon": "The same weapon cannot occupy both hands.", "EmpunhaduraUnavailable": "Empunhadura do Mais Forte is not available for this character.", "WeaponRequiresFreeHand": "This weapon requires a free hand to wield.", "WeaponRequiresMainHand": "A two-handed weapon must occupy the main hand.", "UpdateFailed": "The character could not be updated." },
     "Rolling": {
       "SkillTest": "Skill Test",
       "BaseValue": "Base value",

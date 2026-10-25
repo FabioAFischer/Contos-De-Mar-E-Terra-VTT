@@ -45,23 +45,22 @@ export const DA_OPERATION_TYPES = Object.freeze([
   { key: "marcoManifestation", label: "CMET.AbilityDa.Marco.ManifestationOfHel" },
   { key: "marcoProfaneConversion", label: "CMET.AbilityDa.Marco.ProfaneConversion" },
   { key: "marcoLastSpark", label: "CMET.AbilityDa.Marco.LastSpark" },
-  { key: "norisFrenzy", label: "CMET.AbilityDa.Noris.Frenzy" },
-  { key: "norisFistsAttack", label: "CMET.AbilityDa.Noris.FistsAttack" },
-  { key: "norisFistsAmplification", label: "CMET.AbilityDa.Noris.FistsAmplification" },
-  { key: "norisHalfMoonAttack", label: "CMET.AbilityDa.Noris.HalfMoonAttack" },
-  { key: "norisHalfMoonAmplification", label: "CMET.AbilityDa.Noris.HalfMoonAmplification" },
-  { key: "norisAbsorption", label: "CMET.AbilityDa.Noris.Absorption" },
-  { key: "norisAbsorptionAmplification", label: "CMET.AbilityDa.Noris.AbsorptionAmplification" },
-  { key: "norisArmorProtection", label: "CMET.AbilityDa.Noris.ArmorProtection" },
+  { key: "draummaAce", label: "CMET.AbilityDa.Draumma.Ace" },
+  { key: "draummaMagicRedistribution", label: "CMET.AbilityDa.Draumma.MagicRedistribution" },
+  { key: "draummaManaSiphon", label: "CMET.AbilityDa.Draumma.ManaSiphon" },
+  { key: "draummaMasterTrick", label: "CMET.AbilityDa.Draumma.MasterTrick" },
+  { key: "norisFistsAmplification", label: "CMET.AbilityDa.Noris.AbrasiveFists" },
+  { key: "norisHalfMoonAmplification", label: "CMET.AbilityDa.Noris.HalfMoonKicks" },
+  { key: "norisAbsorptionAmplification", label: "CMET.AbilityDa.Noris.PugilistFeather" },
+  { key: "norisArmorProtection", label: "CMET.AbilityDa.Noris.PugilistFeather" },
   { key: "norisHeavyWeight", label: "CMET.AbilityDa.Noris.HeavyWeight" },
   { key: "norisGuard", label: "CMET.AbilityDa.Noris.Guard" },
+  { key: "norisFistsAttack", label: "CMET.AbilityDa.Noris.AbrasiveFists" },
+  { key: "norisHalfMoonAttack", label: "CMET.AbilityDa.Noris.HalfMoonKicks" },
+  { key: "norisAbsorption", label: "CMET.AbilityDa.Noris.PugilistFeather" },
+  { key: "norisFrenzy", label: "CMET.AbilityDa.Noris.Frenzy" },
   { key: "manual", label: "CMET.AbilityDa.Operations.Manual" }
 ]);
-
-/** The editor and executor must use the same operation registry. */
-export const DA_EXECUTABLE_OPERATION_TYPES = Object.freeze(new Set(
-  DA_OPERATION_TYPES.map(({ key }) => key).filter((key) => key !== "manual")
-));
 
 export const DA_TARGET_RELATIONS = Object.freeze([
   { key: "self", label: "CMET.AbilityDa.Targets.Self" },

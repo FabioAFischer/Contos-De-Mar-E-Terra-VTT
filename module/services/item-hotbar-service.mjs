@@ -3,7 +3,7 @@ import { startThrownWeaponAttack, startWeaponAttack } from "./combat-attack-serv
 import { resolveItemRollSkill, rollItemSkill } from "./item-roll-service.mjs";
 import { recoverWeapon, reloadWeapon } from "./item-action-service.mjs";
 import { canFire, canRecover, canThrow, characteristicEnabled } from "./weapon-characteristics-service.mjs";
-import { activateAbilityDaEffect, activateNorisAbility, getAbilityDaActions } from "./ability-da-service.mjs";
+import { activateAbilityDaEffect, activateNorisAbilityAction, getAbilityDaActions } from "./ability-da-service.mjs";
 
 const SYSTEM_ID = "contos-de-mar-e-terra";
 const HOTBAR_FLAG = "itemHotbar";
@@ -104,7 +104,7 @@ export async function handleItemHotbarDrop(_hotbar, data, slot) {
 export async function executeItemAction({ actor, item, action } = {}) {
   if (action?.startsWith?.("noris:")) {
     const [, operationType, effectId] = action.split(":");
-    return activateNorisAbility({ actor, item, effectId, operationType });
+    return activateNorisAbilityAction({ actor, item, effectId, operationType });
   }
   if (action?.startsWith?.("da:")) return activateAbilityDaEffect({ actor, item, effectId: action.slice(3) });
   if (action === "attack") return startWeaponAttack({ actor, item });

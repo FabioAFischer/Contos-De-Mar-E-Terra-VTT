@@ -1,0 +1,14 @@
+<article class="cmet-roll-card cmet-roll-card--success cmet-ability-da-roll-card">
+  <h3 class="cmet-roll-context">{{actorName}} — {{itemName}}</h3>
+  <div class="cmet-roll-breakdown">
+    <div><span>{{localize "CMET.AbilityDa.Chat.CopiedSkill"}}</span><strong>{{skillLabel}}</strong></div>
+    <div><span>{{localize "CMET.AbilityDa.Chat.BonusRoll"}}</span><strong>2d6</strong></div>
+  </div>
+  <div class="cmet-roll-result">
+    <div class="cmet-roll-dice" aria-label="{{localize 'CMET.Rolling.Dice'}}">
+      {{#each dice}}<span class="cmet-roll-die is-selected">{{this}}</span>{{/each}}
+    </div>
+    <div class="cmet-roll-degree">{{localize "CMET.AbilityDa.Chat.BonusTotal"}}: +{{amount}}</div>
+  </div>
+  <div class="cmet-roll-mode">{{duration}}: {{localize "CMET.AbilityDa.Chat.EndOfCombat"}}</div>
+</article>

@@ -21,6 +21,22 @@ export function isDazed(actor) { return Boolean(getDazed(actor)?.active); }
 export function getAvailableActionPenalty(actor) { return isDazed(actor) ? 2 : 0; }
 export function calculateConditionMovement(movement, actor) { return isDazed(actor) ? Math.floor(Number(movement) / 2) : Number(movement); }
 
+export async function applySilencedCondition(actor, actions = 2, source = "") {
+  if (!actor?.setFlag) return false;
+  const current = getNamedCondition(actor, "silenciado");
+  await actor.setFlag(namespace(), CONDITION_FLAG, { ...(actor.getFlag?.(namespace(), CONDITION_FLAG) ?? {}), silenciado: { active: true, remainingActions: Math.max(Number(current?.remainingActions ?? 0), Number(actions) || 0), source } });
+  return true;
+}
+
+export async function consumeSilencedAction(actor, amount = 1) {
+  const current = getNamedCondition(actor, "silenciado");
+  if (!current?.active) return false;
+  const remaining = Number(current.remainingActions ?? 0) - Math.max(0, Number(amount) || 0);
+  if (remaining <= 0) return clearNamedCondition(actor, "silenciado");
+  await actor.setFlag(namespace(), CONDITION_FLAG, { ...(actor.getFlag?.(namespace(), CONDITION_FLAG) ?? {}), silenciado: { ...current, remainingActions: remaining } });
+  return true;
+}
+
 export async function applyDazedCondition(actor, combat) {
   if (!actor?.setFlag || isDazed(actor)) return false;
   const combatant = combat?.combatants?.find((entry) => entry.actor?.id === actor.id);
@@ -45,4 +61,4 @@ export async function expireDazedConditions(combat, prior) {
   if (Number(prior.round) === Number(condition.expires.round)) await clearDazedCondition(previous.actor);
 }
 
-export const CombatConditionService = Object.freeze({ getDazed, getNamedCondition, applyNamedCondition, clearNamedCondition, isDazed, getAvailableActionPenalty, calculateConditionMovement, applyDazedCondition, clearDazedCondition, expireDazedConditions });
+export const CombatConditionService = Object.freeze({ getDazed, getNamedCondition, applyNamedCondition, clearNamedCondition, applySilencedCondition, consumeSilencedAction, isDazed, getAvailableActionPenalty, calculateConditionMovement, applyDazedCondition, clearDazedCondition, expireDazedConditions });
