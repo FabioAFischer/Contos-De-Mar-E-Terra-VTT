@@ -13,6 +13,7 @@ import { applyDazedCondition } from "./combat-condition-service.mjs";
 import { isForcedPullMovement, processPullMovementRequest, recordPullMovementConfirmation, requestPullMovement, resolvePullMovementResponse } from "./weapon-pull-service.mjs";
 import { getEffectiveWeaponCharacteristics, resolveEffectiveWeaponWielding, validateCombinedWeaponAttack } from "./weapon-wielding-service.mjs";
 import { applyConditionalAbilityDaEffects } from "./ability-da-service.mjs";
+import { getMarcoAuraModifier } from "./ability-da-marco-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
   [SKILL_ROLL_DEGREES.NORMAL_SUCCESS]: 1,
@@ -34,8 +35,14 @@ function debugPolearm(message, data = {}) {
 }
 
 function notify(key, data = {}) {
-  const message = game.i18n.format(`CMET.CombatAttack.Notifications.${key}`, data);
+  const message = Object.keys(data).length
+    ? game.i18n.format(`CMET.CombatAttack.Notifications.${key}`, data)
+    : game.i18n.localize(`CMET.CombatAttack.Notifications.${key}`);
   ui.notifications.warn(message);
+}
+
+function getMarcoAttackModifier(attacker, defender, skillKey) {
+  try { return getMarcoAuraModifier({ attacker, defender, skillKey }); } catch { return 0; }
 }
 
 function getCombatantForToken(combat, token) {
@@ -245,11 +252,11 @@ async function updateDefenseOutcome({ messageId, responsibleId, outcome }) {
 }
 
 function getDaDefenseModifier(defender, attacker, skillKey) {
-  if (skillKey !== "bloquear") return 0;
+  if (!["bloquear", "esquivar"].includes(skillKey)) return 0;
   const modifiers = defender?.getFlag?.(game.system.id, "daModifiers") ?? [];
   return modifiers
     .filter((modifier) => modifier.skillKey === skillKey && modifier.targetId === attacker?.id)
-    .reduce((total, modifier) => total + (Number(modifier.amount) || 0), 0);
+    .reduce((total, modifier) => total + (Number(modifier.amount) || 0), 0) + getMarcoAttackModifier(attacker, defender, skillKey);
 }
 
 function openDefenseChoice({ defender, attacker, combatant, respond, allowBlock = true }) {
@@ -368,7 +375,8 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   if (reaction && CombatActionService.getState(attackerCombatant).reserved < 1) return fail("ReservedActionInsufficient");
   const targetCombatant = getCombatantForToken(combat, targetToken);
   if (!targetCombatant) return fail("TargetNotInCombat");
-  await applyConditionalAbilityDaEffects({ actor, targetActor: targetCombatant.actor, context: { targetToken, originToken: attackerToken } });
+  const hasAbilityDa = [...(actor.items?.contents ?? actor.items ?? [])].some((entry) => entry.type === "habilidadeDa");
+  if (hasAbilityDa) await applyConditionalAbilityDaEffects({ actor, targetActor: targetCombatant.actor, context: { targetToken, originToken: attackerToken } });
   const selectedTargets = targetTokens ?? [targetToken];
   if (!disableCharacteristics && characteristicEnabled(item, "alcance")) {
     const maximum = Number(item.system.characteristics.alcance?.spaces);
@@ -410,6 +418,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
     skillKey: skill.skillKey,
     skillLabel: SKILL_LABELS[skill.skillKey],
     baseValue: skill.baseValue,
+    initialModifier: getMarcoAttackModifier(actor, targetCombatant.actor, skill.skillKey),
     titleKey: "AttackRoll",
     context: {
       type: "attack",

@@ -5,9 +5,11 @@ const STANDARD_RESOURCES = new Set(["vida", "mana", "sanidade"]);
 export function combatantFor(actor) {
   const combat = globalThis.game?.combat;
   if (!combat?.started) return null;
-  return combat.combatants?.find((entry) => entry.actor === actor
+  const combatant = combat.combatants?.find((entry) => entry.actor === actor
     || entry.actor?.id && entry.actor.id === actor?.id
     || entry.actor?.uuid && entry.actor.uuid === actor?.uuid) ?? null;
+  if (!combatant || combatant.actor?.system?.actions) return combatant;
+  return Object.create(combatant, { actor: { value: actor, enumerable: true } });
 }
 
 export function getCustomResources(actor) {

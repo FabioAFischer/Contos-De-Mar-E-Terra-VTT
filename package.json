@@ -1,0 +1,19 @@
+{
+  "name": "contos-de-mar-e-terra",
+  "version": "1.0.0",
+  "description": "Fundação inicial do sistema **Contos de Mar e Terra**, em desenvolvimento para Foundry Virtual Tabletop v14.368.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "generate:pack:habilidades-da": "node scripts/generate-habilidades-da-pack.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "level": "^8.0.1"
+  }
+}

@@ -2,27 +2,65 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+const manifest = JSON.parse(readFileSync(new URL("../system.json", import.meta.url), "utf8"));
+
 const pack = readFileSync(new URL("../packs/habilidades-da.db", import.meta.url), "utf8")
   .trim()
   .split("\n")
   .map((line) => JSON.parse(line));
 const items = pack.filter((entry) => entry.type === "habilidadeDa");
 
-test("compêndio DA contém exatamente as seis habilidades de Hrodnar", () => {
-  assert.equal(pack.length, 6);
-  assert.equal(items.length, 6);
+test("o manifesto aponta para o compêndio LevelDB do Foundry v14", () => {
+  assert.equal(manifest.packs.find(({ name }) => name === "habilidades-da")?.path, "packs/habilidades-da");
+});
+
+test("compêndio DA contém as seis habilidades de Hrodnar e as quatro de Marco", () => {
+  assert.equal(pack.length, 10);
+  assert.equal(items.length, 10);
   assert.ok(pack.every((entry) => entry.type === "habilidadeDa"));
   assert.deepEqual(items.map(({ name }) => name), [
     "Empunhadura do Mais Forte",
-    "Vitória do Mais Forte",
-    "Postura de Jotun",
     "Investida Brutal",
+    "Postura de Jotun",
+    "Queda do Predador",
     "Rugido dos Jotun",
-    "Queda do Predador"
+    "Vitória do Mais Forte",
+    "Filho de Hel",
+    "Manifestação de Hel",
+    "Conversão Profana",
+    "Última Centelha"
   ]);
   assert.ok(items.every((item) => item.folder === null));
-  assert.ok(items.every((item) => item.flags?.["contos-de-mar-e-terra"]?.packCharacter === "Hrodnar"));
-  assert.ok(items.every((item) => item.system.associatedCharacter === "Hrodnar"));
+  const hrodnar = items.filter((item) => item.system.associatedCharacter === "Hrodnar");
+  assert.equal(hrodnar.length, 6);
+  assert.ok(hrodnar.every((item) => item.flags?.["contos-de-mar-e-terra"]?.packCharacter === "Hrodnar"));
+});
+
+test("o compêndio de Marco possui quatro habilidades com metadados e operações específicas", () => {
+  const marco = items.filter((item) => item.system.associatedCharacter === "Marco");
+  assert.equal(marco.length, 4);
+  assert.ok(marco.every((item) => item.flags?.["contos-de-mar-e-terra"]?.packCharacter === "Marco"));
+  assert.deepEqual(marco.map((item) => item.system.effects[0].operations[0].type), [
+    "marcoChildOfHel", "marcoManifestation", "marcoProfaneConversion", "marcoLastSpark"
+  ]);
+});
+
+test("Manifestação de Hel declara raio, duração, recuperação e modificadores sem persistir perícias", () => {
+  const item = items.find(({ name }) => name === "Manifestação de Hel");
+  const effect = item.system.effects[0];
+  assert.equal(effect.duration.amount, 3);
+  assert.equal(effect.operations[0].type, "marcoManifestation");
+  assert.match(effect.functioning ?? item.system.functioning, /Raio 4/);
+  assert.match(item.system.functioning, /3 PV/);
+});
+
+test("Última Centelha usa Evocação, ação, alcance 5 e não possui custo de Mana", () => {
+  const item = items.find(({ name }) => name === "Última Centelha");
+  const effect = item.system.effects[0];
+  assert.deepEqual(effect.costs.map(({ type, amount }) => ({ type, amount })), [{ type: "actions", amount: 1 }]);
+  assert.deepEqual(effect.rolls.map(({ skillKey }) => skillKey), ["evocacao"]);
+  assert.equal(effect.targets.range, 5);
+  assert.equal(effect.operations[0].formula, "1d6");
 });
 
 test("Postura de Jotun possui custo de ação e cura 2d6 estruturados", () => {
