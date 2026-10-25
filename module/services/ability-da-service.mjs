@@ -12,6 +12,8 @@ import { arePotentialAdversaries } from "./weapon-combat-state-service.mjs";
 import { activateChildOfHel, activateLastSpark, activateManifestation, activateProfaneConversion, registerMarcoDeathChoice } from "./ability-da-marco-service.mjs";
 import { activateDraummaAce, activateDraummaManaSiphon, activateDraummaTrick } from "./ability-da-draumma-service.mjs";
 import { activateNorisAbility } from "./ability-da-noris-service.mjs";
+import { NPC_ATTRIBUTE_DEFINITIONS } from "../config/npc-config.mjs";
+import { isNpc, resolveActorTestValue } from "./npc-test-service.mjs";
 
 function clone(value) { return foundry.utils.deepClone(value); }
 
@@ -97,7 +99,21 @@ function compareAbilityRolls(attack, defense) {
 
 function getSkillBaseValue(actor, skillKey) {
   const definition = findSkillDefinition(skillKey);
+  if (isNpc(actor)) return resolveActorTestValue(actor, skillKey);
   return definition ? Number(actor?.system?.attributes?.[definition.key]?.skills?.[skillKey]) : NaN;
+}
+
+function getResourceMaximum(actor, resourceKey) {
+  if (isNpc(actor)) return Number(actor?.system?.resources?.[resourceKey]?.max) || 0;
+  return Number(calculateCharacterDerivedData(actor.system)[`${resourceKey}Max`]) || 0;
+}
+
+function getSkillLabel(actor, skillKey) {
+  if (isNpc(actor)) {
+    const definition = NPC_ATTRIBUTE_DEFINITIONS.find(({ key }) => key === skillKey);
+    if (definition) return game.i18n.localize(definition.label);
+  }
+  return SKILL_LABELS[skillKey] ?? skillKey;
 }
 
 function requestAbilitySkillRoll({ actor, skillKey, modifier = 0, context } = {}) {
@@ -114,7 +130,7 @@ function requestAbilitySkillRoll({ actor, skillKey, modifier = 0, context } = {}
       openSkillRollDialog({
         actor,
         skillKey,
-        skillLabel: SKILL_LABELS[skillKey] ?? skillKey,
+        skillLabel: getSkillLabel(actor, skillKey),
         baseValue,
         initialModifier: modifier,
         context,
@@ -548,7 +564,7 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
       if (!Number.isInteger(amount) || !resourceKey) continue;
       if (["vida", "mana", "sanidade"].includes(resourceKey)) {
         const current = Number(actor.system.resources[resourceKey].value);
-        const max = calculateCharacterDerivedData(actor.system)[`${resourceKey}Max`];
+        const max = getResourceMaximum(actor, resourceKey);
         await actor.update({ [`system.resources.${resourceKey}.value`]: Math.min(max, Math.max(0, current + amount)) });
         applied.push({ ...operation, amount, roll: operationRoll });
         if (operationRoll) {

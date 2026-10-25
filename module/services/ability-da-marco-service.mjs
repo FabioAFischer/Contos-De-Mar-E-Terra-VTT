@@ -16,6 +16,13 @@ const processedLifeUpdates = new WeakMap();
 const marcoStateWrites = new Map();
 let lifeTrackingHooksRegistered = false;
 
+function getResourceMaximum(actor, resource) {
+  if (actor?.type === "npc") return Number(actor.system?.resources?.[resource]?.max) || 0;
+  if (resource === "vida") return 10 + Number(actor.system.attributes?.fisico?.value || 0) + Number(actor.system.attributes?.mental?.value || 0);
+  if (resource === "mana") return 10 + Number(actor.system.attributes?.magia?.value || 0) + Number(actor.system.attributes?.mental?.value || 0);
+  return 10 + Number(actor.system.attributes?.social?.value || 0) + Number(actor.system.attributes?.mental?.value || 0);
+}
+
 function combatOf(combat = globalThis.game?.combat) { return combat?.started ? combat : null; }
 function actorToken(actor) {
   return [...(globalThis.canvas?.tokens?.placeables ?? [])].find((token) => token.actor === actor
@@ -229,7 +236,7 @@ export async function activateProfaneConversion(actor, cost = { type: "actions",
   if (!conversion.valid) return { valid: false, reason: "invalidSacrifice" };
   const actionCheck = canPayAbilityDaCost(actor, cost);
   if (!actionCheck.valid) return { valid: false, reason: actionCheck.reason };
-  const manaMax = 10 + Number(actor.system.attributes?.magia?.value || 0) + Number(actor.system.attributes?.mental?.value || 0);
+  const manaMax = getResourceMaximum(actor, "mana");
   const manaBefore = Number(actor.system.resources?.mana?.value) || 0;
   if (manaBefore >= manaMax) return { valid: false, reason: "manaFull" };
   await payAbilityDaCost(actor, cost);
@@ -350,7 +357,7 @@ export async function activateChildOfHel(actor, effect, item) {
     return { valid: true, choice };
   }
   const resource = choice === "life" ? "vida" : "mana";
-  const max = resource === "vida" ? 10 + Number(actor.system.attributes?.fisico?.value || 0) + Number(actor.system.attributes?.mental?.value || 0) : 10 + Number(actor.system.attributes?.magia?.value || 0) + Number(actor.system.attributes?.mental?.value || 0);
+  const max = getResourceMaximum(actor, resource);
   const current = Number(actor.system.resources?.[resource]?.value) || 0;
   const recovery = calculateMarcoRecovery(current, max, 2);
   await actor.update({ [`system.resources.${resource}.value`]: recovery.value });
@@ -442,7 +449,7 @@ export function registerMarcoAbilityHooks() {
       const next = [];
       for (const aura of auras) {
         const remaining = Number(aura.turnsRemaining) - 1;
-        if (remaining > 0) { next.push({ ...aura, turnsRemaining: remaining }); if (aura.healPerTurn) await actor.update({ "system.resources.vida.value": Math.min(10 + Number(actor.system.attributes?.fisico?.value || 0) + Number(actor.system.attributes?.mental?.value || 0), Number(actor.system.resources.vida.value) + Number(aura.healPerTurn)) }); }
+        if (remaining > 0) { next.push({ ...aura, turnsRemaining: remaining }); if (aura.healPerTurn) await actor.update({ "system.resources.vida.value": Math.min(getResourceMaximum(actor, "vida"), Number(actor.system.resources.vida.value) + Number(aura.healPerTurn)) }); }
       }
       if (next.length) await actor.setFlag(SYSTEM_ID, AURA_FLAG, next); else await actor.unsetFlag(SYSTEM_ID, AURA_FLAG);
     }

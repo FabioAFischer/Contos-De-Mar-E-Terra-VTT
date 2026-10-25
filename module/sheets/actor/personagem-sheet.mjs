@@ -63,8 +63,8 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
           const typeEntry = DAMAGE_TYPES.find(({ key }) => key === type);
           return `${natureLabel} / ${typeEntry ? game.i18n.localize(typeEntry.label) : type}`;
         }).join(", ");
-        const range = system.characteristics.alcance;
-        const pull = system.characteristics.puxar;
+        const range = system.characteristics?.alcance ?? { enabled: false, spaces: 0 };
+        const pull = system.characteristics?.puxar;
         return {
           id: item.id,
           name: item.name,
@@ -96,7 +96,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         const system = item.system;
         const quality = WEAPON_QUALITIES.find(({ key }) => key === system.quality);
         const category = ARMOR_CATEGORIES.find(({ key }) => key === system.category);
-        const detailLabel = ARMOR_CHARACTERISTICS.filter(({ key }) => system.characteristics[key].enabled).map(({ key, label }) => {
+        const detailLabel = ARMOR_CHARACTERISTICS.filter(({ key }) => system.characteristics?.[key]?.enabled === true).map(({ key, label }) => {
           const characteristic = system.characteristics[key];
           const name = game.i18n.localize(label);
           if (key === "revestimento") {
