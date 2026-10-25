@@ -232,7 +232,8 @@
         "PontoFraco": "Ponto fraco",
         "Apunhalhar": "Apunhalhar",
         "ArmaDeManobra": "Arma de manobra",
-        "Executar": "Executar"
+        "Executar": "Executar",
+        "PunhosAbrasivos": "Punhos Abrasivos"
       },
       "Notifications": {
         "InvalidFormula": "A arma \"{weapon}\" possui uma fórmula de dano inválida: {formula}.",
@@ -365,6 +366,9 @@
     },
     "Ability": {
       "Create": "+ Nova Habilidade",
+      "CreateChoice": "Escolha o tipo de habilidade:",
+      "CreateCommon": "Habilidade comum",
+      "CreateDa": "Habilidade DA",
       "Empty": "Nenhuma habilidade adicionada.",
       "Categories": { "Origem": "Origem", "Corpo": "Corpo", "Armamento": "Armamento", "Mistico": "Místico", "Social": "Social", "Religiao": "Religião", "Tatica": "Tática", "Cosmico": "Cósmico" },
       "Fields": { "Category": "Categoria", "NoCategory": "Nenhuma categoria", "RollSkill": "Perícia para rolagem", "NoRollSkill": "Nenhuma", "Path": "Caminho / Trilha", "Cost": "Custo", "Points": "pontos", "Requirements": "Requisitos", "None": "Nenhum", "Description": "Descrição", "Effect": "Efeito", "Upgrade": "Aprimoramento" }
@@ -384,6 +388,7 @@
       "EmptyConditions": "Nenhuma condição configurada.",
       "Operations": { "Title": "Operações", "Resource": "Alterar recurso", "WeaponGrip": "Modificador de empunhadura", "SkillModifier": "Modificador de perícia", "ArmorBonus": "Bônus de armadura", "SizeIncrease": "Aumento de tamanho", "Damage": "Dano", "Heal": "Cura", "ConditionAdd": "Adicionar condição", "ConditionRemove": "Remover condição", "Manual": "Operação manual", "Instructions": "Instruções", "Formula": "Fórmula", "Amount": "Valor", "Characteristic": "Característica", "Stages": "Estágios", "Condition": "Condição", "Skill": "Perícia" },
       "Marco": { "ChildOfHel": "Filho de Hel", "ManifestationOfHel": "Manifestação de Hel", "ProfaneConversion": "Conversão Profana", "LastSpark": "Última Centelha", "LifeSacrifice": "Vida sacrificada", "CorpseSkin": "Pele de Cadáver", "RevitalizeLife": "Revigorar — Vida", "RevitalizeMana": "Revigorar — Mana", "DeathChoicePrompt": "Confirme a morte válida de uma criatura e escolha um benefício.", "MagicImpactDamage": "Dano mágico de impacto" },
+      "Draumma": { "Ace": "Ás na Manga", "MagicRedistribution": "Redistribuição de Magia", "ManaSiphon": "Sifão de Mana", "MasterTrick": "Truque de Mestre" },
       "Branches": { "Title": "Ramificações", "Name": "Nome da opção", "Manual": "Seleção manual", "Exclusive": "Escolha exclusiva", "Multiple": "Escolha múltipla", "Sequence": "Sequência" },
       "Duration": { "Title": "Duração", "Instant": "Instantânea", "Turns": "Turnos", "Rounds": "Rodadas", "Combat": "Fim do combate", "Permanent": "Permanente", "Condition": "Até condição", "Amount": "Quantidade", "Reference": "Condição de encerramento" },
       "Limits": { "Title": "Limites de utilização", "None": "Sem limite", "Turn": "Por turno", "Combat": "Por combate", "Day": "Por dia", "Maximum": "Máximo" },
@@ -398,7 +403,7 @@
       "OperationSummary": { "Armor": "Carapaça", "Size": "Tamanho", "Heal": "Recuperar Vida", "Resource": "Recurso", "ConditionAdd": "Aplicar", "ConditionRemove": "Remover", "SkillModifier": "Modificar perícia", "Damage": "Dano", "WeaponGrip": "Empunhadura", "Manual": "Resolução manual" },
       "Advanced": { "ReadOnly": "Dados técnicos em modo somente leitura. Edite-os apenas pelos campos da aba Mecânica." },
       "Resources": { "Title": "Recursos DA", "Add": "+ Adicionar recurso", "New": "Novo recurso", "Name": "Nome", "Current": "Atual", "Maximum": "Máximo" },
-      "Chat": { "Activated": "Efeito ativado.", "Deactivated": "Efeito desativado.", "ManualEffects": "Algumas operações exigem resolução manual.", "TargetReview": "Revise os alvos elegíveis antes de continuar:", "NoTargets": "Nenhum adversário elegível foi encontrado." },
+      "Chat": { "Activated": "Efeito ativado.", "Deactivated": "Efeito desativado.", "ManualEffects": "Algumas operações exigem resolução manual.", "TargetReview": "Revise os alvos elegíveis antes de continuar:", "NoTargets": "Nenhum adversário elegível foi encontrado.", "CopiedSkill": "Perícia copiada", "BonusRoll": "Rolagem de bônus", "BonusTotal": "Bônus total", "EndOfCombat": "Até o final do combate" },
       "Notifications": { "EffectUnavailable": "Esse efeito DA não está disponível.", "PassiveManual": "Efeitos passivos são mantidos como referência e não possuem botão de ativação.", "InsufficientCost": "Custo ou recurso insuficiente.", "InsufficientActions": "Não há ações suficientes para {ability}. Necessário: {amount}. Disponível: {available}.", "InsufficientReservedActions": "Não há ações reservadas suficientes para {ability}. Necessário: {amount}. Disponível: {available}.", "NotActiveTurn": "Não é o turno do personagem para ativar {ability}.", "MissingCombatant": "O personagem não possui um combatente válido neste combate.", "InsufficientResource": "Recurso insuficiente para {ability}. Necessário: {amount}. Disponível: {available}.", "MissingResource": "O recurso exigido por {ability} não foi encontrado.", "InvalidCost": "O custo de {ability} está configurado incorretamente.", "NoPermission": "Você não possui permissão para editar esta habilidade." }
     },
     "Navigation": {

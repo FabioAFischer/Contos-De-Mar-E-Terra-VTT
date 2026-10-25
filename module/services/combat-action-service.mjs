@@ -97,7 +97,9 @@ export const CombatActionService = Object.freeze({
     const state = this.getState(combatant);
     if (!Number.isInteger(amount) || amount <= 0) throw new CombatActionError("invalidAmount", "CMET | Quantidade de ações inválida.");
     if (state.current < amount) throw new CombatActionError("insufficientActions", "CMET | Ações insuficientes.");
-    return writeState(combatant, { ...state, current: state.current - amount }, "spend");
+    const next = await writeState(combatant, { ...state, current: state.current - amount }, "spend");
+    globalThis.Hooks?.callAll?.("cmetActionSpent", combatant.actor, amount);
+    return next;
   },
 
   async spendReservedAction(combatant, amount = 1) {

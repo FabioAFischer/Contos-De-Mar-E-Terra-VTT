@@ -14,6 +14,8 @@ import { isForcedPullMovement, processPullMovementRequest, recordPullMovementCon
 import { getEffectiveWeaponCharacteristics, resolveEffectiveWeaponWielding, validateCombinedWeaponAttack } from "./weapon-wielding-service.mjs";
 import { applyConditionalAbilityDaEffects } from "./ability-da-service.mjs";
 import { getMarcoAuraModifier } from "./ability-da-marco-service.mjs";
+import { getDraummaModifierSources, getDraummaSkillModifier, recordDraummaAttackHit, resolveDraummaMagicRedistribution } from "./ability-da-draumma-service.mjs";
+import { getNorisUnarmedDamageModifiers, getNorisFrenzy, isNorisActor, isNorisGuardActive, breakNorisGuard, recordNorisFrenzyHit, spendNorisFrenzy } from "./ability-da-noris-service.mjs";
 
 export const SUCCESS_RANK = Object.freeze({
   [SKILL_ROLL_DEGREES.NORMAL_SUCCESS]: 1,
@@ -259,7 +261,7 @@ function getDaDefenseModifier(defender, attacker, skillKey) {
     .reduce((total, modifier) => total + (Number(modifier.amount) || 0), 0) + getMarcoAttackModifier(attacker, defender, skillKey);
 }
 
-function openDefenseChoice({ defender, attacker, combatant, respond, allowBlock = true }) {
+function openDefenseChoice({ defender, attacker, combatant, attackerToken = null, respond, allowBlock = true, spell = null, attack = null, projectile = false }) {
   const { DialogV2 } = foundry.applications.api;
   const localize = (key) => game.i18n.localize(`CMET.CombatAttack.${key}`);
   let answered = false;
@@ -275,9 +277,15 @@ function openDefenseChoice({ defender, attacker, combatant, respond, allowBlock 
     buttons: [
       { action: "dodge", label: localize("Dodge"), type: "button", callback: () => "dodge" },
       ...(allowBlock ? [{ action: "block", label: localize("Block"), type: "button", callback: () => "block" }] : []),
+      ...(spell ? [{ action: "redistribute", label: "Redistribuição de Magia", type: "button", callback: () => "redistribute" }] : []),
       { action: "none", label: localize("NoDefense"), type: "button", callback: () => "none" }
     ],
     submit: async (choice) => {
+      if (choice === "redistribute") {
+        choiceStarted = true;
+        const result = await resolveDraummaMagicRedistribution({ defender, attacker, combatant, spell, attack, rollSkill: async ({ actor, skillKey, context }) => new Promise((resolve) => openSkillRollDialog({ actor, skillKey, skillLabel: SKILL_LABELS[skillKey], baseValue: actor.system.attributes[findSkillDefinition(skillKey).key].skills[skillKey], context, onResult: resolve, onCancel: () => resolve(null) })) });
+        return answer({ choice, rollResult: result.result, redirected: result.redirected, target: result.target });
+      }
       if (choice === "dodge" || choice === "block") {
         choiceStarted = true;
         const skillKey = choice === "dodge" ? "esquivar" : "bloquear";
@@ -303,7 +311,41 @@ function openDefenseChoice({ defender, attacker, combatant, respond, allowBlock 
               return false;
             }
           },
-          onResult: async (result, message) => answer({ choice, rollResult: serializableRollResult(result), messageId: message?.id }),
+          onResult: async (result, message) => {
+            if (choice === "block" && result?.success && !projectile && isNorisGuardActive(defender, game.combat)) {
+              const reserved = CombatActionService.getState(combatant).reserved;
+              const options = [
+                ...(reserved >= 1
+                  ? [{ action: "simple", label: "Contra-atacar", type: "button", callback: () => "simple" }]
+                  : []),
+                ...(reserved >= 1 && getNorisFrenzy(defender) >= 30
+                  ? [{ action: "amplified", label: "Contra-atacar com dois socos (30 Frenesi)", type: "button", callback: () => "amplified" }]
+                  : []),
+                { action: "none", label: "Não contra-atacar", type: "button", callback: () => "none" }
+              ];
+              const counterChoice = await foundry.applications.api.DialogV2.wait({
+                window: { title: "Guarda de Lutador" },
+                content: "<p>O bloqueio foi bem-sucedido. Deseja contra-atacar?</p>",
+                buttons: options
+              });
+              if (counterChoice === "simple" || counterChoice === "amplified") {
+                if (counterChoice === "amplified") {
+                  const payment = await spendNorisFrenzy(defender, 30);
+                  if (!payment.valid) return answer({ choice, rollResult: serializableRollResult(result), messageId: message?.id });
+                }
+                const { startNorisUnarmedAttack } = await import("./combat-attack-service.mjs");
+                await startNorisUnarmedAttack({
+                  actor: defender,
+                  double: counterChoice === "amplified",
+                  targetToken: attackerToken,
+                  reaction: true,
+                  attackerToken: combatant?.token?.object,
+                  attackerCombatant: combatant
+                });
+              }
+            }
+            return answer({ choice, rollResult: serializableRollResult(result), messageId: message?.id });
+          },
           onCancel: () => answer({ choice: "none" })
         });
       }
@@ -332,7 +374,7 @@ async function requestDefense({ combatantId, defenderId, requestId, projectile =
   });
 }
 
-async function resolveDefense({ targetCombatant, targetActor, attacker, item, attack, projectile = false }) {
+async function resolveDefense({ targetCombatant, targetActor, attacker, item, attack, projectile = false, spell = null }) {
   const state = CombatActionService.getState(targetCombatant);
   if (state.reserved <= 0) return { defense: null, reason: "noReserved" };
   const requestId = foundry.utils.randomID();
@@ -341,7 +383,7 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   const respond = (payload) => game.socket.emit(SOCKET_CHANNEL, { type: "combat-defense-response", requestId, requesterId: game.user.id, ...payload });
   let response;
   if (responsible.id === game.user.id) {
-    openDefenseChoice({ defender: targetActor, attacker, combatant: targetCombatant, allowBlock: !projectile || hasEmpunhedCutterWeapon(targetActor), respond: (payload) => { response = payload; } });
+    openDefenseChoice({ defender: targetActor, attacker, combatant: targetCombatant, attackerToken: getAttackerToken(attacker, game.combat), attack, spell, projectile, allowBlock: !projectile || hasEmpunhedCutterWeapon(targetActor), respond: (payload) => { response = payload; } });
     response = await new Promise((resolve) => {
       const check = () => response ? resolve(response) : setTimeout(check, 50);
       check();
@@ -399,6 +441,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   }
   const attackerName = combatantDisplayName(attackerCombatant, actor);
   const defenderName = combatantDisplayName(targetCombatant, targetCombatant.actor);
+  const norisAttackId = globalThis.foundry?.utils?.randomID?.() ?? `${combat.id}:${combat.round}:${combat.turn}:${Date.now()}`;
   clearPendingAttack();
   const specialCharacteristicsDisabled = disableCharacteristics || attackMode === "pull";
   const maneuverWeapon = !specialCharacteristicsDisabled
@@ -418,13 +461,14 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
     skillKey: skill.skillKey,
     skillLabel: SKILL_LABELS[skill.skillKey],
     baseValue: skill.baseValue,
-    initialModifier: getMarcoAttackModifier(actor, targetCombatant.actor, skill.skillKey),
+    initialModifier: getMarcoAttackModifier(actor, targetCombatant.actor, skill.skillKey) + getDraummaSkillModifier(actor, skill.skillKey),
     titleKey: "AttackRoll",
     context: {
       type: "attack",
       attackerName,
       defenderName,
-      weaponName: item.name
+      weaponName: item.name,
+      modifierSources: getDraummaModifierSources(actor, skill.skillKey)
     },
     onComplete,
     beforeRoll: async () => {
@@ -489,6 +533,9 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
         }
         anyHit = true;
         effectiveHitTargets.add(currentTargetToken);
+        // O alvo atual é o defensor. O histórico de Truque de Mestre pertence
+        // ao atacante efetivo, inclusive em ataques reativos e Actors sintéticos.
+        await recordDraummaAttackHit(combat, attackerCombatant.actor ?? actor, skill.skillKey);
         if (!specialCharacteristicsDisabled) {
           await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: true });
           if (characteristicEnabled(item, "pontoFraco")) await recordPointWeakAttack(combat, actor, item, attackerToken, currentTargetToken);
@@ -520,7 +567,8 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
             }
             baseComponents = sharedBaseDamage;
           }
-          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: pointWeakByTarget.get(currentTargetToken) === true, apunhalhar: apunhalharEligible.get(currentTargetToken) === true, maneuverWeapon, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance, baseComponents });
+          const norisModifiers = damageItem.__norisUnarmed && isNorisActor(actor) ? getNorisUnarmedDamageModifiers(actor, combat) : { abrasiveFists: false };
+          damage = await DamageRollService.rollWeaponDamage(damageItem, { attacker: attackerCombatant, target: currentTargetCombatant, critical, versatileSelections, sequentialCount, pointWeak: pointWeakByTarget.get(currentTargetToken) === true, apunhalhar: apunhalharEligible.get(currentTargetToken) === true, maneuverWeapon, polearm: specialCharacteristicsDisabled ? false : polearm, reachDistance, baseComponents, extraDamageFormulas: norisModifiers.abrasiveFists ? [{ formula: "1d8", nature: "physical", type: "impacto", source: "punhosAbrasivos" }] : [] });
           if (selectedTargets.length > 1 && !distanceDamage && !rearStrike) sharedDamage = damage;
         }
         if (!damage) continue;
@@ -542,6 +590,7 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
           await recordImpactOutcome(combat, actor, item, currentTargetToken, { effectiveHit: false });
         }
       }
+      if (anyHit) await recordNorisFrenzyHit(combat, actor, { attackId: norisAttackId, melee: !isPhysicalProjectileAttack(item, { thrownAttack }) });
     }
   });
 }
@@ -620,6 +669,7 @@ export async function startWeaponAttack({ actor, item, attackMode = "normal" }) 
   if (attackMode === "pull" && !isValidPullConfiguration(item)) return notifyPullConfiguration(item);
   if (!canFire(item)) return notify("WeaponNotLoaded");
   if (!isEffectivelyWielded(actor, item)) return notify("WeaponNotWielded");
+  breakNorisGuard(actor, "offensiveAction");
   if (attackMode === "golpeDeRetaguarda") {
     const validation = validateRearStrikeTargets({ actor, item, attackerToken, combat, targetTokens: Array.from(game.user.targets ?? []) });
     if (!validation.valid) return notify(validation.reason);
@@ -638,6 +688,44 @@ export async function startWeaponAttack({ actor, item, attackMode = "normal" }) 
     ? [targetToken, ...getLateralEnemies(targetToken)].filter((token, index, tokens) => tokens.findIndex((candidate) => (candidate.document?.id ?? candidate.id) === (token.document?.id ?? token.id)) === index)
     : [targetToken];
   return prepareWeaponAttack({ actor, item, targetToken, targetTokens, combat, attackMode });
+}
+
+function norisUnarmedItem(actor, name = "Ataque desarmado") {
+  const impact = getNorisUnarmedDamageModifiers(actor, game.combat).impact;
+  return {
+    id: `noris-${name}`,
+    name,
+    type: "arma",
+    __norisUnarmed: true,
+    system: {
+      equipped: true,
+      loaded: true,
+      thrown: false,
+      combatSkill: "corpoACorpo",
+      damage: [{ formula: "1d6", nature: "physical", type: "impacto" }],
+      characteristics: {
+        umaMao: { enabled: true }, duasMaos: { enabled: false }, impacto: { enabled: impact },
+        recarregar: { enabled: false }, alcance: { enabled: false }, armaDeHaste: { enabled: false },
+        puxar: { enabled: false }, pontoFraco: { enabled: false }, sequencial: { enabled: false },
+        executar: { enabled: false }, armaDeManobra: { enabled: false }
+      }
+    }
+  };
+}
+
+export async function startNorisUnarmedAttack({ actor, double = false, attackMode = "normal", targetToken = null, targetTokens = null, reaction = false, attackerToken = null, attackerCombatant = null } = {}) {
+  const main = norisUnarmedItem(actor, "Punho de Noris");
+  const combat = game.combat;
+  if (!combat?.started || !isNorisActor(actor)) return;
+  const selectedTarget = targetToken ?? getSingleTarget();
+  if (!selectedTarget) return notify("SelectTarget");
+  if (!reaction && !double) breakNorisGuard(actor, "offensiveAction");
+  if (!double) return prepareWeaponAttack({ actor, item: main, targetToken: selectedTarget, targetTokens, combat, attackMode, reaction, attackerToken, attackerCombatant });
+  const actionGate = { spent: false };
+  const waitForAttack = (item) => new Promise((resolve) => prepareWeaponAttack({ actor, item, targetToken: selectedTarget, targetTokens, combat, reaction, attackerToken, attackerCombatant, actionGate, combinedAttack: true, onComplete: resolve }).catch((error) => resolve({ status: "failed", error })));
+  const first = await waitForAttack(main);
+  if (first?.status !== "completed") return first;
+  return waitForAttack(norisUnarmedItem(actor, "Punho de Noris (2)"));
 }
 
 async function continuePendingAttack(targetToken = null) {
@@ -921,6 +1009,9 @@ export async function handlePolearmMovement(tokenDocument, movement, _operation,
   if (!movingCombatant) {
     debugPolearm("Movimento ignorado: token não está no combate", { tokenId: tokenDocument.id, movementId: movement.id });
     return;
+  }
+  if (movingCombatant.id === combat.combatant?.id && isNorisActor(movingCombatant.actor)) {
+    await breakNorisGuard(movingCombatant.actor, "voluntaryMovement");
   }
   const processedActors = new Set();
   for (const reactorCombatant of combat.combatants) {

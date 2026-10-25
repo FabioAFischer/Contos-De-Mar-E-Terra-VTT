@@ -181,7 +181,8 @@ export async function sendSkillRollToChat(result, { context: rollContext = resul
     showRollMode: Boolean(rollModeLabel),
     rolls: presentationResult.rollResults.map(({ value, active, discarded }) => ({ value, selected: active, discarded })),
     contextTitle: getContextTitle(rollContext),
-    contextWeapon: rollContext?.type === "attack" ? rollContext.weaponName : ""
+    contextWeapon: rollContext?.type === "attack" ? rollContext.weaponName : "",
+    modifierSources: (rollContext?.modifierSources ?? []).map((source) => ({ ...source, dice: source.dice ?? [], amount: Number(source.amount) || 0 }))
   };
   const { renderTemplate } = foundry.applications.handlebars;
   const content = await renderTemplate("systems/contos-de-mar-e-terra/templates/chat/skill-roll-card.hbs", presentationContext);

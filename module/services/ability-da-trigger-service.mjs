@@ -2,6 +2,8 @@ import { activateAbilityDaEffect, getAbilityDaEffects } from "./ability-da-servi
 import { resetCustomResources } from "./ability-da-resource-service.mjs";
 import { registerMarcoAbilityHooks } from "./ability-da-marco-service.mjs";
 import { registerMarcoAuraVisualHooks } from "./ability-da-visual-service.mjs";
+import { registerDraummaAbilityHooks } from "./ability-da-draumma-service.mjs";
+import { registerNorisAbilityHooks } from "./ability-da-noris-service.mjs";
 
 const activeEvents = new Set();
 
@@ -30,6 +32,8 @@ export async function emitAbilityDaEvent({ event, actor, context = {} } = {}) {
 export function registerAbilityDaHooks() {
   registerMarcoAbilityHooks();
   registerMarcoAuraVisualHooks();
+  registerDraummaAbilityHooks();
+  registerNorisAbilityHooks();
   const reset = async () => {
     for (const actor of game.actors?.contents ?? []) await resetCustomResources(actor, "combatEnd");
   };
