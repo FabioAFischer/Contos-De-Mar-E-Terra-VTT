@@ -39,4 +39,7 @@ export function registerAbilityDaHooks() {
   };
   Hooks.on("deleteCombat", reset);
   Hooks.on("updateCombat", (combat, changes) => changes.started === false ? reset() : undefined);
+  Hooks.on("cmetAttackResolved", async ({ actor, item, hit, eventId, melee = true } = {}) => {
+    if (hit && melee) await emitAbilityDaEvent({ event: "attackHit", actor, context: { item, eventId, melee } });
+  });
 }

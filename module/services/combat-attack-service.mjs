@@ -399,7 +399,7 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   };
 }
 
-async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, attackMode = "normal", combinedAttack = false, actionGate = null, disableCharacteristics = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
+async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, attackMode = "normal", combinedAttack = false, actionGate = null, disableCharacteristics = false, unarmed = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
   const fail = (key, data = {}) => {
     const result = notify(key, data);
     onComplete?.({ status: "failed" });
@@ -407,8 +407,8 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   };
   if (attackMode === "golpeDeRetaguarda" && (disableCharacteristics || reaction || thrownAttack)) return fail("RearStrikeUnavailable");
   if (attackMode === "pull" && !isValidPullConfiguration(item)) return fail("InvalidPullSpaces");
-  if (!disableCharacteristics && !canFire(item)) return fail("WeaponNotLoaded");
-  if (!disableCharacteristics && !thrownAttack && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
+  if (!disableCharacteristics && !unarmed && !item.__norisUnarmed && !canFire(item)) return fail("WeaponNotLoaded");
+  if (!disableCharacteristics && !unarmed && !item.__norisUnarmed && !thrownAttack && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
   const attackerToken = providedAttackerToken ?? getAttackerToken(actor, combat);
   const attackerCombatant = providedAttackerCombatant ?? getCombatantForToken(combat, attackerToken);
   if (!attackerCombatant) return fail("AttackerNotInCombat");

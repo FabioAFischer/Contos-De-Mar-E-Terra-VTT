@@ -144,6 +144,7 @@
       "Experience": "Experience",
       "Gyllen": "Gyllen",
       "Movement": "Movement",
+      "Frenzy": "Frenzy",
       "Actions": "Actions",
       "Pool": "Total pool",
       "Distributed": "Distributed",
@@ -376,6 +377,7 @@
       "Operations": { "Title": "Operations", "Resource": "Change resource", "WeaponGrip": "Weapon grip modifier", "SkillModifier": "Skill modifier", "ArmorBonus": "Armor bonus", "SizeIncrease": "Size increase", "Damage": "Damage", "Heal": "Heal", "ConditionAdd": "Add condition", "ConditionRemove": "Remove condition", "Manual": "Manual operation", "Instructions": "Instructions", "Formula": "Formula", "Amount": "Amount", "Characteristic": "Characteristic", "Stages": "Stages", "Condition": "Condition", "Skill": "Skill" },
       "Marco": { "ChildOfHel": "Child of Hel", "ManifestationOfHel": "Manifestation of Hel", "ProfaneConversion": "Profane Conversion", "LastSpark": "Last Spark", "LifeSacrifice": "Life sacrificed", "CorpseSkin": "Corpse Skin", "RevitalizeLife": "Revitalize — Health", "RevitalizeMana": "Revitalize — Mana", "DeathChoicePrompt": "Confirm a valid creature death and choose one benefit.", "MagicImpactDamage": "Magical impact damage" },
       "Draumma": { "Ace": "Ace up the Sleeve", "MagicRedistribution": "Magic Redistribution", "ManaSiphon": "Mana Siphon", "MasterTrick": "Master Trick" },
+      "Noris": { "Frenzy": "Frenzy", "AbrasiveFists": "Abrasive Fists", "HalfMoonKicks": "Half-Moon Kicks", "PugilistFeather": "Pugilist's Feather", "HeavyWeight": "Heavyweight", "Guard": "Fighter's Guard", "FistsAttackAction": "Attack with two fists", "HalfMoonAttackAction": "Execute Half-Moon Kicks" },
       "Branches": { "Title": "Branches", "Name": "Option name", "Manual": "Manual selection", "Exclusive": "Exclusive choice", "Multiple": "Multiple choice", "Sequence": "Sequence" },
       "Duration": { "Title": "Duration", "Instant": "Instant", "Turns": "Turns", "Rounds": "Rounds", "Combat": "End of combat", "Permanent": "Permanent", "Condition": "Until condition", "Amount": "Amount", "Reference": "End condition" },
       "Limits": { "Title": "Usage limits", "None": "No limit", "Turn": "Per turn", "Combat": "Per combat", "Day": "Per day", "Maximum": "Maximum" },
@@ -401,7 +403,7 @@
       "Spells": "Spells",
       "Biography": "Biography"
     },
-    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution.", "DuplicateHandWeapon": "The same weapon cannot occupy both hands.", "EmpunhaduraUnavailable": "Empunhadura do Mais Forte is not available for this character.", "WeaponRequiresFreeHand": "This weapon requires a free hand to wield.", "WeaponRequiresMainHand": "A two-handed weapon must occupy the main hand." },
+    "Notifications": { "SkillPoolExceeded": "Not enough points for this distribution.", "DuplicateHandWeapon": "The same weapon cannot occupy both hands.", "EmpunhaduraUnavailable": "Empunhadura do Mais Forte is not available for this character.", "WeaponRequiresFreeHand": "This weapon requires a free hand to wield.", "WeaponRequiresMainHand": "A two-handed weapon must occupy the main hand.", "UpdateFailed": "The character could not be updated." },
     "Rolling": {
       "SkillTest": "Skill Test",
       "BaseValue": "Base value",

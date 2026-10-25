@@ -37,12 +37,19 @@ export function getAbilityDaEffect(item, effectId) {
 }
 
 export function getAbilityDaActions(item) {
-  return getAbilityDaEffects(item).filter((effect) => ["ativa", "reativa"].includes(effect.activationType)).map((effect) => ({
-    key: `da:${effect.id}`,
-    effectId: effect.id,
-    label: effect.name || item.name,
-    activationType: effect.activationType
-  }));
+  return getAbilityDaEffects(item).flatMap((effect) => {
+    const operation = effect.operations?.find((entry) => ["norisFistsAttack", "norisHalfMoonAttack"].includes(entry.type));
+    if (operation) return [{ key: `noris:${operation.type}:${effect.id}`, effectId: effect.id, operationType: operation.type, label: effect.name || item.name, activationType: "ativa" }];
+    if (!["ativa", "reativa"].includes(effect.activationType)) return [];
+    return [{ key: `da:${effect.id}`, effectId: effect.id, label: effect.name || item.name, activationType: effect.activationType }];
+  });
+}
+
+export async function activateNorisAbilityAction({ actor, item, effectId, operationType, context = {} } = {}) {
+  const effect = getAbilityDaEffect(item, effectId);
+  const operation = effect?.operations?.find((entry) => entry.type === operationType);
+  if (!effect || !operation) return null;
+  return activateNorisAbility({ actor, item, effect, operation, context });
 }
 
 function notify(key, data = {}) {
@@ -572,4 +579,4 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
   return { effect, rollResult, applied, unsupported };
 }
 
-export const AbilityDaService = Object.freeze({ ensureAbilityDaEffectIds, getAbilityDaEffects, getAbilityDaEffect, getAbilityDaActions, activateAbilityDaEffect, toggleAbilityDaEffect, applyConditionalAbilityDaEffects, registerAbilityDaSocket, migrateVictoryEffect, migrateAbilityDaCopies });
+export const AbilityDaService = Object.freeze({ ensureAbilityDaEffectIds, getAbilityDaEffects, getAbilityDaEffect, getAbilityDaActions, activateAbilityDaEffect, activateNorisAbilityAction, toggleAbilityDaEffect, applyConditionalAbilityDaEffects, registerAbilityDaSocket, migrateVictoryEffect, migrateAbilityDaCopies });

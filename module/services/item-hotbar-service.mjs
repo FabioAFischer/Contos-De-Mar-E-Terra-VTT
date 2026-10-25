@@ -3,7 +3,7 @@ import { startThrownWeaponAttack, startWeaponAttack } from "./combat-attack-serv
 import { resolveItemRollSkill, rollItemSkill } from "./item-roll-service.mjs";
 import { recoverWeapon, reloadWeapon } from "./item-action-service.mjs";
 import { canFire, canRecover, canThrow, characteristicEnabled } from "./weapon-characteristics-service.mjs";
-import { activateAbilityDaEffect, getAbilityDaActions } from "./ability-da-service.mjs";
+import { activateAbilityDaEffect, activateNorisAbilityAction, getAbilityDaActions } from "./ability-da-service.mjs";
 
 const SYSTEM_ID = "contos-de-mar-e-terra";
 const HOTBAR_FLAG = "itemHotbar";
@@ -102,6 +102,10 @@ export async function handleItemHotbarDrop(_hotbar, data, slot) {
 }
 
 export async function executeItemAction({ actor, item, action } = {}) {
+  if (action?.startsWith?.("noris:")) {
+    const [, operationType, effectId] = action.split(":");
+    return activateNorisAbilityAction({ actor, item, effectId, operationType });
+  }
   if (action?.startsWith?.("da:")) return activateAbilityDaEffect({ actor, item, effectId: action.slice(3) });
   if (action === "attack") return startWeaponAttack({ actor, item });
   if (action === "pull") return startWeaponAttack({ actor, item, attackMode: "pull" });
@@ -115,7 +119,10 @@ export async function executeItemAction({ actor, item, action } = {}) {
 }
 
 export async function openItemActionMenu({ actor, item, effectId = null } = {}) {
-  if (item?.type === ITEM_TYPES.HABILIDADE_DA && effectId) return executeItemAction({ actor, item, action: `da:${effectId}` });
+  if (item?.type === ITEM_TYPES.HABILIDADE_DA && effectId) {
+    const directAction = getAbilityDaActions(item).find((entry) => entry.effectId === effectId);
+    return executeItemAction({ actor, item, action: directAction?.key ?? `da:${effectId}` });
+  }
   const actions = getItemHotbarActions(item);
   if (!actions.length) {
     notify("NoActionAvailable");
@@ -137,7 +144,8 @@ export async function openItemActionMenu({ actor, item, effectId = null } = {}) 
     ]
   });
   if (!action || action === "cancel") return null;
-  return executeItemAction({ actor, item, action });
+  const selected = actions.find((entry) => entry.key === action);
+  return executeItemAction({ actor, item, action, effectId: selected?.effectId });
 }
 
 export async function executeItemHotbarAction({ actorUuid, itemUuid, action = null, effectId = null } = {}) {
