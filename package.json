@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
-    "generate:pack:habilidades-da": "node scripts/generate-habilidades-da-pack.mjs"
+    "generate:pack:habilidades-da": "node scripts/generate-habilidades-da-pack.mjs",
+    "update:pack:habilidades-da": "node scripts/update-habilidades-da-pack.mjs --replace"
   },
   "keywords": [],
   "author": "",
