@@ -1,7 +1,8 @@
 {
   "TYPES": {
     "Actor": {
-      "personagem": "Character"
+      "personagem": "Character",
+      "npc": "NPC"
     },
     "Item": {
       "arma": "Weapon",
@@ -13,7 +14,20 @@
     }
   },
   "CMET": {
-    "ActorTypes": { "personagem": "Character" },
+    "ActorTypes": { "personagem": "Character", "npc": "NPC" },
+    "CreatureSize": { "Miudo": "Tiny", "Pequeno": "Small", "Medio": "Medium", "Grande": "Large", "Enorme": "Huge", "Colossal": "Colossal" },
+    "NPC": {
+      "Fields": { "CreatureType": "Creature type", "Subcategory": "Subcategory", "Species": "Species/Ancestry", "SpecialMovement": "Special movement" },
+      "Tabs": { "Status": "Status", "Attributes": "Attributes", "Equipment": "Equipment", "Abilities": "Abilities", "Spells": "Spells", "Description": "Description" },
+      "AttributeGroups": { "Label": "Attribute group", "Corpo": "Body", "Essencia": "Essence" },
+      "Attributes": { "Fortitude": "Fortitude", "ForcaBruta": "Brute Force", "Agilidade": "Agility", "MovimentacaoEspecial": "Special Movement", "AtaquesSimples": "Simple Attacks", "AtaquesDistancia": "Ranged Attacks", "AtaqueMagico": "Magic Attack", "Sentidos": "Senses", "Esconder": "Hide", "Defesa": "Defense", "Intimidacao": "Intimidation", "Astucia": "Cunning", "Persuasao": "Persuasion", "Vontade": "Will", "Instinto": "Instinct", "Conhecimento": "Knowledge", "Investigacao": "Investigation", "Artesanato": "Craft", "Orientacao": "Orientation", "Coragem": "Courage" },
+      "CreatureTypes": { "Humanoides": "Humanoids", "Feras": "Beasts", "Dragoes": "Dragons", "MortosVivos": "Undead", "Elementais": "Elementals", "Construtos": "Constructs", "Profanos": "Profane", "Luminares": "Luminaries", "Aberracoes": "Aberrations", "Plantas": "Plants" },
+      "Subcategories": { "caravana": "Caravan", "matagal": "Thicket", "maritimas": "Maritime", "montanhesas": "Mountain", "profundezas": "Depths", "caldeira": "Caldera", "coline": "Hill", "caverna": "Cave", "lagoa": "Lagoon", "floresta": "Forest", "espiritosAgua": "Water Spirits", "espiritosFogo": "Fire Spirits", "espiritosTerra": "Earth Spirits", "espiritosVento": "Wind Spirits", "agua": "Water", "fogo": "Fire", "terra": "Earth", "vento": "Wind", "runicos": "Runic", "mecanicos": "Mechanical", "guardioes": "Guardians", "guerra": "War", "ruina": "Ruin", "desejo": "Desire", "fenda": "Rift", "macula": "Blight", "astrais": "Astral", "juramento": "Oath", "juizo": "Judgment" },
+      "NaturalAttacks": { "Title": "Natural attacks", "New": "New natural attack", "Damage": "Damage formula", "None": "No natural attacks configured." },
+      "Status": { "MainResources": "Main resources", "OperationalResources": "Operational resources", "DefensiveCapabilities": "Defensive capabilities", "NoSpecialMovement": "None", "Conditions": "Conditions", "Resistances": "Resistances", "None": "Nothing configured." },
+      "Description": { "Appearance": "Appearance", "Behavior": "Behavior", "History": "History", "Notes": "GM notes" },
+      "Resources": { "Health": "Health", "Mana": "Mana", "Sanity": "Sanity" }
+    },
     "Attributes": {
       "Fisico": "Physical",
       "Combate": "Combat",
@@ -144,6 +158,7 @@
       "Experience": "Experience",
       "Gyllen": "Gyllen",
       "Movement": "Movement",
+      "Size": "Size",
       "Frenzy": "Frenzy",
       "Actions": "Actions",
       "Pool": "Total pool",
@@ -440,6 +455,7 @@
       "HabilidadeDa": "DA Ability sheet",
       "Magia": "Spell sheet",
       "Personagem": "Character sheet",
+      "NPC": "NPC sheet",
       "Spells": "Spells"
     }
   }

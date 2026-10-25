@@ -1,0 +1,100 @@
+<form class="cmet-npc-form" autocomplete="off">
+  <header class="cmet-sheet__header">
+    <img class="cmet-sheet__portrait" src="{{actor.img}}" alt="{{actor.name}}" data-edit="img" data-action="editImage" />
+    <div class="cmet-sheet__identity">
+      <input class="cmet-sheet__name" name="name" type="text" value="{{actor.name}}" />
+      <div class="cmet-npc-identity-row">
+        <label>{{localize "CMET.NPC.Fields.CreatureType"}}<select name="system.classification.type">{{#each creatureTypes}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+        {{#if subcategories.length}}<label>{{localize "CMET.NPC.Fields.Subcategory"}}<select name="system.classification.subcategory"><option value="">—</option>{{#each subcategories}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>{{/if}}
+      </div>
+      <div class="cmet-npc-identity-row">
+        <label>{{localize "CMET.NPC.Fields.Species"}}<input name="system.classification.species" value="{{classification.species}}" /></label>
+        <label>{{localize "CMET.Fields.Size"}}<select name="system.size">{{#each sizes}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+      </div>
+    </div>
+  </header>
+  <section class="cmet-resource-bar cmet-npc-resource-bar">
+    <label class="cmet-resource"><span class="cmet-resource__label">{{localize "CMET.NPC.Resources.Health"}}</span><span class="cmet-resource__value"><input name="system.resources.vida.value" type="number" min="0" value="{{resources.vida.value}}" aria-label="{{localize 'CMET.NPC.Resources.Health'}} atual" /><span>/</span><input name="system.resources.vida.max" type="number" min="0" value="{{resources.vida.max}}" aria-label="{{localize 'CMET.NPC.Resources.Health'}} máximo" /></span></label>
+    <label class="cmet-resource"><span class="cmet-resource__label">{{localize "CMET.NPC.Resources.Mana"}}</span><span class="cmet-resource__value"><input name="system.resources.mana.value" type="number" min="0" value="{{resources.mana.value}}" aria-label="{{localize 'CMET.NPC.Resources.Mana'}} atual" /><span>/</span><input name="system.resources.mana.max" type="number" min="0" value="{{resources.mana.max}}" aria-label="{{localize 'CMET.NPC.Resources.Mana'}} máximo" /></span></label>
+    <label class="cmet-resource"><span class="cmet-resource__label">{{localize "CMET.NPC.Resources.Sanity"}}</span><span class="cmet-resource__value"><input name="system.resources.sanidade.value" type="number" min="0" value="{{resources.sanidade.value}}" aria-label="{{localize 'CMET.NPC.Resources.Sanity'}} atual" /><span>/</span><input name="system.resources.sanidade.max" type="number" min="0" value="{{resources.sanidade.max}}" aria-label="{{localize 'CMET.NPC.Resources.Sanity'}} máximo" /></span></label>
+    <label class="cmet-resource"><span class="cmet-resource__label">{{localize "CMET.Fields.Movement"}}</span><input class="cmet-resource__value" name="system.movement.normal" type="number" min="0" value="{{movement.normal}}" /></label>
+    <label class="cmet-resource cmet-npc-actions-resource"><span class="cmet-resource__label">{{localize "CMET.Fields.Actions"}}</span><span class="cmet-resource__value"><input class="cmet-resource__value" name="system.actions.max" type="number" min="0" value="{{actions.max}}" />{{#if actions.inCombat}}<span class="cmet-resource__combat-state" title="{{localize 'CMET.Combat.ActionsAvailable'}}">{{actions.current}} {{localize "CMET.Combat.ActionsAvailable"}}</span>{{/if}}</span></label>
+  </section>
+  <label class="cmet-npc-special-movement"><span>{{localize "CMET.NPC.Fields.SpecialMovement"}}:</span><input name="system.movement.special" value="{{movement.special}}" placeholder="{{localize 'CMET.NPC.Status.NoSpecialMovement'}}" /></label>
+  <nav class="cmet-tabs tabs" data-group="primary" aria-label="{{localize 'CMET.Navigation.Label'}}">
+    <button type="button" class="item {{tabs.status.cssClass}}" data-group="primary" data-tab="status">{{localize "CMET.NPC.Tabs.Status"}}</button>
+    <button type="button" class="item {{tabs.atributos.cssClass}}" data-group="primary" data-tab="atributos">{{localize "CMET.NPC.Tabs.Attributes"}}</button>
+    <button type="button" class="item {{tabs.equipamentos.cssClass}}" data-group="primary" data-tab="equipamentos">{{localize "CMET.NPC.Tabs.Equipment"}}</button>
+    <button type="button" class="item {{tabs.habilidades.cssClass}}" data-group="primary" data-tab="habilidades">{{localize "CMET.NPC.Tabs.Abilities"}}</button>
+    <button type="button" class="item {{tabs.magias.cssClass}}" data-group="primary" data-tab="magias">{{localize "CMET.NPC.Tabs.Spells"}}</button>
+    <button type="button" class="item {{tabs.descricao.cssClass}}" data-group="primary" data-tab="descricao">{{localize "CMET.NPC.Tabs.Description"}}</button>
+  </nav>
+  <main class="cmet-sheet__body">
+    <section class="tab cmet-tab-content {{tabs.status.cssClass}}" data-group="primary" data-tab="status">
+      <div class="cmet-npc-status">
+        <section class="cmet-npc-status-block cmet-npc-status-block--defensive">
+          <div class="cmet-npc-status-block__header"><h2>{{localize "CMET.NPC.Status.DefensiveCapabilities"}}</h2></div>
+          <div class="cmet-npc-defensive-grid">
+            <section class="cmet-npc-defensive-panel"><h3>{{localize "CMET.NPC.Status.Conditions"}}</h3><div class="cmet-npc-defensive-panel__content">{{#each conditions}}<span class="cmet-status-chip">{{this}}</span>{{else}}<p class="cmet-npc-empty">{{localize "CMET.NPC.Status.None"}}</p>{{/each}}</div></section>
+            <section class="cmet-npc-defensive-panel"><h3>{{localize "CMET.NPC.Status.Resistances"}}</h3><div class="cmet-npc-defensive-panel__content">{{#each resistances}}<span class="cmet-status-chip">{{label}} +{{amount}}</span>{{else}}<p class="cmet-npc-empty">{{localize "CMET.NPC.Status.None"}}</p>{{/each}}</div></section>
+          </div>
+        </section>
+        <section class="cmet-npc-status-block cmet-npc-status-block--natural">
+          <div class="cmet-npc-status-block__header"><h2>{{localize "CMET.NPC.NaturalAttacks.Title"}}</h2><button type="button" data-action="create-natural">{{localize "CMET.Actions.Create"}}</button></div>
+          <div class="cmet-npc-natural-list">{{#each naturalAttacks}}<div class="cmet-npc-natural"><input name="system.naturalAttacks.{{@index}}.name" value="{{name}}" /><input name="system.naturalAttacks.{{@index}}.damageFormula" value="{{damageFormula}}" placeholder="{{localize 'CMET.NPC.NaturalAttacks.Damage'}}" /><button type="button" data-action="attack-natural" data-attack-id="{{id}}">{{localize "CMET.Actions.Roll"}}</button><button type="button" data-action="delete-natural" data-attack-id="{{id}}">{{localize "CMET.Actions.Remove"}}</button></div>{{else}}<p class="cmet-npc-empty">{{localize "CMET.NPC.NaturalAttacks.None"}}</p>{{/each}}</div>
+        </section>
+      </div>
+    </section>
+    <section class="tab cmet-tab-content {{tabs.atributos.cssClass}}" data-group="primary" data-tab="atributos"><div class="cmet-npc-attribute-groups">{{#each attributeGroups}}<section class="cmet-npc-attribute-group"><header><span class="cmet-npc-section-kicker">{{localize "CMET.NPC.AttributeGroups.Label"}}</span><h2>{{label}}</h2></header><div class="cmet-npc-attribute-table">{{#each attributes}}<div class="cmet-npc-attribute-row"><button type="button" class="cmet-npc-attribute-roll" data-action="roll-attribute" data-attribute-key="{{key}}" data-attribute-label="{{label}}" title="{{localize 'CMET.Actions.Roll'}}">{{label}}</button><input type="number" name="system.attributes.{{key}}.value" value="{{value}}" aria-label="{{label}}" /><button type="button" class="cmet-npc-roll-icon" data-action="roll-attribute" data-attribute-key="{{key}}" data-attribute-label="{{label}}" aria-label="{{localize 'CMET.Actions.Roll'}}">&#9861;</button></div>{{/each}}</div></section>{{/each}}</div></section>
+    <section class="tab cmet-tab-content {{tabs.equipamentos.cssClass}}" data-group="primary" data-tab="equipamentos">{{> cmetNpcItems items=armas itemType="arma" title="CMET.ItemTypes.arma"}}{{> cmetNpcItems items=armaduras itemType="armadura" title="CMET.ItemTypes.armadura"}}{{> cmetNpcItems items=equipamentos itemType="equipamento" title="CMET.ItemTypes.equipamento"}}</section>
+    <section class="tab cmet-tab-content {{tabs.habilidades.cssClass}}" data-group="primary" data-tab="habilidades">{{> cmetNpcItems items=habilidades itemType="habilidade" title="CMET.ItemTypes.habilidade"}}{{> cmetNpcItems items=habilidadesDa itemType="habilidadeDa" title="CMET.ItemTypes.habilidadeDa"}}<section class="cmet-item-section"><div class="cmet-item-list-header"><h2>{{localize "CMET.AbilityDa.Resources.Title"}}</h2><button type="button" data-action="create-custom-resource">{{localize "CMET.AbilityDa.Resources.Add"}}</button></div>{{#each customResources}}<div class="cmet-item-row"><input name="system.resources.custom.{{@index}}.name" value="{{name}}" /><input type="number" min="0" name="system.resources.custom.{{@index}}.current" value="{{current}}" /><input type="number" min="0" name="system.resources.custom.{{@index}}.max" value="{{max}}" /><button type="button" data-action="delete-custom-resource" data-resource-index="{{@index}}">{{localize "CMET.Actions.Remove"}}</button></div>{{else}}<p class="cmet-items__empty">{{localize "CMET.NPC.Status.None"}}</p>{{/each}}</section></section>
+    <section class="tab cmet-tab-content {{tabs.magias.cssClass}}" data-group="primary" data-tab="magias">{{> cmetNpcItems items=magias itemType="magia" title="CMET.ItemTypes.magia"}}</section>
+    <section class="tab cmet-tab-content {{tabs.descricao.cssClass}}" data-group="primary" data-tab="descricao"><div class="cmet-npc-description-grid"><label>{{localize "CMET.NPC.Description.Appearance"}}<textarea name="system.biography.appearance">{{biography.appearance}}</textarea></label><label>{{localize "CMET.NPC.Description.Behavior"}}<textarea name="system.biography.behavior">{{biography.behavior}}</textarea></label><label>{{localize "CMET.NPC.Description.History"}}<textarea name="system.biography.history">{{biography.history}}</textarea></label><label>{{localize "CMET.NPC.Description.Notes"}}<textarea name="system.biography.notes">{{biography.notes}}</textarea></label><label class="cmet-npc-description-wide">{{localize "CMET.Fields.Description"}}<textarea name="system.description">{{description}}</textarea></label></div></section>
+  </main>
+</form>
+{{#*inline "cmetNpcItems"}}
+<section class="cmet-item-section">
+  <div class="cmet-item-list-header">
+    <h2>{{localize title}}</h2>
+    <button type="button" data-action="create-item" data-item-type="{{itemType}}">{{localize "CMET.Actions.Create"}}</button>
+  </div>
+  {{#each items}}
+    <div class="cmet-item-row cmet-npc-item-row" data-item-id="{{id}}">
+      <img class="cmet-item-row-image" src="{{img}}" alt="" />
+      <div class="cmet-npc-item-main">
+        <button type="button" class="cmet-item-row-name" data-action="open-item" data-item-id="{{id}}">{{name}}</button>
+        {{#if isDa}}
+          <div class="cmet-da-effect-list">
+            {{#each effects}}
+              <div class="cmet-da-effect-row {{#if active}}is-active{{/if}} {{#unless enabled}}is-disabled{{/unless}}">
+                <div class="cmet-da-effect-meta">
+                  <strong>{{name}}</strong>
+                  <span>{{activationLabel}}</span>
+                  {{#if active}}<span class="cmet-da-effect-state">{{localize "CMET.AbilityDa.Status.Active"}}</span>{{else}}<span>{{localize "CMET.AbilityDa.Status.Inactive"}}</span>{{/if}}
+                </div>
+                <div class="cmet-da-effect-actions">
+                  {{#each actions}}
+                    <button type="button" data-action="execute-da-operation" data-item-id="{{../../id}}" data-effect-id="{{../id}}" data-operation-type="{{operationType}}" title="{{localize label}}">{{localize label}}</button>
+                  {{/each}}
+                  {{#if canActivate}}
+                    <button type="button" data-action="activate-da-effect" data-item-id="{{../id}}" data-effect-id="{{id}}">{{#if (eq activationType "passiva")}}{{#if active}}{{localize "CMET.AbilityDa.Actions.Deactivate"}}{{else}}{{localize "CMET.AbilityDa.Actions.Activate"}}{{/if}}{{else}}{{localize "CMET.AbilityDa.Actions.Activate"}}{{/if}}</button>
+                  {{/if}}
+                </div>
+              </div>
+            {{else}}
+              <span class="cmet-da-effect-empty">{{localize "CMET.AbilityDa.Actions.NoSummary"}}</span>
+            {{/each}}
+          </div>
+        {{/if}}
+      </div>
+      <div class="cmet-item-row-actions">
+        {{#if roll}}<button type="button" class="cmet-item-roll" data-action="roll-item" data-item-id="{{id}}" title="{{localize 'CMET.Actions.Roll'}}">{{localize "CMET.Actions.Roll"}}</button>{{/if}}
+        {{#if (eq type "arma")}}<button type="button" data-action="attack-item" data-item-id="{{id}}">{{localize "CMET.CombatAttack.Attack"}}</button>{{/if}}
+        <button type="button" data-action="delete-item" data-item-id="{{id}}">{{localize "CMET.Actions.Remove"}}</button>
+      </div>
+    </div>
+  {{else}}
+    <p class="cmet-items__empty">{{localize "CMET.NoItems"}}</p>
+  {{/each}}
+</section>
+{{/inline}}

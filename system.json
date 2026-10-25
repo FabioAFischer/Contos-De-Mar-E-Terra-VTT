@@ -42,7 +42,8 @@
   ],
   "documentTypes": {
     "Actor": {
-      "personagem": {}
+      "personagem": {},
+      "npc": {}
     },
     "Item": {
       "equipamento": {},

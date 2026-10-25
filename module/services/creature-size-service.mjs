@@ -1,4 +1,4 @@
-const SIZE_STAGES = Object.freeze(["miudo", "pequeno", "medio", "grande", "enorme", "colossal"]);
+import { CREATURE_SIZE_STAGES as SIZE_STAGES } from "../config/creature-size-config.mjs";
 const SIZE_ALIASES = Object.freeze({
   minúsculo: "miudo",
   minusculo: "miudo",

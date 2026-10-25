@@ -1,4 +1,5 @@
 import { ATTRIBUTE_DEFINITIONS, SKILL_LABELS } from "../config/constants.mjs";
+import { isNpc, resolveActorTestValue } from "./npc-test-service.mjs";
 
 export const SKILL_ROLL_MODES = Object.freeze({
   NORMAL: "normal",
@@ -50,6 +51,12 @@ function clamp(value, min, max) {
 
 export function findSkillDefinition(skillKey) {
   return ATTRIBUTE_DEFINITIONS.find(({ skills }) => skills.includes(skillKey));
+}
+
+export function resolveActorSkillValue(actor, skillKey, { context = "generic" } = {}) {
+  if (isNpc(actor)) return resolveActorTestValue(actor, skillKey, { context });
+  const definition = findSkillDefinition(skillKey);
+  return Number(definition && actor?.system?.attributes?.[definition.key]?.skills?.[skillKey]);
 }
 
 export function calculateEffectiveTarget(baseValue, modifier = 0) {
@@ -120,8 +127,8 @@ export function extractRollData(roll) {
 
 export async function rollSkill({ actor, skillKey, modifier = 0, rollMode = SKILL_ROLL_MODES.NORMAL, rollClass, beforeRoll, context } = {}) {
   const definition = findSkillDefinition(skillKey);
-  const baseValue = definition && Number(actor?.system?.attributes?.[definition.key]?.skills?.[skillKey]);
-  if (!definition || !Number.isFinite(baseValue)) throw new TypeError("CMET | Perícia inválida para rolagem.");
+  const baseValue = resolveActorSkillValue(actor, skillKey, { context: context?.type === "defense" ? "defense" : context?.type === "attack" ? "weapon" : "generic" });
+  if ((!definition && !isNpc(actor)) || !Number.isFinite(baseValue)) throw new TypeError("CMET | Perícia inválida para rolagem.");
 
   const adjustment = modifier === "" || modifier === null || modifier === undefined ? 0 : Number(modifier);
   if (!Number.isInteger(adjustment)) throw new TypeError("CMET | O modificador deve ser um número inteiro.");
