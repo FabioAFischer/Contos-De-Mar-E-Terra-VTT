@@ -357,7 +357,7 @@ async function resolveDefense({ targetCombatant, targetActor, attacker, item, at
   };
 }
 
-async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, attackMode = "normal", combinedAttack = false, actionGate = null, disableCharacteristics = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
+async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = null, combat, reaction = false, thrownAttack = false, attackMode = "normal", combinedAttack = false, actionGate = null, disableCharacteristics = false, unarmed = false, ignoreSequentialState = false, attackerToken: providedAttackerToken = null, attackerCombatant: providedAttackerCombatant = null, onComplete = null }) {
   const fail = (key, data = {}) => {
     const result = notify(key, data);
     onComplete?.({ status: "failed" });
@@ -365,8 +365,8 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
   };
   if (attackMode === "golpeDeRetaguarda" && (disableCharacteristics || reaction || thrownAttack)) return fail("RearStrikeUnavailable");
   if (attackMode === "pull" && !isValidPullConfiguration(item)) return fail("InvalidPullSpaces");
-  if (!disableCharacteristics && !canFire(item)) return fail("WeaponNotLoaded");
-  if (!disableCharacteristics && !thrownAttack && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
+  if (!disableCharacteristics && !unarmed && !canFire(item)) return fail("WeaponNotLoaded");
+  if (!disableCharacteristics && !unarmed && !thrownAttack && !isEffectivelyWielded(actor, item)) return fail("WeaponNotWielded");
   const attackerToken = providedAttackerToken ?? getAttackerToken(actor, combat);
   const attackerCombatant = providedAttackerCombatant ?? getCombatantForToken(combat, attackerToken);
   if (!attackerCombatant) return fail("AttackerNotInCombat");
@@ -532,6 +532,13 @@ async function prepareWeaponAttack({ actor, item, targetToken, targetTokens = nu
       // sequence outcome for the attack, never one outcome per target.
       if (!ignoreSequentialState) await recordSequentialOutcome(combat, actor, item, { effectiveHit: anyHit });
       if (multiTargetAttack) await updateSkillRollMessage(attackMessage, anyHit ? "AttackHit" : "AttackDefended");
+      if (anyHit) Hooks.callAll("cmetAttackResolved", {
+        actor,
+        item,
+        hit: true,
+        melee: !thrownAttack && !["arcos", "arremessar"].includes(item.system?.combatSkill),
+        eventId: `attack:${combat.id}:${attackerCombatant.id}:${foundry.utils.randomID()}`
+      });
       if (!specialCharacteristicsDisabled && characteristicEnabled(item, "impacto") && (attack.degree === SKILL_ROLL_DEGREES.OPTIMAL_SUCCESS || [...effectiveHitTargets].some((token) => impactSequenceByTarget.get(token)))) {
         for (const currentTargetToken of selectedTargets) {
           const currentTargetCombatant = getCombatantForToken(combat, currentTargetToken);
@@ -638,6 +645,65 @@ export async function startWeaponAttack({ actor, item, attackMode = "normal" }) 
     ? [targetToken, ...getLateralEnemies(targetToken)].filter((token, index, tokens) => tokens.findIndex((candidate) => (candidate.document?.id ?? candidate.id) === (token.document?.id ?? token.id)) === index)
     : [targetToken];
   return prepareWeaponAttack({ actor, item, targetToken, targetTokens, combat, attackMode });
+}
+
+function createNorisUnarmedItem(actor, { formula = "1d6", impact = false, bonusFormula = "" } = {}) {
+  const characteristics = Object.fromEntries(Object.keys(actor?.system?.norisUnarmedCharacteristics ?? {}).map((key) => [key, { enabled: false }]));
+  characteristics.impacto = { enabled: impact };
+  return {
+    id: `noris-unarmed-${foundry.utils.randomID()}`,
+    name: "Punhos desarmados",
+    type: "arma",
+    parent: actor,
+    system: {
+      combatSkill: "corpoACorpo",
+      equipped: true,
+      loaded: true,
+      thrown: false,
+      damage: [
+        { formula, nature: "physical", type: "impacto", source: "base" },
+        ...(bonusFormula ? [{ formula: bonusFormula, nature: "physical", type: "impacto", source: "norisFistsAmplification" }] : [])
+      ],
+      characteristics
+    }
+  };
+}
+
+function getNorisUnarmedBonus(actor) {
+  return actor?.getFlag?.(game.system.id, "norisEffects")?.norisFistsAmplification?.formula ?? "";
+}
+
+export async function startNorisUnarmedAttack({ actor, style = "fists" } = {}) {
+  clearPendingAttack();
+  const combat = game.combat;
+  if (!combat?.started) return notify("CombatRequired");
+  const attackerToken = getAttackerToken(actor, combat);
+  const attackerCombatant = getCombatantForToken(combat, attackerToken);
+  if (!attackerCombatant) return notify("AttackerNotInCombat");
+  if (combat.combatant?.id !== attackerCombatant.id) return notify("NotActiveTurn");
+  const targetToken = getSingleTarget();
+  if (!targetToken) return notify("SelectTarget");
+  const targetCombatant = getCombatantForToken(combat, targetToken);
+  if (!targetCombatant || targetCombatant.id === attackerCombatant.id || !arePotentialAdversaries(attackerToken, targetToken)) return notify("TargetNotInCombat");
+  const impact = Boolean(actor.getFlag?.(game.system.id, "norisEffects")?.norisHeavyWeight);
+  const item = createNorisUnarmedItem(actor, { impact, bonusFormula: getNorisUnarmedBonus(actor) });
+  const actionGate = {};
+  const runAttack = (options) => new Promise((resolve) => {
+    Promise.resolve(prepareWeaponAttack({ ...options, onComplete: resolve }))
+      .catch((error) => resolve({ status: "failed", error }));
+  });
+  if (style === "halfMoon") {
+    const amplification = Number(actor.getFlag?.(game.system.id, "norisEffects")?.norisHalfMoonAmplification?.amount) || 0;
+    const range = 1 + Math.max(0, amplification);
+    const areaTargets = (globalThis.canvas?.tokens?.placeables ?? []).filter((token) => token === targetToken || measureTokenDistance(targetToken, token) <= range);
+    const targets = [targetToken, ...areaTargets, ...getLateralEnemies(targetToken)]
+      .filter((token, index, all) => all.findIndex((candidate) => (candidate.document?.id ?? candidate.id) === (token.document?.id ?? token.id)) === index)
+      .filter((token) => token !== attackerToken && arePotentialAdversaries(attackerToken, token) && getCombatantForToken(combat, token)?.actor);
+    return runAttack({ actor, item, targetToken, targetTokens: targets, combat, actionGate, unarmed: true });
+  }
+  let result = await runAttack({ actor, item, targetToken, combat, actionGate, unarmed: true });
+  if (result?.status !== "completed") return result;
+  return runAttack({ actor, item, targetToken, combat, actionGate, unarmed: true, ignoreSequentialState: true });
 }
 
 async function continuePendingAttack(targetToken = null) {
