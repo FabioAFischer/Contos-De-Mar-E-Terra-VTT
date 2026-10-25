@@ -46,8 +46,9 @@ export function collectReductionSources(actor) {
     }
   }
   for (const modifier of actor?.getFlag?.(globalThis.game?.system?.id ?? "contos-de-mar-e-terra", "daArmor") ?? []) {
-    if (modifier.key !== "carapaca" || !safeAmount(modifier.amount)) continue;
-    sources.push({ sourceItemId: modifier.source, sourceItemName: "Habilidade DA", key: "carapaca", label: "CMET.Armor.Characteristics.Carapaca", channel: "type", target: "perfurante", amount: safeAmount(modifier.amount) });
+    if (!safeAmount(modifier.amount)) continue;
+    if (modifier.key === "carapaca") sources.push({ sourceItemId: modifier.source, sourceItemName: "Habilidade DA", key: "carapaca", label: "CMET.Armor.Characteristics.Carapaca", channel: "type", target: "perfurante", amount: safeAmount(modifier.amount) });
+    if (modifier.key === "revestimentoNecrotico") sources.push({ sourceItemId: modifier.source, sourceItemName: "Habilidade DA", key: "revestimentoNecrotico", label: "CMET.Armor.Characteristics.Revestimento", channel: "type", target: "necrotico", amount: safeAmount(modifier.amount) });
   }
   return sources;
 }

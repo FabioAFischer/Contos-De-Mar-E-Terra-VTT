@@ -9,6 +9,7 @@ import { compareCreatureSizes, getBaseCreatureSize, getCreatureSize, nextCreatur
 import { applyNamedCondition, clearNamedCondition } from "./combat-condition-service.mjs";
 import { measureTokenDistance } from "./weapon-combat-state-service.mjs";
 import { arePotentialAdversaries } from "./weapon-combat-state-service.mjs";
+import { activateChildOfHel, activateLastSpark, activateManifestation, activateProfaneConversion, registerMarcoDeathChoice } from "./ability-da-marco-service.mjs";
 
 function clone(value) { return foundry.utils.deepClone(value); }
 
@@ -327,6 +328,14 @@ async function evaluateOperation(operation, targetActor, { actor, effect, item, 
   return null;
 }
 
+async function activateMarcoOperation(actor, item, effect, operation, context) {
+  if (operation.type === "marcoChildOfHel") return registerMarcoDeathChoice(actor, effect, item, { eventId: context.eventId ?? `manual-death:${game.combat?.id ?? "combat"}:${foundry.utils.randomID()}` });
+  if (operation.type === "marcoManifestation") return activateManifestation(actor, effect, item, context);
+  if (operation.type === "marcoProfaneConversion") return activateProfaneConversion(actor, effect.costs?.find((cost) => cost.timing === "activation") ?? { type: "actions", amount: 1, timing: "activation" });
+  if (operation.type === "marcoLastSpark") return activateLastSpark(actor, item, effect, context);
+  return null;
+}
+
 export async function applyConditionalAbilityDaEffects({ actor, targetActor, context = {} } = {}) {
   if (!actor || !targetActor) return [];
   const applied = [];
@@ -408,6 +417,8 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
     return null;
   }
   if (!(await confirmActivation(item, effect))) return null;
+  const marcoOperation = effect.operations?.find((operation) => ["marcoChildOfHel", "marcoManifestation", "marcoProfaneConversion", "marcoLastSpark"].includes(operation.type));
+  if (marcoOperation) return activateMarcoOperation(actor, item, effect, marcoOperation, context);
   const activationCosts = (effect.costs ?? []).filter((cost) => cost.timing === "activation");
   const successCosts = (effect.costs ?? []).filter((cost) => cost.timing === "success");
   for (const cost of activationCosts) {

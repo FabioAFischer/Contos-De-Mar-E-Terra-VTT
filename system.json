@@ -35,7 +35,7 @@
       "name": "habilidades-da",
       "label": "Habilidades — Deuses Adormecidos",
       "system": "contos-de-mar-e-terra",
-      "path": "packs/habilidades-da.db",
+      "path": "packs/habilidades-da",
       "type": "Item",
       "private": false
     }

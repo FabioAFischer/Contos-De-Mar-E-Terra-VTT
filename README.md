@@ -16,14 +16,15 @@ O sistema possui o Actor `personagem` e os Items `equipamento`, `habilidade`, `m
 - `templates/`: templates Handlebars das sheets.
 - `styles/`: CSS prefixado com `cmet-`.
 - `lang/`: traduções, atualmente `pt-BR`.
-- `packs/habilidades-da.db`: compêndio carregável com as seis habilidades DA de Hrodnar.
+- `packs/habilidades-da.db`: fonte JSONL versionada dos dez Items do compêndio DA.
+- `packs/habilidades-da/`: compêndio LevelDB gerado para Foundry VTT v14; a declaração em `system.json` aponta para este diretório.
 - `services/` e `helpers/`: reservados para serviços e helpers quando houver uso real.
 
 Para adicionar um Data Model, crie o arquivo no subdiretório do documento, importe-o em `module/data-models/register.mjs` e registre-o em `CONFIG.Actor.dataModels` ou `CONFIG.Item.dataModels`. Sheets novas ficam em `module/sheets/`; regras de domínio devem ser extraídas para serviços próprios quando forem implementadas.
 
 ## Compêndios
 
-O compêndio `habilidades-da` usa o formato legado JSON Lines (`.db`), compatível com a estrutura de packs carregável pelo Foundry v14 e mantido versionado no repositório. Cada uma das seis linhas é um Item `habilidadeDa`; a identificação de personagem fica em `system.associatedCharacter` e em `flags.contos-de-mar-e-terra.packCharacter`. Packs declarados como `Item` não devem conter registros de pasta. Para reconstruir ou validar o conteúdo, mantenha uma linha JSON por documento e registre o pack em `system.json` com o mesmo `name` e `path`. Não importar os Items automaticamente para Actors.
+O compêndio `habilidades-da` mantém o JSON Lines como fonte de dados revisável e gera o diretório LevelDB compatível com Foundry v14. Cada linha é um Item `habilidadeDa`; a identificação de personagem fica em `system.associatedCharacter` e em `flags.contos-de-mar-e-terra.packCharacter`. Packs declarados como `Item` não devem conter registros de pasta. Para reconstruir o banco, execute `npm install` e `npm run generate:pack:habilidades-da`; o gerador valida a fonte e escreve as chaves `!items!<id>` no diretório LevelDB. Não editar o LevelDB manualmente nem importar os Items automaticamente para Actors.
 
 ### Migração de Vitória do Mais Forte
 
