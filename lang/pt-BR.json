@@ -145,6 +145,7 @@
       "Level": "Nível",
       "Experience": "Experiência",
       "Gyllen": "Gyllen",
+      "Frenzy": "Frenesi",
       "Movement": "Movimento",
       "Actions": "Ações",
       "Pool": "Pool total",
@@ -384,6 +385,7 @@
       "EmptyConditions": "Nenhuma condição configurada.",
       "Operations": { "Title": "Operações", "Resource": "Alterar recurso", "WeaponGrip": "Modificador de empunhadura", "SkillModifier": "Modificador de perícia", "ArmorBonus": "Bônus de armadura", "SizeIncrease": "Aumento de tamanho", "Damage": "Dano", "Heal": "Cura", "ConditionAdd": "Adicionar condição", "ConditionRemove": "Remover condição", "Manual": "Operação manual", "Instructions": "Instruções", "Formula": "Fórmula", "Amount": "Valor", "Characteristic": "Característica", "Stages": "Estágios", "Condition": "Condição", "Skill": "Perícia" },
       "Marco": { "ChildOfHel": "Filho de Hel", "ManifestationOfHel": "Manifestação de Hel", "ProfaneConversion": "Conversão Profana", "LastSpark": "Última Centelha", "LifeSacrifice": "Vida sacrificada", "CorpseSkin": "Pele de Cadáver", "RevitalizeLife": "Revigorar — Vida", "RevitalizeMana": "Revigorar — Mana", "DeathChoicePrompt": "Confirme a morte válida de uma criatura e escolha um benefício.", "MagicImpactDamage": "Dano mágico de impacto" },
+      "Noris": { "Frenzy": "Frenesi", "FistsAttack": "Punhos desarmados", "FistsAmplification": "Amplificar Punhos Abrasivos", "HalfMoonAttack": "Chutes em Meia Lua", "HalfMoonAmplification": "Ampliar alcance", "Absorption": "Absorção natural", "AbsorptionAmplification": "Reforçar Absorção", "ArmorProtection": "Proteção adicional", "HeavyWeight": "Peso Pesado", "Guard": "Armar Guarda", "FistsAttackAction": "Atacar com dois punhos", "HalfMoonAttackAction": "Executar Chutes em Meia Lua" },
       "Branches": { "Title": "Ramificações", "Name": "Nome da opção", "Manual": "Seleção manual", "Exclusive": "Escolha exclusiva", "Multiple": "Escolha múltipla", "Sequence": "Sequência" },
       "Duration": { "Title": "Duração", "Instant": "Instantânea", "Turns": "Turnos", "Rounds": "Rodadas", "Combat": "Fim do combate", "Permanent": "Permanente", "Condition": "Até condição", "Amount": "Quantidade", "Reference": "Condição de encerramento" },
       "Limits": { "Title": "Limites de utilização", "None": "Sem limite", "Turn": "Por turno", "Combat": "Por combate", "Day": "Por dia", "Maximum": "Máximo" },
@@ -414,7 +416,8 @@
       "DuplicateHandWeapon": "A mesma arma não pode ocupar as duas mãos.",
       "EmpunhaduraUnavailable": "Empunhadura do Mais Forte não está disponível para este personagem.",
       "WeaponRequiresFreeHand": "Esta arma exige uma mão livre para ser empunhada.",
-      "WeaponRequiresMainHand": "Uma arma de duas mãos precisa ocupar a mão principal."
+      "WeaponRequiresMainHand": "Uma arma de duas mãos precisa ocupar a mão principal.",
+      "UpdateFailed": "Não foi possível salvar a alteração."
     },
     "Validation": {
       "OverPool": "Distribuição acima do pool disponível. Reduza alguma perícia antes de continuar."

@@ -49,6 +49,23 @@ export function collectReductionSources(actor) {
     if (!safeAmount(modifier.amount)) continue;
     if (modifier.key === "carapaca") sources.push({ sourceItemId: modifier.source, sourceItemName: "Habilidade DA", key: "carapaca", label: "CMET.Armor.Characteristics.Carapaca", channel: "type", target: "perfurante", amount: safeAmount(modifier.amount) });
     if (modifier.key === "revestimentoNecrotico") sources.push({ sourceItemId: modifier.source, sourceItemName: "Habilidade DA", key: "revestimentoNecrotico", label: "CMET.Armor.Characteristics.Revestimento", channel: "type", target: "necrotico", amount: safeAmount(modifier.amount) });
+    if (modifier.key === "encouracado") sources.push({ sourceItemId: modifier.source, sourceItemName: "Habilidade DA", key: "encouracado", label: "CMET.Armor.Characteristics.Encouracado", channel: "type", target: "cortante", amount: safeAmount(modifier.amount) });
+    if (modifier.key === "absorcao") sources.push({ sourceItemId: modifier.source, sourceItemName: "Habilidade DA", key: "absorcao", label: "CMET.Armor.Characteristics.Absorcao", channel: "type", target: "impacto", amount: safeAmount(modifier.amount) });
+    if (modifier.key === "selo") sources.push({ sourceItemId: modifier.source, sourceItemName: "Habilidade DA", key: "selo", label: "CMET.Armor.Characteristics.Selo", channel: "nature", target: "magical", amount: safeAmount(modifier.amount) });
+  }
+  for (const item of items) {
+    if (item.type !== "habilidadeDa" || item.system?.associatedCharacter !== "Noris") continue;
+    for (const effect of item.system?.effects ?? []) for (const operation of effect.operations ?? []) {
+      if (operation.type !== "norisAbsorption" || operation.manual) continue;
+      sources.push({ sourceItemId: item.id, sourceItemName: item.name, key: "absorcao", label: "CMET.Armor.Characteristics.Absorcao", channel: "type", target: "impacto", amount: safeAmount(operation.amount) });
+    }
+  }
+  for (const [type, entry] of Object.entries(actor?.getFlag?.(globalThis.game?.system?.id ?? "contos-de-mar-e-terra", "norisEffects") ?? {})) {
+    if (!["norisAbsorptionAmplification", "norisArmorProtection"].includes(type)) continue;
+    const key = entry.key || (type === "norisAbsorptionAmplification" ? "absorcao" : "encouracado");
+    const rule = ARMOR_REDUCTION_RULES[key];
+    if (!rule) continue;
+    sources.push({ sourceItemId: entry.item || type, sourceItemName: "Habilidade DA", key, label: rule.label, channel: rule.channel, target: rule.target, amount: safeAmount(entry.amount) });
   }
   return sources;
 }

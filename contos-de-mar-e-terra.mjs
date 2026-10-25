@@ -8,6 +8,7 @@ import { registerDamageApplicationSocket } from "./module/services/damage-applic
 import { registerItemHotbarApi, registerItemHotbarHook } from "./module/services/item-hotbar-service.mjs";
 import { registerAbilityDaHooks } from "./module/services/ability-da-trigger-service.mjs";
 import { migrateAbilityDaCopies, registerAbilityDaSocket } from "./module/services/ability-da-service.mjs";
+import { ensureNorisFrenzy } from "./module/services/ability-da-noris-service.mjs";
 
 Hooks.once("init", () => {
   registerDataModels();
@@ -30,4 +31,7 @@ Hooks.once("init", () => {
 Hooks.once("ready", async () => {
   await migrateWeaponRanges();
   await migrateAbilityDaCopies();
+  for (const actor of game.actors?.contents ?? []) {
+    if ([...(actor.items?.contents ?? [])].some((item) => item.type === "habilidadeDa" && item.system?.associatedCharacter === "Noris")) await ensureNorisFrenzy(actor);
+  }
 });

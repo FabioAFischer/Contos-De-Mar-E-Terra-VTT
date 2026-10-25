@@ -10,12 +10,21 @@ import { startWeaponAttack, startThrownWeaponAttack, startCombinedWeaponAttack }
 import { canRecover } from "../../services/weapon-characteristics-service.mjs";
 import { recoverWeapon, reloadWeapon } from "../../services/item-action-service.mjs";
 import { calculateConditionMovement } from "../../services/combat-condition-service.mjs";
-import { getAbilityDaEffects, activateAbilityDaEffect, toggleAbilityDaEffect } from "../../services/ability-da-service.mjs";
+import { getAbilityDaEffects, activateAbilityDaEffect, activateNorisAbility, toggleAbilityDaEffect } from "../../services/ability-da-service.mjs";
 import { CombatActionService } from "../../services/combat-action-service.mjs";
 import { actorHasEmpunhaduraDoMaisForte, getWeaponGripOptions, resolveEffectiveWeaponWielding } from "../../services/weapon-wielding-service.mjs";
+import { FRENZY_ID, FRENZY_MAX } from "../../services/ability-da-noris-service.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
+
+function getSheetCombatant(actor) {
+  const combat = globalThis.game?.combat;
+  if (!combat?.started || !actor) return null;
+  const tokenId = actor.token?.document?.id ?? actor.token?.id ?? null;
+  if (tokenId) return combat.combatants.find((entry) => entry.tokenId === tokenId) ?? null;
+  return combat.combatants.find((entry) => entry.actor === actor || entry.actor?.uuid === actor.uuid) ?? null;
+}
 
 export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   constructor(...args) {
@@ -131,7 +140,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         firstMeta: item.system.origin || game.i18n.localize("CMET.AbilityDa.Fields.NoOrigin"),
         secondMeta: game.i18n.localize(`CMET.AbilityDa.Activation.${item.system.activationType === "ativa" ? "Active" : item.system.activationType === "reativa" ? "Reactive" : "Passive"}`),
         detailLabel: item.system.category || "",
-        effects: getAbilityDaEffects(item).map((effect) => ({ id: effect.id, name: effect.name || game.i18n.localize("CMET.AbilityDa.Actions.UntitledEffect"), activationType: effect.activationType, active: effect.active === true, canActivate: effect.enabled !== false && (["ativa", "reativa"].includes(effect.activationType) || effect.activationType === "passiva") }))
+        effects: getAbilityDaEffects(item).map((effect) => ({ id: effect.id, name: effect.name || game.i18n.localize("CMET.AbilityDa.Actions.UntitledEffect"), activationType: effect.activationType, active: effect.active === true, canActivate: effect.enabled !== false && ["ativa", "reativa"].includes(effect.activationType) && !(effect.operations ?? []).some((operation) => ["norisFistsAttack", "norisHalfMoonAttack"].includes(operation.type)), actions: (effect.operations ?? []).filter((operation) => ["norisFistsAttack", "norisHalfMoonAttack"].includes(operation.type)).map((operation) => ({ type: operation.type, label: operation.type === "norisFistsAttack" ? "CMET.AbilityDa.Noris.FistsAttackAction" : "CMET.AbilityDa.Noris.HalfMoonAttackAction" })) }))
       })),
       magias: items.filter((item) => item.type === ITEM_TYPES.MAGIA).map((item) => {
         const school = item.system.school;
@@ -161,6 +170,11 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       vida: { label: "Vida", value: this.actor.system.resources.vida.value, max: derived.vidaMax },
       mana: { label: "Mana", value: this.actor.system.resources.mana.value, max: derived.manaMax },
       sanidade: { label: "Sanidade", value: this.actor.system.resources.sanidade.value, max: derived.sanidadeMax },
+      frenzy: (() => {
+        const hasFrenzy = items.some((item) => item.type === ITEM_TYPES.HABILIDADE_DA && item.system?.associatedCharacter === "Noris" && (item.system.effects ?? []).some((effect) => (effect.operations ?? []).some((operation) => operation.type === "norisFrenzy")));
+        const resource = (this.actor.system.resources.custom ?? []).find((entry) => entry.id === FRENZY_ID);
+        return { visible: hasFrenzy, label: game.i18n.localize("CMET.Fields.Frenzy"), value: Math.min(FRENZY_MAX, Math.max(0, Number(resource?.current) || 0)), max: FRENZY_MAX, percentage: Math.min(100, Math.max(0, ((Number(resource?.current) || 0) / FRENZY_MAX) * 100)) };
+      })(),
       movimento: calculateConditionMovement(derived.movimento, this.actor),
       actions: this.actor.system.actions.max
     };
@@ -182,7 +196,11 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         ui.notifications.error(game.i18n.localize("CMET.CombatAttack.Notifications.AttackUnavailable"));
       });
     }, { signal: this._renderListeners.signal });
-    this.element.addEventListener("change", (event) => this.#onChange(event), { signal: this._renderListeners.signal });
+    this.element.addEventListener("change", (event) => {
+      Promise.resolve(this.#onChange(event)).catch(() => {
+        ui.notifications.error(game.i18n.localize("CMET.Notifications.UpdateFailed"));
+      });
+    }, { signal: this._renderListeners.signal });
     this.element.addEventListener("dragstart", (event) => {
       const dragTarget = event.target.closest("[data-item-drag]");
       if (!dragTarget || !this.element.contains(dragTarget)) return;
@@ -277,8 +295,7 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         return this.render();
       }
       if (game.combat?.started && hands[path.endsWith("mainHand") ? "mainHand" : "offHand"] !== value) {
-        const token = getActorTokenForSheet(this.actor, game.combat);
-        const combatant = token && game.combat.combatants.find((entry) => entry.tokenId === (token.document?.id ?? token.id));
+        const combatant = getSheetCombatant(this.actor);
         if (!combatant || game.combat.combatant?.id !== combatant.id) {
           ui.notifications.warn(game.i18n.localize("CMET.CombatAttack.Notifications.NotActiveTurn"));
           return this.render();
@@ -292,6 +309,12 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       return this.actor.update(updates);
     }
     const parts = path.split(".");
+    if (input.dataset.frenzyResource === "true") {
+      const custom = foundry.utils.deepClone(this.actor.system.resources.custom ?? []);
+      const resource = custom.find((entry) => entry.id === FRENZY_ID);
+      if (resource) resource.current = Math.min(FRENZY_MAX, Math.max(0, value));
+      return this.actor.update({ "system.resources.custom": custom });
+    }
     if (parts[1] === "attributes" && parts[3] === "skills") {
       const definition = ATTRIBUTE_DEFINITIONS.find(({ key }) => key === parts[2]);
       const result = validateSkillChange(this.actor.system, parts[2], parts[4], value, definition.skills);
@@ -359,6 +382,9 @@ export class PersonagemSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     return effect?.activationType === "passiva"
       ? toggleAbilityDaEffect({ actor: this.actor, item, effectId: action.dataset.effectId, token: canvas.tokens.controlled.find((token) => token.actor?.id === this.actor.id) })
       : activateAbilityDaEffect({ actor: this.actor, item, effectId: action.dataset.effectId, context: { originToken: canvas.tokens.controlled.find((token) => token.actor?.id === this.actor.id) } });
+    }
+    if (action.dataset.action === "execute-da-operation" && item?.type === ITEM_TYPES.HABILIDADE_DA) {
+      return activateNorisAbility({ actor: this.actor, item, effectId: action.dataset.effectId, operationType: action.dataset.operationType, context: { originToken: canvas.tokens.controlled.find((token) => token.actor?.id === this.actor.id) } });
     }
     if (action.dataset.action === "open-item" && item) return item.sheet.render(true);
     if (action.dataset.action === "delete-item" && item) return item.delete();

@@ -10,6 +10,8 @@ import { applyNamedCondition, clearNamedCondition } from "./combat-condition-ser
 import { measureTokenDistance } from "./weapon-combat-state-service.mjs";
 import { arePotentialAdversaries } from "./weapon-combat-state-service.mjs";
 import { activateChildOfHel, activateLastSpark, activateManifestation, activateProfaneConversion, registerMarcoDeathChoice } from "./ability-da-marco-service.mjs";
+import { ensureNorisFrenzyResource, executeNorisOperation, isNorisOperation } from "./ability-da-noris-service.mjs";
+import { DA_EXECUTABLE_OPERATION_TYPES } from "../config/ability-da-config.mjs";
 
 function clone(value) { return foundry.utils.deepClone(value); }
 
@@ -35,12 +37,25 @@ export function getAbilityDaEffect(item, effectId) {
 }
 
 export function getAbilityDaActions(item) {
-  return getAbilityDaEffects(item).filter((effect) => ["ativa", "reativa"].includes(effect.activationType)).map((effect) => ({
-    key: `da:${effect.id}`,
-    effectId: effect.id,
+  return getAbilityDaEffects(item).flatMap((effect) => {
+    const norisAttack = effect.operations?.find((operation) => ["norisFistsAttack", "norisHalfMoonAttack"].includes(operation.type));
+    if (norisAttack) return [{ key: `noris:${norisAttack.type}:${effect.id}`, effectId: effect.id, operationType: norisAttack.type, label: effect.name || item.name, activationType: "ativa" }];
+    if (!["ativa", "reativa"].includes(effect.activationType)) return [];
+    return [{ key: `da:${effect.id}`, effectId: effect.id,
     label: effect.name || item.name,
     activationType: effect.activationType
-  }));
+    }];
+  });
+}
+
+export async function activateNorisAbility({ actor, item, effectId, operationType, context = {} } = {}) {
+  const effect = getAbilityDaEffect(item, effectId);
+  if (!effect) return null;
+  if (["norisFistsAttack", "norisHalfMoonAttack"].includes(operationType)) {
+    const { startNorisUnarmedAttack } = await import("./combat-attack-service.mjs");
+    return startNorisUnarmedAttack({ actor, style: operationType === "norisFistsAttack" ? "fists" : "halfMoon", context });
+  }
+  return activateAbilityDaEffect({ actor, item, effectId, context });
 }
 
 function notify(key, data = {}) {
@@ -281,6 +296,7 @@ async function confirmTargetReview(item, targets) {
 
 async function evaluateOperation(operation, targetActor, { actor, effect, item, rollResult, targetToken, token } = {}) {
   if (operation.manual) return null;
+  if (isNorisOperation(operation.type)) return executeNorisOperation(operation, { actor: targetActor, effect, item, rollResult, targetToken, token });
   if (operation.type === "conditionAdd") {
     const conditionKey = operation.conditionKey;
     return conditionKey ? applyNamedCondition(targetActor, conditionKey, { source: effect.id, sourceItem: item.uuid, targetId: targetActor.id, manual: true }) : null;
@@ -417,6 +433,9 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
     return null;
   }
   if (!(await confirmActivation(item, effect))) return null;
+  if ((effect.costs ?? []).some((cost) => cost.type === "custom" && cost.resourceId === "noris-frenesi")) {
+    await ensureNorisFrenzyResource(actor);
+  }
   const marcoOperation = effect.operations?.find((operation) => ["marcoChildOfHel", "marcoManifestation", "marcoProfaneConversion", "marcoLastSpark"].includes(operation.type));
   if (marcoOperation) return activateMarcoOperation(actor, item, effect, marcoOperation, context);
   const activationCosts = (effect.costs ?? []).filter((cost) => cost.timing === "activation");
@@ -428,7 +447,7 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
   let rollResult = null;
   const applied = [];
   let nativeRollPublished = false;
-  const unsupported = (effect.operations ?? []).filter((operation) => operation.manual || !["resource", "heal", "conditionAdd", "conditionRemove", "skillModifier", "weaponGrip", "armorBonus", "sizeIncrease", "damage"].includes(operation.type));
+  const unsupported = (effect.operations ?? []).filter((operation) => operation.manual || !DA_EXECUTABLE_OPERATION_TYPES.has(operation.type));
   const targets = resolveTargets(actor, effect, context);
   if (effect.targets?.relation === "enemy" && effect.rolls?.some((roll) => roll.type === "resistance")) {
     if (!(await confirmTargetReview(item, targets))) return { effect, applied, unsupported, cancelled: true };
@@ -508,4 +527,4 @@ export async function activateAbilityDaEffect({ actor, item, effectId, context =
   return { effect, rollResult, applied, unsupported };
 }
 
-export const AbilityDaService = Object.freeze({ ensureAbilityDaEffectIds, getAbilityDaEffects, getAbilityDaEffect, getAbilityDaActions, activateAbilityDaEffect, toggleAbilityDaEffect, applyConditionalAbilityDaEffects, registerAbilityDaSocket, migrateVictoryEffect, migrateAbilityDaCopies });
+export const AbilityDaService = Object.freeze({ ensureAbilityDaEffectIds, getAbilityDaEffects, getAbilityDaEffect, getAbilityDaActions, activateAbilityDaEffect, activateNorisAbility, toggleAbilityDaEffect, applyConditionalAbilityDaEffects, registerAbilityDaSocket, migrateVictoryEffect, migrateAbilityDaCopies });
