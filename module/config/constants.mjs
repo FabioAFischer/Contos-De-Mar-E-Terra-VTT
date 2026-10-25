@@ -1,5 +1,5 @@
 export const SYSTEM_ID = "contos-de-mar-e-terra";
-export const ACTOR_TYPES = Object.freeze({ PERSONAGEM: "personagem" });
+export const ACTOR_TYPES = Object.freeze({ PERSONAGEM: "personagem", NPC: "npc" });
 export const ITEM_TYPES = Object.freeze({ EQUIPAMENTO: "equipamento", HABILIDADE: "habilidade", HABILIDADE_DA: "habilidadeDa", MAGIA: "magia", ARMA: "arma", ARMADURA: "armadura" });
 export const ATTRIBUTE_DEFINITIONS = Object.freeze([
   { key: "fisico", label: "CMET.Attributes.Fisico", skills: ["fortitude", "empurrar", "correr", "escalar", "esconder", "escutar", "folego", "nadar", "sentir", "ver"] },

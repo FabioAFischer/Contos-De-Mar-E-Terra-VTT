@@ -1,7 +1,8 @@
 {
   "TYPES": {
     "Actor": {
-      "personagem": "Personagem"
+      "personagem": "Personagem",
+      "npc": "NPC"
     },
     "Item": {
       "arma": "Arma",
@@ -14,7 +15,21 @@
   },
   "CMET": {
     "ActorTypes": {
-      "personagem": "Personagem"
+      "personagem": "Personagem",
+      "npc": "NPC"
+    },
+    "CreatureSize": { "Miudo": "Miúdo", "Pequeno": "Pequeno", "Medio": "Médio", "Grande": "Grande", "Enorme": "Enorme", "Colossal": "Colossal" },
+    "NPC": {
+      "Fields": { "CreatureType": "Tipo de criatura", "Subcategory": "Subcategoria", "Species": "Espécie/Raça", "SpecialMovement": "Movimentos especiais" },
+      "Tabs": { "Status": "Status", "Attributes": "Atributos", "Equipment": "Equipamentos", "Abilities": "Habilidades", "Spells": "Magias", "Description": "Descrição" },
+      "AttributeGroups": { "Label": "Grupo de atributos", "Corpo": "Corpo", "Essencia": "Essência" },
+      "Attributes": { "Fortitude": "Fortitude", "ForcaBruta": "Força Bruta", "Agilidade": "Agilidade", "MovimentacaoEspecial": "Movimentação Especial", "AtaquesSimples": "Ataques Simples", "AtaquesDistancia": "Ataques à Distância", "AtaqueMagico": "Ataque Mágico", "Sentidos": "Sentidos", "Esconder": "Esconder", "Defesa": "Defesa", "Intimidacao": "Intimidação", "Astucia": "Astúcia", "Persuasao": "Persuasão", "Vontade": "Vontade", "Instinto": "Instinto", "Conhecimento": "Conhecimento", "Investigacao": "Investigação", "Artesanato": "Artesanato", "Orientacao": "Orientação", "Coragem": "Coragem" },
+      "CreatureTypes": { "Humanoides": "Humanoides", "Feras": "Feras", "Dragoes": "Dragões", "MortosVivos": "Mortos-Vivos", "Elementais": "Elementais", "Construtos": "Construtos", "Profanos": "Profanos", "Luminares": "Luminares", "Aberracoes": "Aberrações", "Plantas": "Plantas" },
+      "Subcategories": { "caravana": "Caravana", "matagal": "Matagal", "maritimas": "Marítimas", "montanhesas": "Montanhesas", "profundezas": "Profundezas", "caldeira": "Caldeira", "coline": "Coline", "caverna": "Caverna", "lagoa": "Lagoa", "floresta": "Floresta", "espiritosAgua": "Espíritos de Água", "espiritosFogo": "Espíritos de Fogo", "espiritosTerra": "Espíritos de Terra", "espiritosVento": "Espíritos de Vento", "agua": "Água", "fogo": "Fogo", "terra": "Terra", "vento": "Vento", "runicos": "Rúnicos", "mecanicos": "Mecânicos", "guardioes": "Guardiões", "guerra": "Guerra", "ruina": "Ruína", "desejo": "Desejo", "fenda": "Fenda", "macula": "Mácula", "astrais": "Astrais", "juramento": "Juramento", "juizo": "Juízo" },
+      "NaturalAttacks": { "Title": "Ataques naturais", "New": "Novo ataque natural", "Damage": "Fórmula de dano", "None": "Nenhum ataque natural configurado." },
+      "Status": { "MainResources": "Recursos principais", "OperationalResources": "Recursos operacionais", "DefensiveCapabilities": "Capacidades defensivas", "NoSpecialMovement": "Nenhum", "Conditions": "Condições", "Resistances": "Resistências", "None": "Nenhuma configuração." },
+      "Description": { "Appearance": "Aparência", "Behavior": "Comportamento", "History": "História", "Notes": "Notas do mestre" },
+      "Resources": { "Health": "Vida", "Mana": "Mana", "Sanity": "Sanidade" }
     },
     "Attributes": {
       "Fisico": "Físico",
@@ -146,6 +161,7 @@
       "Experience": "Experiência",
       "Gyllen": "Gyllen",
       "Movement": "Movimento",
+      "Size": "Tamanho",
       "Frenzy": "Frenesi",
       "Actions": "Ações",
       "Pool": "Pool total",
@@ -462,6 +478,7 @@
       "HabilidadeDa": "Ficha de Habilidade DA",
       "Magia": "Ficha de Magia",
       "Personagem": "Ficha de Personagem",
+      "NPC": "Ficha de NPC",
       "Spells": "Magias"
     }
   }

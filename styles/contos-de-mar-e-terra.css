@@ -223,6 +223,127 @@
 .application.cmet-actor-sheet .cmet-hands-config { display: flex; flex-direction: column; gap: 12px; padding: 12px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 6px; }
 .application.cmet-actor-sheet .cmet-hands-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .application.cmet-actor-sheet .cmet-hand-panel { display: flex; flex-direction: column; gap: 7px; min-width: 0; padding: 10px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 5px; }
+
+/* A ficha de NPC possui seis abas e um cabeçalho de classificação próprio. */
+.application.cmet-npc-sheet .cmet-sheet__header { grid-template-columns: 84px minmax(0, 1fr); align-items: center; }
+.application.cmet-npc-sheet .cmet-sheet__identity { display: grid; min-width: 0; gap: 6px; }
+.application.cmet-npc-sheet .cmet-sheet__name { min-width: 0; }
+.application.cmet-npc-sheet .cmet-npc-identity-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.application.cmet-npc-sheet .cmet-npc-identity-row label { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: 3px; color: var(--cmet-text-muted); font-size: .72rem; }
+.application.cmet-npc-sheet .cmet-npc-identity-row input,
+.application.cmet-npc-sheet .cmet-npc-identity-row select { width: 100%; min-width: 0; min-height: 30px; box-sizing: border-box; padding: 3px 26px 3px 5px; }
+.application.cmet-npc-sheet .cmet-npc-identity-row input { width: 100%; min-width: 0; min-height: 30px; box-sizing: border-box; padding: 3px 5px; }
+.application.cmet-npc-sheet .cmet-npc-identity-row select {
+  color: var(--cmet-text);
+  background-color: var(--cmet-surface-raised);
+  border: 1px solid var(--cmet-border);
+  border-radius: 3px;
+  color-scheme: dark;
+  font: inherit;
+}
+.application.cmet-npc-sheet .cmet-npc-identity-row select:hover { border-color: var(--cmet-accent); }
+.application.cmet-npc-sheet .cmet-npc-identity-row select:focus { border-color: var(--cmet-accent-bright); box-shadow: 0 0 0 1px var(--cmet-accent-dark); outline: 2px solid transparent; }
+.application.cmet-npc-sheet .cmet-npc-identity-row select option { color: var(--cmet-text); background: var(--cmet-surface-raised); }
+.application.cmet-npc-sheet .cmet-tabs { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.application.cmet-npc-sheet .cmet-tabs button { min-width: 0; white-space: nowrap; }
+.application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar { grid-template-columns: repeat(5, minmax(0, 1fr)); min-height: 64px; }
+.application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource { min-height: 62px; padding: 7px 5px; }
+.application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource__label { color: var(--cmet-text-muted); }
+.application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource__value { gap: 3px; color: var(--cmet-text); }
+.application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource__value input { width: 42px; min-width: 0; padding: 2px 3px; font-size: .98rem; text-align: center; }
+.application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource__value > span { color: var(--cmet-text-muted); }
+.application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource__combat-state { color: var(--cmet-accent-bright); font-size: .72rem; font-weight: 700; }
+.application.cmet-npc-sheet .cmet-npc-special-movement { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 4px 2px 0; color: var(--cmet-text-muted); font-size: .72rem; }
+.application.cmet-npc-sheet .cmet-npc-special-movement > span { flex: 0 0 auto; }
+.application.cmet-npc-sheet .cmet-npc-special-movement input { min-width: 0; flex: 1 1 auto; padding: 2px 4px; color: var(--cmet-text); background: transparent; border-color: transparent; font-size: .72rem; }
+.application.cmet-npc-sheet .cmet-npc-special-movement input::placeholder { color: var(--cmet-text-muted); opacity: .8; }
+.application.cmet-npc-sheet .cmet-npc-special-movement input:focus { background: var(--cmet-bg); border-color: var(--cmet-accent-bright); }
+.application.cmet-npc-sheet .cmet-npc-status { display: flex; flex-direction: column; gap: 14px; }
+.application.cmet-npc-sheet .cmet-npc-status-block { min-width: 0; padding: 12px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 7px; box-shadow: 0 2px 8px rgb(0 0 0 / 10%); }
+.application.cmet-npc-sheet .cmet-npc-status-block__header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -12px -12px 12px; padding: 10px 12px; background: linear-gradient(120deg, color-mix(in srgb, var(--cmet-accent-dark) 55%, var(--cmet-surface-alt)), var(--cmet-surface-alt)); border-bottom: 1px solid var(--cmet-border-soft); }
+.application.cmet-npc-sheet .cmet-npc-status-block__header h2 { margin: 2px 0 0; color: var(--cmet-text); font-size: .88rem; letter-spacing: .07em; text-transform: uppercase; }
+.application.cmet-npc-sheet .cmet-npc-status-block__header button { flex: 0 0 auto; padding: 5px 9px; color: var(--cmet-text); background: var(--cmet-accent-dark); border: 1px solid var(--cmet-accent); border-radius: 4px; cursor: pointer; }
+.application.cmet-npc-sheet .cmet-npc-status-block__header button:hover { background: var(--cmet-accent); }
+.application.cmet-npc-sheet .cmet-npc-defensive-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.application.cmet-npc-sheet .cmet-npc-defensive-panel { min-width: 0; min-height: 92px; padding: 10px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 6px; }
+.application.cmet-npc-sheet .cmet-npc-defensive-panel h3 { margin: 0 0 8px; color: var(--cmet-text); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+.application.cmet-npc-sheet .cmet-npc-defensive-panel__content { min-height: 38px; }
+.application.cmet-npc-sheet .cmet-status-chip { display: inline-block; margin: 2px 4px 2px 0; padding: 3px 6px; background: var(--cmet-surface-raised); border: 1px solid var(--cmet-border-soft); border-radius: 3px; font-size: .76rem; }
+.application.cmet-npc-sheet .cmet-npc-empty { margin: 0; padding: 12px 8px; color: var(--cmet-text-muted); font-size: .78rem; font-style: italic; text-align: center; }
+.application.cmet-npc-sheet .cmet-npc-natural-list { display: flex; flex-direction: column; gap: 6px; }
+.application.cmet-npc-sheet .cmet-npc-natural { display: grid; grid-template-columns: minmax(0, 1fr) minmax(7rem, .6fr) auto auto; align-items: center; gap: 8px; padding: 8px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 5px; }
+.application.cmet-npc-sheet .cmet-npc-description { display: block; width: 100%; min-height: 100%; resize: vertical; }
+.application.cmet-npc-sheet .cmet-npc-description-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.application.cmet-npc-sheet .cmet-npc-description-grid label { display: flex; flex-direction: column; gap: 4px; color: var(--cmet-text-muted); font-size: .8rem; }
+.application.cmet-npc-sheet .cmet-npc-description-grid textarea { min-height: 120px; padding: 6px; resize: vertical; }
+.application.cmet-npc-sheet .cmet-npc-description-grid .cmet-npc-description-wide { grid-column: 1 / -1; }
+.application.cmet-npc-sheet .cmet-npc-attribute-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.application.cmet-npc-sheet .cmet-npc-attribute-group { overflow: hidden; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 7px; box-shadow: 0 2px 8px rgb(0 0 0 / 12%); }
+.application.cmet-npc-sheet .cmet-npc-attribute-group > header { padding: 13px 15px 11px; background: linear-gradient(120deg, color-mix(in srgb, var(--cmet-accent-dark) 60%, var(--cmet-surface)), var(--cmet-surface)); border-bottom: 1px solid var(--cmet-border); }
+.application.cmet-npc-sheet .cmet-npc-attribute-group h2 { margin: 2px 0 0; color: var(--cmet-text); font-size: 1rem; letter-spacing: .1em; text-transform: uppercase; }
+.application.cmet-npc-sheet .cmet-npc-section-kicker { color: var(--cmet-gold); font-size: .62rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.application.cmet-npc-sheet .cmet-npc-attribute-table { padding: 4px 10px 8px; }
+.application.cmet-npc-sheet .cmet-npc-attribute-row { display: grid; grid-template-columns: minmax(0, 1fr) 58px 28px; align-items: center; gap: 8px; min-height: 37px; border-bottom: 1px solid color-mix(in srgb, var(--cmet-border) 55%, transparent); }
+.application.cmet-npc-sheet .cmet-npc-attribute-row:last-child { border-bottom: 0; }
+.application.cmet-npc-sheet .cmet-npc-attribute-row:nth-child(even) { background: color-mix(in srgb, var(--cmet-surface-alt) 45%, transparent); }
+.application.cmet-npc-sheet .cmet-npc-attribute-roll { min-width: 0; overflow: hidden; padding: 3px 2px; color: var(--cmet-text); background: transparent; border: 0; cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.application.cmet-npc-sheet .cmet-npc-attribute-roll:hover { color: var(--cmet-accent-bright); text-decoration: underline; }
+.application.cmet-npc-sheet .cmet-npc-attribute-row input { width: 58px; padding: 4px; text-align: center; }
+.application.cmet-npc-sheet .cmet-npc-roll-icon { width: 26px; height: 26px; padding: 0; color: var(--cmet-accent-bright); background: transparent; border: 1px solid var(--cmet-border); border-radius: 50%; cursor: pointer; line-height: 1; }
+.application.cmet-npc-sheet .cmet-npc-roll-icon:hover { background: var(--cmet-accent-dark); border-color: var(--cmet-accent-bright); }
+.application.cmet-npc-sheet .cmet-item-section { padding: 12px; background: var(--cmet-surface); border: 1px solid var(--cmet-border-soft); border-radius: 7px; }
+.application.cmet-npc-sheet .cmet-item-section + .cmet-item-section { margin-top: 12px; }
+.application.cmet-npc-sheet .cmet-item-list-header { margin: -12px -12px 10px; padding: 10px 12px; background: var(--cmet-surface-alt); border-bottom: 1px solid var(--cmet-border-soft); }
+.application.cmet-npc-sheet .cmet-item-list-header h2 { margin: 0; color: var(--cmet-text); font-size: .88rem; letter-spacing: .07em; text-transform: uppercase; }
+.application.cmet-npc-sheet .cmet-item-list-header button { padding: 5px 9px; color: var(--cmet-text); background: var(--cmet-accent-dark); border: 1px solid var(--cmet-accent); border-radius: 4px; }
+.application.cmet-npc-sheet .cmet-item-list-header button:hover { background: var(--cmet-accent); }
+.application.cmet-npc-sheet .cmet-item-row { gap: 8px; min-height: 42px; padding: 6px 4px; border-bottom-color: var(--cmet-border-soft); }
+.application.cmet-npc-sheet .cmet-item-row:last-child { border-bottom: 0; }
+.application.cmet-npc-sheet .cmet-item-row > button { color: var(--cmet-text); background: transparent; border: 0; cursor: pointer; }
+.application.cmet-npc-sheet .cmet-item-row > button:hover { color: var(--cmet-accent-bright); }
+.application.cmet-npc-sheet .cmet-npc-item-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: start; }
+.application.cmet-npc-sheet .cmet-npc-item-main { min-width: 0; }
+.application.cmet-npc-sheet .cmet-item-row-name { display: block; max-width: 100%; padding: 2px 0; overflow: hidden; font-weight: 700; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.application.cmet-npc-sheet .cmet-item-row-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 3px; white-space: nowrap; }
+.application.cmet-npc-sheet .cmet-item-row-actions button { min-height: 27px; padding: 3px 5px; }
+.application.cmet-npc-sheet .cmet-da-effect-list { display: grid; gap: 4px; margin-top: 5px; }
+.application.cmet-npc-sheet .cmet-da-effect-row { display: flex; align-items: center; justify-content: space-between; gap: 7px; padding: 4px 6px; background: var(--cmet-surface-alt); border: 1px solid var(--cmet-border-soft); border-radius: 4px; }
+.application.cmet-npc-sheet .cmet-da-effect-row.is-active { border-color: var(--cmet-accent); }
+.application.cmet-npc-sheet .cmet-da-effect-row.is-disabled { opacity: .58; }
+.application.cmet-npc-sheet .cmet-da-effect-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 7px; min-width: 0; color: var(--cmet-text-muted); font-size: .7rem; }
+.application.cmet-npc-sheet .cmet-da-effect-meta strong { color: var(--cmet-text); font-size: .76rem; }
+.application.cmet-npc-sheet .cmet-da-effect-state { color: var(--cmet-accent-bright); font-weight: 700; }
+.application.cmet-npc-sheet .cmet-da-effect-actions { display: flex; flex: 0 0 auto; gap: 3px; }
+.application.cmet-npc-sheet .cmet-da-effect-actions button { padding: 3px 6px; color: var(--cmet-text); background: var(--cmet-accent-dark); border: 1px solid var(--cmet-accent); border-radius: 3px; cursor: pointer; font-size: .7rem; }
+.application.cmet-npc-sheet .cmet-da-effect-actions button:hover { background: var(--cmet-accent); }
+.application.cmet-npc-sheet .cmet-da-effect-empty { color: var(--cmet-text-muted); font-size: .72rem; font-style: italic; }
+
+@media (max-width: 760px) {
+  .application.cmet-npc-sheet .cmet-sheet__header { grid-template-columns: 64px minmax(0, 1fr); }
+  .application.cmet-npc-sheet .cmet-sheet__portrait { width: 64px; height: 64px; }
+  .application.cmet-npc-sheet .cmet-tabs button { padding-inline: 2px; font-size: .68rem; }
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(3) { border-right: 0; }
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(n+4) { border-top: 1px solid var(--cmet-border-soft); }
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(5) { border-right: 0; }
+  .application.cmet-npc-sheet .cmet-npc-defensive-grid,
+  .application.cmet-npc-sheet .cmet-npc-description-grid,
+  .application.cmet-npc-sheet .cmet-npc-attribute-groups { grid-template-columns: 1fr; }
+  .application.cmet-npc-sheet .cmet-npc-description-grid .cmet-npc-description-wide { grid-column: auto; }
+}
+
+@media (max-width: 560px) {
+  .application.cmet-npc-sheet .cmet-npc-identity-row { grid-template-columns: 1fr; }
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(2),
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(4) { border-right: 0; }
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(3) { border-right: 1px solid var(--cmet-border-soft); }
+  .application.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(n+3) { border-top: 1px solid var(--cmet-border-soft); }
+  .application.cmet-npc-sheet .cmet-npc-natural { grid-template-columns: 1fr 1fr; }
+  .application.cmet-npc-sheet .cmet-npc-natural button { min-width: 0; }
+  .application.cmet-npc-sheet .cmet-npc-item-row { grid-template-columns: 40px minmax(0, 1fr); }
+  .application.cmet-npc-sheet .cmet-npc-item-row .cmet-item-row-actions { grid-column: 2; justify-content: flex-start; flex-wrap: wrap; }
+}
 .application.cmet-actor-sheet .cmet-hand-panel h2 { margin: 0; color: var(--cmet-text); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
 .application.cmet-actor-sheet .cmet-hand-panel label { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: var(--cmet-text-muted); font-size: .75rem; }
 .application.cmet-actor-sheet .cmet-hand-panel select { width: 100%; min-width: 0; min-height: 30px; color: var(--cmet-text); background: var(--cmet-surface-raised); border: 1px solid var(--cmet-border); border-radius: 3px; }
@@ -617,4 +738,22 @@
 .application.cmet-polearm-reaction-dialog .dialog-buttons button:hover {
   border-color: var(--cmet-accent-bright);
   color: var(--cmet-text);
+}
+
+@media (max-width: 760px) {
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-sheet__header { grid-template-columns: 64px minmax(0, 1fr); }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-sheet__portrait { width: 64px; height: 64px; }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(3) { border-right: 0; }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(n+4) { border-top: 1px solid var(--cmet-border-soft); }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(5) { border-right: 0; }
+}
+
+@media (max-width: 560px) {
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-npc-identity-row { grid-template-columns: 1fr; }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(2),
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(4) { border-right: 0; }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(3) { border-right: 1px solid var(--cmet-border-soft); }
+  .application.cmet-actor-sheet.cmet-npc-sheet .cmet-resource-bar.cmet-npc-resource-bar .cmet-resource:nth-child(n+3) { border-top: 1px solid var(--cmet-border-soft); }
 }

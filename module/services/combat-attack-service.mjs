@@ -1,7 +1,7 @@
 import { SKILL_LABELS, SYSTEM_ID } from "../config/constants.mjs";
 import { DAMAGE_TYPES } from "../config/weapon-config.mjs";
 import { CombatActionError, CombatActionService } from "./combat-action-service.mjs";
-import { compareSkillRolls, findSkillDefinition, SKILL_ROLL_DEGREES, updateSkillRollMessage } from "./skill-roll-service.mjs";
+import { compareSkillRolls, findSkillDefinition, resolveActorSkillValue, SKILL_ROLL_DEGREES, updateSkillRollMessage } from "./skill-roll-service.mjs";
 import { openSkillRollDialog } from "../dialogs/skill-roll-dialog.mjs";
 import { DamageRollService } from "./damage-roll-service.mjs";
 import { DamageReductionService } from "./damage-reduction-service.mjs";
@@ -159,8 +159,8 @@ function queuePendingAttack(actor, item, combat, attackMode = "normal") {
 function resolveAttackSkill(actor, item) {
   const skillKey = item?.system?.combatSkill;
   const definition = findSkillDefinition(skillKey);
-  const baseValue = definition && actor.system.attributes[definition.key]?.skills?.[skillKey];
-  if (!skillKey || !definition || !Number.isFinite(Number(baseValue))) {
+  const baseValue = resolveActorSkillValue(actor, skillKey, { context: "weapon" });
+  if (!skillKey || (!definition && actor?.type !== "npc") || !Number.isFinite(Number(baseValue))) {
     notify("InvalidWeaponSkill");
     return null;
   }
@@ -283,14 +283,14 @@ function openDefenseChoice({ defender, attacker, combatant, attackerToken = null
     submit: async (choice) => {
       if (choice === "redistribute") {
         choiceStarted = true;
-        const result = await resolveDraummaMagicRedistribution({ defender, attacker, combatant, spell, attack, rollSkill: async ({ actor, skillKey, context }) => new Promise((resolve) => openSkillRollDialog({ actor, skillKey, skillLabel: SKILL_LABELS[skillKey], baseValue: actor.system.attributes[findSkillDefinition(skillKey).key].skills[skillKey], context, onResult: resolve, onCancel: () => resolve(null) })) });
+        const result = await resolveDraummaMagicRedistribution({ defender, attacker, combatant, spell, attack, rollSkill: async ({ actor, skillKey, context }) => new Promise((resolve) => openSkillRollDialog({ actor, skillKey, skillLabel: SKILL_LABELS[skillKey] ?? skillKey, baseValue: resolveActorSkillValue(actor, skillKey), context, onResult: resolve, onCancel: () => resolve(null) })) });
         return answer({ choice, rollResult: result.result, redirected: result.redirected, target: result.target });
       }
       if (choice === "dodge" || choice === "block") {
         choiceStarted = true;
         const skillKey = choice === "dodge" ? "esquivar" : "bloquear";
         const definition = findSkillDefinition(skillKey);
-        const baseValue = defender.system.attributes[definition.key].skills[skillKey];
+        const baseValue = resolveActorSkillValue(defender, skillKey, { context: "defense" });
         return openSkillRollDialog({
           actor: defender,
           skillKey,
@@ -688,6 +688,30 @@ export async function startWeaponAttack({ actor, item, attackMode = "normal" }) 
     ? [targetToken, ...getLateralEnemies(targetToken)].filter((token, index, tokens) => tokens.findIndex((candidate) => (candidate.document?.id ?? candidate.id) === (token.document?.id ?? token.id)) === index)
     : [targetToken];
   return prepareWeaponAttack({ actor, item, targetToken, targetTokens, combat, attackMode });
+}
+
+export async function startNaturalAttack({ actor, attack }) {
+  clearPendingAttack();
+  const combat = game.combat;
+  if (!combat?.started) return notify("CombatRequired");
+  const attackerToken = getAttackerToken(actor, combat);
+  const attackerCombatant = getCombatantForToken(combat, attackerToken);
+  if (!attackerCombatant) return notify("AttackerNotInCombat");
+  if (combat.combatant?.id !== attackerCombatant.id) return notify("NotActiveTurn");
+  if (CombatActionService.getState(attackerCombatant).current < 1) return notify("ActionInsufficient");
+  const item = {
+    id: `natural-${attack.id}`,
+    name: attack.name,
+    type: "arma",
+    system: {
+      equipped: true, loaded: true, thrown: false, combatSkill: attack.combatSkill || "corpoACorpo",
+      damage: [{ formula: attack.damageFormula || "", nature: "physical", type: "impacto" }],
+      characteristics: { alcance: { enabled: false }, armaDeHaste: { enabled: false }, recarregar: { enabled: false }, duasMaos: { enabled: false }, puxar: { enabled: false } }
+    }
+  };
+  const targetTokens = Array.from(game.user.targets ?? []);
+  if (targetTokens.length !== 1) return notify(targetTokens.length ? "SelectOnlyOneTarget" : "SelectTarget");
+  return prepareWeaponAttack({ actor, item, targetToken: targetTokens[0], targetTokens, combat, unarmed: true });
 }
 
 function norisUnarmedItem(actor, name = "Ataque desarmado") {
@@ -1137,6 +1161,7 @@ export const CombatAttackService = Object.freeze({
     return pendingAttack;
   },
   startWeaponAttack,
+  startNaturalAttack,
   startReactiveWeaponAttack,
   startThrownWeaponAttack,
   startCombinedWeaponAttack,
