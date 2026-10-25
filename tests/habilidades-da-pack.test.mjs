@@ -14,9 +14,9 @@ test("o manifesto aponta para o compêndio LevelDB do Foundry v14", () => {
   assert.equal(manifest.packs.find(({ name }) => name === "habilidades-da")?.path, "packs/habilidades-da");
 });
 
-test("compêndio DA contém as seis habilidades de Hrodnar e as quatro de Marco", () => {
-  assert.equal(pack.length, 10);
-  assert.equal(items.length, 10);
+test("compêndio DA contém as seis habilidades de Hrodnar, quatro de Marco e quatro de Draumma", () => {
+  assert.equal(pack.length, 20);
+  assert.equal(items.length, 20);
   assert.ok(pack.every((entry) => entry.type === "habilidadeDa"));
   assert.deepEqual(items.map(({ name }) => name), [
     "Empunhadura do Mais Forte",
@@ -28,12 +28,31 @@ test("compêndio DA contém as seis habilidades de Hrodnar e as quatro de Marco"
     "Filho de Hel",
     "Manifestação de Hel",
     "Conversão Profana",
-    "Última Centelha"
+    "Última Centelha",
+    "Ás na Manga",
+    "Redistribuição de Magia",
+    "Sifão de Mana",
+    "Truque de Mestre",
+    "Frenesi do Lutador",
+    "Punhos Abrasivos",
+    "Chutes em Meia Lua",
+    "Plumagem de um Pugilista",
+    "Peso Pesado",
+    "Armar Guarda"
   ]);
   assert.ok(items.every((item) => item.folder === null));
   const hrodnar = items.filter((item) => item.system.associatedCharacter === "Hrodnar");
   assert.equal(hrodnar.length, 6);
   assert.ok(hrodnar.every((item) => item.flags?.["contos-de-mar-e-terra"]?.packCharacter === "Hrodnar"));
+});
+
+test("o compêndio de Draumma possui quatro operações especializadas", () => {
+  const draumma = items.filter((item) => item.system.associatedCharacter === "Draumma");
+  assert.equal(draumma.length, 4);
+  assert.deepEqual(draumma.map((item) => item.system.effects[0].operations[0].type), [
+    "draummaAce", "draummaMagicRedistribution", "draummaManaSiphon", "draummaMasterTrick"
+  ]);
+  assert.ok(draumma.every((item) => item.flags?.["contos-de-mar-e-terra"]?.packCharacter === "Draumma"));
 });
 
 test("o compêndio de Marco possui quatro habilidades com metadados e operações específicas", () => {
