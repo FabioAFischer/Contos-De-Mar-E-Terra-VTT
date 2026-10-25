@@ -21,6 +21,16 @@ const expectedNames = [
   "Manifestação de Hel",
   "Conversão Profana",
   "Última Centelha"
+  ,"Ás na Manga"
+  ,"Redistribuição de Magia"
+  ,"Sifão de Mana"
+  ,"Truque de Mestre"
+  ,"Frenesi do Lutador"
+  ,"Punhos Abrasivos"
+  ,"Chutes em Meia Lua"
+  ,"Plumagem de um Pugilista"
+  ,"Peso Pesado"
+  ,"Armar Guarda"
 ];
 
 function readSourceItems() {
